@@ -42,12 +42,12 @@ export default function RegisterScreen() {
     const success = await signUp(email.trim(), password, nickname.trim());
 
     if (success) {
-      // 회원가입 성공 → 기본 팀 셋업
-      const user = useAuthStore.getState().user;
-      if (user) {
-        await setupDefaultTeam(user.id);
-      }
-      // 자동으로 로그인 상태가 되어 RootNavigator가 AppTabs로 전환
+      // 회원가입 성공
+      // 기존: 자동 팀 생성 -> 변경: 팀 선택 화면 진입을 위해 아무것도 하지 않음
+      // (RootNavigator에서 user가 있으면 AuthStack에서 나가지만, 
+      //  팀이 없는 경우를 RootNavigator에서 처리하거나, 초기 진입 로직을 수정해야 함)
+      
+      // 여기서는 일단 성공만 하면 상태가 변경되어 네비게이터가 전환됨
     } else {
       const currentError = useAuthStore.getState().error;
       Alert.alert('회원가입 실패', currentError ?? '알 수 없는 오류가 발생했습니다.');

@@ -6,6 +6,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Image,
 } from 'react-native';
 import Svg, {
   Path,
@@ -66,7 +67,7 @@ function buildSmoothTrailPath(): string {
   return d;
 }
 
-export default function MountainProgress({ members }: { members: MemberProgress[] }) {
+export default function MountainProgress({ members, startAnimation, isNight }: { members: MemberProgress[]; startAnimation?: boolean; isNight?: boolean }) {
   const theme = getSeasonTheme();
   const [containerWidth, setContainerWidth] = useState(CONTAINER_WIDTH);
 
@@ -76,10 +77,10 @@ export default function MountainProgress({ members }: { members: MemberProgress[
         style={styles.sceneInner}
         onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       >
-        <MountainScene theme={theme} />
+        <MountainScene theme={theme} isNight={isNight} />
         
         {/* 파티클 (꽃잎/나뭇잎) */}
-        {[0, 1, 2].map((i) => (
+        {[...Array(15)].map((_, i) => (
           <SeasonParticle key={`p-${i}`} emoji={theme.particle} index={i} />
         ))}
 
@@ -100,35 +101,39 @@ export default function MountainProgress({ members }: { members: MemberProgress[
 }
 
 // ─── 파스텔톤 노을 풍경 (Pastel Sunset) ───
-function MountainScene({ theme }: { theme: Theme }) {
+function MountainScene({ theme, isNight }: { theme: Theme; isNight?: boolean }) {
   const trailPath = useMemo(() => buildSmoothTrailPath(), []);
 
   return (
     <Svg width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="none">
       <Defs>
-        {/* 1. 하늘 그라데이션 (제거됨 - HomeScreen 배경 사용) */}
-
-        {/* 2. 원경 산맥 (연한 청회색) */}
+        {/* 2. 원경 산맥 (눈 덮인 봉우리 - 선명한 눈모자) */}
         <LinearGradient id="farMountainGrad" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor="#CFD8DC" stopOpacity="1" />
-          <Stop offset="100%" stopColor="#B0BEC5" stopOpacity="0.8" />
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+          <Stop offset="25%" stopColor="#FFFFFF" stopOpacity="1" />
+          <Stop offset="26%" stopColor="#CFD8DC" stopOpacity="1" />
+          <Stop offset="100%" stopColor="#B0BEC5" stopOpacity="1" />
         </LinearGradient>
 
-        {/* 3. 중경 숲 (채도 낮은 녹색) */}
+        {/* 3. 중경 숲 (눈 쌓인 나무 꼭대기 - 선명한 눈모자) */}
         <LinearGradient id="midForestGrad" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor="#A5D6A7" stopOpacity="1" />
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+          <Stop offset="15%" stopColor="#FFFFFF" stopOpacity="1" />
+          <Stop offset="16%" stopColor="#A5D6A7" stopOpacity="1" />
           <Stop offset="100%" stopColor="#81C784" stopOpacity="1" />
         </LinearGradient>
 
-        {/* 4. 근경 언덕 (따뜻한 녹색) */}
+        {/* 4. 근경 언덕 (눈 덮인 언덕 꼭대기 - 선명한 눈모자) */}
         <LinearGradient id="nearHillGrad" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor="#C5E1A5" stopOpacity="1" />
-          <Stop offset="100%" stopColor="#AED581" stopOpacity="1" />
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+          <Stop offset="18%" stopColor="#FFFFFF" stopOpacity="1" />
+          <Stop offset="20%" stopColor="#C5E1A5" stopOpacity="1" />
+          <Stop offset="100%" stopColor="#AED581" stopOpacity="80" />
         </LinearGradient>
 
-        {/* 5. 길 (부드러운 흙색) */}
+        {/* 5. 길 (흙길) */}
         <LinearGradient id="pathGrad" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor="#EFEBE9" stopOpacity="0.8" />
+          <Stop offset="0%" stopColor="#EFEBE9" stopOpacity="0.9" />
           <Stop offset="100%" stopColor="#D7CCC8" stopOpacity="1" />
         </LinearGradient>
       </Defs>
@@ -138,18 +143,22 @@ function MountainScene({ theme }: { theme: Theme }) {
 
       {/* ☀️ 해 (연한 색깔) - 제거됨 (HomeScreen으로 이동) */}
 
-      {/* 2. 구름 (왼쪽 상단 뭉게구름) */}
-      <G opacity="0.8" transform="translate(-20, 20)">
-        <Circle cx="50" cy="50" r="30" fill="#FFF" />
-        <Circle cx="80" cy="40" r="35" fill="#FFF" />
-        <Circle cx="110" cy="50" r="30" fill="#FFF" />
-        <Circle cx="80" cy="60" r="30" fill="#FFF" />
-      </G>
-      <G opacity="0.6" transform="translate(200, 50) scale(0.6)">
-        <Circle cx="50" cy="50" r="30" fill="#FFF" />
-        <Circle cx="80" cy="40" r="35" fill="#FFF" />
-        <Circle cx="110" cy="50" r="30" fill="#FFF" />
-      </G>
+      {/* 2. 구름 (왼쪽 상단 뭉게구름) - 밤에는 숨김 */}
+      {!isNight && (
+        <>
+          <G opacity="0.8" transform="translate(-20, 20)">
+            <Circle cx="50" cy="50" r="30" fill="#FFF" />
+            <Circle cx="80" cy="40" r="35" fill="#FFF" />
+            <Circle cx="110" cy="50" r="30" fill="#FFF" />
+            <Circle cx="80" cy="60" r="30" fill="#FFF" />
+          </G>
+          <G opacity="0.6" transform="translate(200, 50) scale(0.6)">
+            <Circle cx="50" cy="50" r="30" fill="#FFF" />
+            <Circle cx="80" cy="40" r="35" fill="#FFF" />
+            <Circle cx="110" cy="50" r="30" fill="#FFF" />
+          </G>
+        </>
+      )}
 
       {/* 3. 원경 산맥 (실루엣) */}
       <Path 
@@ -191,21 +200,21 @@ function MountainScene({ theme }: { theme: Theme }) {
         strokeLinecap="round" 
         fill="none" 
       />
-      {/* 길 테두리 */}
+      {/* 길 중앙 점선 */}
       <Path 
         d={trailPath} 
-        stroke="#FFF" 
-        strokeWidth={1} 
-        strokeDasharray="4 4" 
+        stroke="#8D6E63" 
+        strokeWidth={2} 
+        strokeDasharray="5 5" 
         strokeLinecap="round" 
         fill="none" 
         opacity="0.5"
       />
 
       {/* 7. 정상의 깃발 (Flag) */}
-      <G transform="translate(165, 20) scale(0.4)">
+      <G transform="translate(168, 5) scale(0.4)">
         {/* 깃대 */}
-        <Line x1="20" y1="50" x2="20" y2="0" stroke="#5D4037" strokeWidth="4" />
+        <Line x1="20" y1="70" x2="20" y2="0" stroke="#5D4037" strokeWidth="4" />
         {/* 깃발 */}
         <Path 
           d="M 20 5 C 40 0 60 10 80 5 L 80 35 C 60 40 40 30 20 35 Z" 
@@ -277,9 +286,13 @@ function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatar
             </View>
             <View style={styles.bubbleTail} />
 
-            {/* 캐릭터 (단순하고 귀여운 동그라미) */}
-            <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-                <Text style={styles.avatarText}>{member.nickname?.[0]}</Text>
+            {/* 캐릭터 (프로필 이미지 또는 닉네임 첫 글자) */}
+            <View style={[styles.avatar, { backgroundColor: avatarColor, overflow: 'hidden' }]}>
+                {member.profileImageUrl ? (
+                    <Image source={{ uri: member.profileImageUrl }} style={styles.avatarImage} />
+                ) : (
+                    <Text style={styles.avatarText}>{member.nickname?.[0]}</Text>
+                )}
             </View>
             {/* 그림자 */}
             <View style={styles.shadow} />
@@ -315,6 +328,7 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: '#5D4037', zIndex: 2,
   },
+  avatarImage: { width: 32, height: 32, borderRadius: 16 },
   avatarText: { color: '#5D4037', fontWeight: '800', fontSize: 14 },
   shadow: {
     width: 24, height: 6, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.1)', marginTop: -3, zIndex: 1,

@@ -6,6 +6,9 @@ export interface User {
   id: string;
   email: string;
   nickname: string;
+  name: string | null;
+  gender: string | null;
+  age: number | null;
   profile_image_url: string | null;
   created_at: string;
 }
@@ -44,11 +47,15 @@ export interface Goal {
 }
 
 /** 개인이 선택한 목표 */
+export type GoalFrequency = 'daily' | 'weekly';
+
 export interface UserGoal {
   id: string;
   user_id: string;
   goal_id: string;
   is_active: boolean;
+  frequency: GoalFrequency; // 'daily' | 'weekly'
+  week_days: number[] | null; // 0(일) ~ 6(토). weekly일 때만 유효
   created_at: string;
 }
 
@@ -58,6 +65,8 @@ export interface UserGoalWithDetail extends UserGoal {
 }
 
 /** 하루 인증(체크인) */
+export type CheckinStatus = 'done' | 'pass';
+
 export interface Checkin {
   id: string;
   user_id: string;
@@ -65,6 +74,7 @@ export interface Checkin {
   date: string; // 'YYYY-MM-DD'
   photo_url: string | null;
   memo: string | null;
+  status: CheckinStatus; // 'done' | 'pass'
   created_at: string;
 }
 
@@ -91,6 +101,7 @@ export type UserInsert = Omit<User, 'id' | 'created_at'>;
 export type TeamInsert = Omit<Team, 'id' | 'created_at'>;
 export type TeamMemberInsert = Omit<TeamMember, 'id' | 'created_at'>;
 export type GoalInsert = Omit<Goal, 'id' | 'created_at'>;
+
 export type UserGoalInsert = Omit<UserGoal, 'id' | 'created_at'>;
 export type CheckinInsert = Omit<Checkin, 'id' | 'created_at'>;
 

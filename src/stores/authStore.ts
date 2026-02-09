@@ -8,6 +8,8 @@ interface AuthState {
   error: string | null;
 
   restoreSession: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  setUser: (user: User) => void;
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (email: string, password: string, nickname: string) => Promise<boolean>;
   signOut: () => Promise<void>;
@@ -43,6 +45,29 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
   error: null,
+
+  /** 프로필만 다시 가져오기 (isLoading 안 건드림, 네비게이션 리셋 방지) */
+  refreshProfile: async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!error && data) {
+          set({ user: data as User });
+        }
+      }
+    } catch (e) {
+      console.error('[Auth] refreshProfile error:', e);
+    }
+  },
+
+  /** 직접 user 객체 세팅 */
+  setUser: (user: User) => set({ user }),
 
   restoreSession: async () => {
     try {

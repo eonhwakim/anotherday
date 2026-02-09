@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   listContainer: { gap: 12 },
-  emptyText: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' },
+  emptyText: { fontSize: 14, color: '#A1887F', fontStyle: 'italic' },
   goalItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   
   // 3D Checkbox

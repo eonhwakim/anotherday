@@ -45,6 +45,8 @@ export async function setupDefaultTeam(userId: string): Promise<Team | null> {
         user_id: userId,
         goal_id: g.id,
         is_active: true,
+        frequency: 'daily',
+        week_days: null,
       }));
 
       await supabase.from('user_goals').insert(userGoalInserts);
@@ -97,6 +99,8 @@ export async function joinTeamByCode(
         user_id: userId,
         goal_id: g.id,
         is_active: true,
+        frequency: 'daily',
+        week_days: null,
       }));
       await supabase.from('user_goals').insert(userGoalInserts);
     }

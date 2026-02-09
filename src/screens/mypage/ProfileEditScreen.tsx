@@ -1,0 +1,282 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useAuthStore } from '../../stores/authStore';
+import { pickProfileImage, uploadProfileImage, updateProfile } from '../../services/userService';
+import { COLORS } from '../../constants/defaults';
+import Button from '../../components/common/Button';
+import Input from '../../components/common/Input';
+
+export default function ProfileEditScreen() {
+  const navigation = useNavigation();
+  const { user, refreshProfile, setUser } = useAuthStore();
+
+  const [nickname, setNickname] = useState(user?.nickname || '');
+  const [name, setName] = useState(user?.name || '');
+  const [gender, setGender] = useState(user?.gender || '');
+  const [age, setAge] = useState(user?.age?.toString() || '');
+  const [imageUri, setImageUri] = useState(user?.profile_image_url || null);
+  
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setNickname(user.nickname);
+      setName(user.name || '');
+      setGender(user.gender || '');
+      setAge(user.age?.toString() || '');
+      setImageUri(user.profile_image_url);
+    }
+  }, [user]);
+
+  const handlePickImage = async () => {
+    const uri = await pickProfileImage();
+    if (uri) {
+      setImageUri(uri);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    if (!nickname.trim()) {
+      Alert.alert('알림', '닉네임을 입력해주세요.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let finalImageUrl = imageUri;
+
+      // 이미지가 변경되었고, http로 시작하지 않으면(로컬 파일이면) 업로드
+      if (imageUri && !imageUri.startsWith('http')) {
+        const uploadedUrl = await uploadProfileImage(user.id, imageUri);
+        if (uploadedUrl) {
+          finalImageUrl = uploadedUrl;
+        } else {
+          Alert.alert('오류', '이미지 업로드에 실패했습니다.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      const updates = {
+        nickname: nickname.trim(),
+        name: name.trim() || null,
+        gender: gender || null,
+        age: age ? parseInt(age, 10) : null,
+        profile_image_url: finalImageUrl,
+      };
+
+      const result = await updateProfile(user.id, updates);
+
+      if (result.success && result.data) {
+        // 스토어를 즉시 업데이트 (isLoading을 건드리지 않아 네비게이션 리셋 방지)
+        setUser(result.data);
+        navigation.goBack();
+      } else {
+        Alert.alert('실패', result.error || '프로필 수정 중 오류가 발생했습니다.');
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert('오류', '알 수 없는 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView style={styles.scroll}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.title}>프로필 수정</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <View style={styles.profileImageContainer}>
+            <TouchableOpacity onPress={handlePickImage} style={styles.imageWrapper}>
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.profileImage} />
+              ) : (
+                <View style={[styles.profileImage, styles.placeholderImage]}>
+                  <Ionicons name="person" size={40} color="#FFF" />
+                </View>
+              )}
+              <View style={styles.cameraIcon}>
+                <Ionicons name="camera" size={16} color="#FFF" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.form}>
+            <Input
+              label="닉네임"
+              value={nickname}
+              onChangeText={setNickname}
+              placeholder="닉네임을 입력하세요"
+            />
+            
+            <Input
+              label="이름"
+              value={name}
+              onChangeText={setName}
+              placeholder="이름을 입력하세요"
+            />
+
+            <Text style={styles.label}>성별</Text>
+            <View style={styles.genderContainer}>
+              {['남성', '여성', '기타'].map((g) => (
+                <TouchableOpacity
+                  key={g}
+                  style={[
+                    styles.genderBtn,
+                    gender === g && styles.genderBtnActive
+                  ]}
+                  onPress={() => setGender(g)}
+                >
+                  <Text style={[
+                    styles.genderText,
+                    gender === g && styles.genderTextActive
+                  ]}>{g}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Input
+              label="나이"
+              value={age}
+              onChangeText={setAge}
+              placeholder="나이를 입력하세요"
+              keyboardType="number-pad"
+            />
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Button
+            title="저장하기"
+            onPress={handleSave}
+            loading={loading}
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  scroll: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backBtn: {
+    padding: 4,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  profileImageContainer: {
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  placeholderImage: {
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: COLORS.text,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.surface,
+  },
+  form: {
+    padding: 16,
+    gap: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 8,
+  },
+  genderBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+  },
+  genderBtnActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '10', // 10% opacity
+  },
+  genderText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  genderTextActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  footer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+});

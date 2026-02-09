@@ -261,6 +261,10 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       // 일단 teamId가 있는 경우만 상정하거나, fetchTeamGoals 로직을 수정했으므로 teamId null 처리를 해야함.
     }
     await get().fetchMyGoals(userId);
+    
+    // teamGoals가 업데이트되었을 수 있으므로 다시 불러오기
+    if (teamId) await get().fetchTeamGoals(teamId, userId);
+    
     return true;
   },
 
