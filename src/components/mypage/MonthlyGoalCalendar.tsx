@@ -241,13 +241,18 @@ const CELL_HEIGHT = 72;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     marginHorizontal: 16,
     padding: 20,
-    borderRadius: 18,
+    borderRadius: 8,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORS.glassBorder,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+    shadowColor: 'rgba(255,255,255,0.3)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
   },
   monthHeader: {
     flexDirection: 'row',
@@ -257,10 +262,10 @@ const styles = StyleSheet.create({
   },
   arrowBtn: {
     padding: 8,
-    backgroundColor: COLORS.glass,
-    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: COLORS.glassBorder,
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   monthTitle: {
     fontSize: 18,
@@ -289,19 +294,25 @@ const styles = StyleSheet.create({
     height: CELL_HEIGHT,
     alignItems: 'center',
     paddingTop: 6,
-    borderRadius: 12,
+    borderRadius: 4,
     marginHorizontal: 1.5,
-    backgroundColor: COLORS.glass,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   dayCellToday: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1.5,
     borderColor: COLORS.secondary,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   dayCellAllDone: {
-    backgroundColor: 'rgba(0,240,212,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,240,212,0.35)',
+    backgroundColor: 'rgba(0,240,212,0.15)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,240,212,0.30)',
     shadowColor: COLORS.secondary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -309,9 +320,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   dayCellPartial: {
-    backgroundColor: 'rgba(255,217,61,0.12)',
+    backgroundColor: 'rgba(255,217,61,0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(255,217,61,0.2)',
+    borderColor: 'rgba(255,217,61,0.18)',
   },
   dayNumber: {
     fontSize: 13,
@@ -328,14 +339,17 @@ const styles = StyleSheet.create({
   sticker: {
     marginTop: 3,
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 6,
+    borderRadius: 3,
     paddingHorizontal: 4,
     paddingVertical: 2,
     width: '92%',
     alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   stickerDone: {
     backgroundColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   stickerText: {
     fontSize: 8,
@@ -371,7 +385,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     backgroundColor: COLORS.warning,
     paddingHorizontal: 3,
-    borderRadius: 3,
+    borderRadius: 2,
     overflow: 'hidden',
   },
   moreGoals: {
@@ -387,7 +401,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   legendItem: {
     flexDirection: 'row',
@@ -397,7 +411,7 @@ const styles = StyleSheet.create({
   legendDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: 2,
   },
   legendText: {
     fontSize: 11,
