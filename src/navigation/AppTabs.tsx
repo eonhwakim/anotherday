@@ -14,11 +14,19 @@ export default function AppTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarActiveTintColor: COLORS.secondary,
         tabBarInactiveTintColor: COLORS.textSecondary,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
+          backgroundColor: COLORS.background,
           borderTopColor: COLORS.border,
+          borderTopWidth: 1,
+          paddingTop: 6,
+          height: 88,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          letterSpacing: 0.3,
         },
         tabBarIcon: ({ color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
@@ -29,21 +37,9 @@ export default function AppTabs() {
         },
       })}
     >
-      <Tab.Screen
-        name="HomeTab"
-        component={HomeScreen}
-        options={{ tabBarLabel: '오늘' }}
-      />
-      <Tab.Screen
-        name="CalendarTab"
-        component={CalendarScreen}
-        options={{ tabBarLabel: '캘린더' }}
-      />
-      <Tab.Screen
-        name="MyPageTab"
-        component={MyPageScreen}
-        options={{ tabBarLabel: '마이' }}
-      />
+      <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: '오늘' }} />
+      <Tab.Screen name="CalendarTab" component={CalendarScreen} options={{ tabBarLabel: '캘린더' }} />
+      <Tab.Screen name="MyPageTab" component={MyPageScreen} options={{ tabBarLabel: '마이' }} />
     </Tab.Navigator>
   );
 }

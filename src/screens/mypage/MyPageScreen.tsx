@@ -48,26 +48,18 @@ export default function MyPageScreen() {
     isLoading,
   } = useGoalStore();
 
-  // ── 캘린더 월 상태 ──
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
-
-  // ── 체크인 모달 상태 ──
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
-
-  // ── 팀 관리 모달 상태 ──
   const [teamModalType, setTeamModalType] = useState<'create' | 'join' | null>(null);
   const [teamInputValue, setTeamInputValue] = useState('');
   const [teamLoading, setTeamLoading] = useState(false);
 
-  /** 데이터 로드 */
   const loadData = useCallback(async () => {
     if (!user) return;
-
     await fetchTeams(user.id);
     const team = useTeamStore.getState().currentTeam;
     const teamId = team?.id ?? '';
-
     await Promise.all([
       fetchTeamGoals(teamId, user.id),
       fetchMyGoals(user.id),
@@ -76,14 +68,12 @@ export default function MyPageScreen() {
     ]);
   }, [user, yearMonth]);
 
-  // 탭 포커스 시마다 새로고침
   useFocusEffect(
     useCallback(() => {
       loadData();
     }, [loadData]),
   );
 
-  /** 월 이동 */
   const goToPrevMonth = () => {
     setYearMonth((prev) =>
       dayjs(`${prev}-01`).subtract(1, 'month').format('YYYY-MM'),
@@ -95,64 +85,51 @@ export default function MyPageScreen() {
     );
   };
 
-  /** 목표 토글 */
   const handleToggleGoal = async (goalId: string) => {
     if (!user) return;
     await toggleUserGoal(user.id, goalId);
     await fetchMonthlyCheckins(user.id, yearMonth);
   };
 
-  /** 새 목표 추가 */
   const handleAddGoal = async (name: string): Promise<boolean> => {
     if (!user) return false;
-    // 팀이 없으면 개인 목표로 추가 (teamId 생략)
     const activeTeam = useTeamStore.getState().currentTeam;
     const ok = await addGoal({
-      teamId: activeTeam?.id, // undefined 면 개인 목표
+      teamId: activeTeam?.id,
       userId: user.id,
       name,
     });
     if (ok) {
-      // 즉시 UI 업데이트를 위해 데이터 다시 로드
       await fetchMyGoals(user.id);
-      // activeTeam이 없어도 fetchTeamGoals를 호출해야 개인 목표가 리스트에 뜸
       await fetchTeamGoals(activeTeam?.id ?? '', user.id);
       await fetchMonthlyCheckins(user.id, yearMonth);
     }
     return ok;
   };
 
-  /** 목표 삭제 */
   const handleRemoveGoal = async (goalId: string) => {
     if (!user) return;
     const activeTeam = useTeamStore.getState().currentTeam;
-    // 팀이 없으면 teamId='' 처리
     await removeTeamGoal(activeTeam?.id ?? '', user.id, goalId);
     await fetchMonthlyCheckins(user.id, yearMonth);
   };
 
-  /** 캘린더 날짜 탭 → 모달 열기 */
   const handleDayPress = (date: string) => {
     setSelectedDate(date);
     setModalVisible(true);
   };
 
-  /** 체크인 완료 후 새로고침 */
   const handleCheckinDone = async () => {
     if (!user) return;
     await fetchMonthlyCheckins(user.id, yearMonth);
     await fetchTodayCheckins(user.id);
-    
-    // 홈 화면의 산 진행률 업데이트를 위해 멤버 진행상황도 갱신
     const activeTeam = useTeamStore.getState().currentTeam;
     await useGoalStore.getState().fetchMemberProgress(activeTeam?.id, user.id);
   };
 
-  /** 팀 생성 */
   const handleCreateTeam = async () => {
     if (!user || !teamInputValue.trim()) return;
     setTeamLoading(true);
-    
     try {
       const team = await createTeam(teamInputValue.trim(), user.id);
       if (team) {
@@ -174,18 +151,14 @@ export default function MyPageScreen() {
     }
   };
 
-  /** 팀 참가 */
   const handleJoinTeam = async () => {
     if (!user || !teamInputValue.trim()) return;
     setTeamLoading(true);
-
     try {
       const team = await joinTeamByCode(teamInputValue.trim(), user.id);
       if (team) {
-        // 스토어 업데이트
         selectTeam(team);
         await fetchTeams(user.id);
-        
         Alert.alert('환영합니다!', `${team.name} 팀에 합류하셨습니다.`, [
           { text: '확인', onPress: () => {
             setTeamModalType(null);
@@ -204,7 +177,6 @@ export default function MyPageScreen() {
     }
   };
 
-  /** 로그아웃 */
   const handleLogout = () => {
     Alert.alert('로그아웃', '정말 로그아웃하시겠어요?', [
       { text: '취소', style: 'cancel' },
@@ -212,7 +184,6 @@ export default function MyPageScreen() {
     ]);
   };
 
-  // ── 통계용 계산 ──
   const currentMonthLabel = dayjs().format('YYYY년 M월');
   const todayCompleted = todayCheckins?.length ?? 0;
   const monthlyTotal = monthlyCheckins?.length ?? 0;
@@ -223,7 +194,6 @@ export default function MyPageScreen() {
     c.memo?.startsWith('[패스]'),
   ).length ?? 0;
 
-  // 모달에 전달할 데이터
   const selectedDateGoals = (teamGoals || []).filter((g) =>
     (myGoals || []).some((ug) => ug.goal_id === g.id),
   );
@@ -248,7 +218,7 @@ export default function MyPageScreen() {
                 style={{ width: 56, height: 56, borderRadius: 28 }} 
               />
             ) : (
-              <Ionicons name="person" size={32} color="#fff" />
+              <Ionicons name="person" size={28} color={COLORS.primaryLight} />
             )}
           </View>
           <View style={styles.profileInfo}>
@@ -262,7 +232,7 @@ export default function MyPageScreen() {
             )}
             <Text style={styles.email}>{user?.email ?? '-'}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={24} color={COLORS.textSecondary} />
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
         </TouchableOpacity>
 
         {/* ── 소속 팀 목록 및 관리 ── */}
@@ -274,14 +244,14 @@ export default function MyPageScreen() {
                 style={styles.teamActionBtn} 
                 onPress={() => setTeamModalType('create')}
               >
-                <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
+                <Ionicons name="add-circle-outline" size={18} color={COLORS.primaryLight} />
                 <Text style={styles.teamActionText}>팀 생성</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.teamActionBtn}
                 onPress={() => setTeamModalType('join')}
               >
-                <Ionicons name="enter-outline" size={20} color={COLORS.primary} />
+                <Ionicons name="enter-outline" size={18} color={COLORS.primaryLight} />
                 <Text style={styles.teamActionText}>팀 참가</Text>
               </TouchableOpacity>
             </View>
@@ -299,13 +269,13 @@ export default function MyPageScreen() {
                 ]}
                 onPress={() => {
                   selectTeam(team);
-                  loadData(); // 팀 변경 시 데이터 리로드
+                  loadData();
                 }}
               >
                 <Ionicons
                   name={currentTeam?.id === team.id ? "people-circle" : "people-outline"}
-                  size={24}
-                  color={currentTeam?.id === team.id ? COLORS.primary : COLORS.textSecondary}
+                  size={22}
+                  color={currentTeam?.id === team.id ? COLORS.primaryLight : COLORS.textSecondary}
                 />
                 <View style={styles.teamInfo}>
                   <Text style={[
@@ -319,7 +289,7 @@ export default function MyPageScreen() {
                   </Text>
                 </View>
                 {currentTeam?.id === team.id && (
-                  <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+                  <Ionicons name="checkmark" size={18} color={COLORS.primaryLight} />
                 )}
               </TouchableOpacity>
             ))
@@ -363,7 +333,7 @@ export default function MyPageScreen() {
               label="이번 달 성공"
               value={`${monthlySuccessCount}개`}
               icon="camera"
-              color={COLORS.primary}
+              color={COLORS.primaryLight}
             />
             <StatItem
               label="패스"
@@ -375,7 +345,7 @@ export default function MyPageScreen() {
               label="소속 팀"
               value={`${teams?.length ?? 0}개`}
               icon="people"
-              color={COLORS.primaryLight}
+              color={COLORS.secondary}
             />
           </View>
         </View>
@@ -429,12 +399,12 @@ export default function MyPageScreen() {
             <View style={styles.modalButtons}>
               <Button
                 title="취소"
+                variant="secondary"
                 onPress={() => {
                   setTeamModalType(null);
                   setTeamInputValue('');
                 }}
                 style={styles.cancelBtn}
-                textStyle={{ color: COLORS.text }}
               />
               <Button
                 title={teamModalType === 'create' ? '생성하기' : '참가하기'}
@@ -463,7 +433,9 @@ function StatItem({
 }) {
   return (
     <View style={styles.statItem}>
-      <Ionicons name={icon} size={24} color={color} />
+      <View style={[styles.statIconWrap, { backgroundColor: color + '15' }]}>
+        <Ionicons name={icon} size={20} color={color} />
+      </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -479,12 +451,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   screenTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
     color: COLORS.text,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 12,
     paddingBottom: 16,
+    letterSpacing: -0.5,
   },
   profileCard: {
     flexDirection: 'row',
@@ -492,9 +465,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     marginHorizontal: 16,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.glassBorder,
     gap: 16,
     marginBottom: 16,
   },
@@ -502,10 +475,16 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
+    backgroundColor: 'rgba(0,240,212,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,240,212,0.30)',
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
   },
   profileInfo: {
     flex: 1,
@@ -517,21 +496,21 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   detailText: {
-    fontSize: 14,
-    color: COLORS.text,
+    fontSize: 13,
+    color: COLORS.textSecondary,
     marginBottom: 2,
   },
   email: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: COLORS.textMuted,
   },
   statsCard: {
     backgroundColor: COLORS.surface,
     marginHorizontal: 16,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.glassBorder,
     marginBottom: 16,
   },
   cardTitle: {
@@ -546,7 +525,14 @@ const styles = StyleSheet.create({
   },
   statItem: {
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  statIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statValue: {
     fontSize: 18,
@@ -554,16 +540,17 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textSecondary,
+    letterSpacing: 0.3,
   },
   sectionCard: {
     backgroundColor: COLORS.surface,
     marginHorizontal: 16,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.glassBorder,
     marginBottom: 16,
   },
   sectionHeader: {
@@ -583,7 +570,7 @@ const styles = StyleSheet.create({
   },
   teamActionText: {
     fontSize: 12,
-    color: COLORS.primary,
+    color: COLORS.primaryLight,
     fontWeight: '600',
   },
   emptyText: {
@@ -596,15 +583,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   activeTeamItem: {
-    backgroundColor: 'rgba(141, 110, 99, 0.05)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    backgroundColor: 'rgba(0,240,212,0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
     borderBottomWidth: 0,
+    borderWidth: 1,
+    borderColor: 'rgba(0,240,212,0.15)',
   },
   teamInfo: {
     flex: 1,
@@ -615,13 +604,14 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   activeTeamText: {
-    color: COLORS.primary,
-    fontWeight: '800',
+    color: COLORS.secondary,
+    fontWeight: '700',
   },
   inviteCode: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: COLORS.textMuted,
     marginTop: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   logoutSection: {
     paddingHorizontal: 16,
@@ -631,16 +621,18 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.surface,
     width: '100%',
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   modalTitle: {
     fontSize: 20,
@@ -656,7 +648,6 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   confirmBtn: {
     flex: 1,

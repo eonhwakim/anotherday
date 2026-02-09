@@ -6,7 +6,6 @@ import {
   ScrollView,
   RefreshControl,
   Dimensions,
-  ImageBackground,
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,7 +17,7 @@ import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalList';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
-import Svg, { Path, Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, RadialGradient, Stop, Rect, Path, Line, G } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 
@@ -26,14 +25,8 @@ export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam, fetchTeams, fetchMembers } = useTeamStore();
   const {
-    myGoals,
-    teamGoals,
-    todayCheckins,
-    memberProgress,
-    fetchTeamGoals,
-    fetchTodayCheckins,
-    fetchMemberProgress,
-    fetchMyGoals,
+    myGoals, teamGoals, todayCheckins, memberProgress,
+    fetchTeamGoals, fetchTodayCheckins, fetchMemberProgress, fetchMyGoals,
   } = useGoalStore();
 
   const [refreshing, setRefreshing] = React.useState(false);
@@ -64,7 +57,6 @@ export default function HomeScreen() {
     await fetchTeams(user.id);
     const team = useTeamStore.getState().currentTeam;
     const teamId = team?.id;
-
     const promises = [
       fetchTeamGoals(teamId ?? '', user.id),
       fetchTodayCheckins(user.id),
@@ -77,7 +69,7 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setIsStampFinished(false); // 화면 진입 시 애니메이션 상태 초기화
+      setIsStampFinished(false);
       loadData();
     }, [loadData]),
   );
@@ -88,13 +80,10 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const today = dayjs().format('M월 D일');
-  
-  // 오늘 수행해야 하는 목표 필터링
+  const today = dayjs().format('YY년 M월 D일');
+
   const myActiveGoals = React.useMemo(() => {
-    const todayDayIndex = dayjs().day(); // 0(일) ~ 6(토)
-    
-    // 1. 오늘 해야 하는 UserGoal 찾기
+    const todayDayIndex = dayjs().day();
     const activeUserGoalIds = myGoals
       .filter((ug) => {
         if (!ug.is_active) return false;
@@ -102,178 +91,391 @@ export default function HomeScreen() {
         if (ug.frequency === 'weekly' && ug.week_days) {
           return ug.week_days.includes(todayDayIndex);
         }
-        // weekly인데 week_days가 없으면(null) 일단 보여주지 않음 (설정 오류)
         return false;
       })
       .map((ug) => ug.goal_id);
-
-    // 2. Goal 정보 매핑
     return teamGoals.filter((g) => activeUserGoalIds.includes(g.id));
   }, [myGoals, teamGoals]);
 
+  const isDay = timePeriod === 'DAY';
+  const isSunset = timePeriod === 'SUNSET';
+
   return (
     <View style={styles.container}>
-      {/* ── 배경 (하늘 + 잔디) ── */}
-      <View style={styles.sky}>
-        <Svg key={timePeriod} width="100%" height="100%" preserveAspectRatio="none">
-          <Defs>
-            <LinearGradient id="screenSkyGradient_DAY" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#E3F2FD" stopOpacity="1" />
-              <Stop offset="40%" stopColor="#BBDEFB" stopOpacity="1" />
-              <Stop offset="80%" stopColor="#E1F5FE" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="1" />
-            </LinearGradient>
-            <LinearGradient id="screenSkyGradient_SUNSET" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#E1BEE7" stopOpacity="1" />
-              <Stop offset="40%" stopColor="#FFCCBC" stopOpacity="1" />
-              <Stop offset="80%" stopColor="#FFF9C4" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#FFF59D" stopOpacity="1" />
-            </LinearGradient>
-            <LinearGradient id="screenSkyGradient_NIGHT" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#0D1B2A" stopOpacity="1" />
-              <Stop offset="40%" stopColor="#1B263B" stopOpacity="1" />
-              <Stop offset="80%" stopColor="#415A77" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#778DA9" stopOpacity="1" />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill={`url(#screenSkyGradient_${timePeriod})`} />
-          {timePeriod === 'NIGHT' && <Stars />}
-        </Svg>
-      </View>
-      <View style={styles.grass} />
-      
-      {/* ── 배경 장식 (구름, 나무 등) ── */}
-      <View style={styles.backgroundDecor}>
-        {timePeriod !== 'NIGHT' && (
-          <>
-            <Cloud style={{ top: 60, left: 40 }} scale={1} />
-            <Cloud style={{ top: 100, right: -20 }} scale={0.8} />
-          </>
-        )}
-        <Tree style={{ bottom: '35%', left: -30 }} scale={1.2} />
-        <Tree style={{ bottom: '38%', right: -40 }} scale={1.5} />
+      {/* ── 배경 ── */}
+      <View style={styles.bgLayer}>
+        <SkyBackground key={timePeriod} timePeriod={timePeriod} />
       </View>
 
-      {/* ☀️ 해 (낮/노을) 또는 🌙 달 (밤) */}
-      {timePeriod !== 'NIGHT' ? (
-        <Sun style={{ top: 110, right: 30, zIndex: 5 }} />
-      ) : (
-        <Moon style={{ top: 110, right: 35, zIndex: 5 }} />
-      )}
+      {/* ── 장식 ── */}
+      <View style={styles.decorLayer}>
+        {timePeriod === 'SUNSET' && (
+          <HoloGlow style={{ top: 80, right: 20 }} color1={COLORS.holoPink} color2={COLORS.holoMint} />
+        )}
+        {timePeriod === 'NIGHT' && (
+          <HoloMoon style={{ top: 90, right: 30 }} />
+        )}
+      </View>
 
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.secondary} />
           }
         >
-          {/* 🧪 개발용 시간대 테스트 버튼 */}
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: 8, opacity: 0.8 }}>
-            <TouchableOpacity onPress={() => handleManualTimeChange('DAY')} style={styles.testBtn}>
-              <Text style={styles.testBtnText}>☀️ 아침</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleManualTimeChange('SUNSET')} style={styles.testBtn}>
-              <Text style={styles.testBtnText}>🌅 노을</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleManualTimeChange('NIGHT')} style={styles.testBtn}>
-              <Text style={styles.testBtnText}>🌙 밤</Text>
-            </TouchableOpacity>
+          {/* 시간대 테스트 */}
+          <View style={styles.testRow}>
+            {(['DAY', 'SUNSET', 'NIGHT'] as const).map((p) => (
+              <TouchableOpacity
+                key={p}
+                onPress={() => handleManualTimeChange(p)}
+                style={[styles.testBtn, timePeriod === p && styles.testBtnActive]}
+              >
+                <Text style={styles.testBtnText}>
+                  {p === 'DAY' ? '☀️' : p === 'SUNSET' ? '🌅' : '🌙'}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          {/* 헤더 (나무 표지판 느낌) */}
+          {/* 헤더 */}
           <View style={styles.header}>
-            <View style={styles.signBoard}>
-              <Text style={styles.dateText}>{today}</Text>
-              <Text style={styles.teamName}>
-                {currentTeam?.name ? `${currentTeam?.name} 팀` : '오늘의 목표'}
-              </Text>
-              {/* 표지판 못 */}
-              <View style={[styles.nail, { top: 6, left: 6 }]} />
-              <View style={[styles.nail, { top: 6, right: 6 }]} />
-            </View>
-            
-            <View style={styles.userBadge}>
-              <Text style={styles.greeting}>반가워요, {user?.nickname ?? ''}님!</Text>
+            <Text style={[styles.greeting, isDay && styles.greetingDay, isSunset && styles.greetingSunset]}>
+              반가워요, {user?.nickname ?? ''}님
+            </Text>
+            <View style={styles.frameRow}>
+              <CyberFrame>
+                <Text style={[styles.dateText, isDay && styles.dateTextDay, isSunset && styles.dateTextSunset]}>{today}</Text>
+                <Text style={[styles.teamName, isDay && styles.teamNameDay, isSunset && styles.teamNameSunset]}>
+                  {currentTeam?.name ? `${currentTeam?.name}` : '오늘의 목표'}
+                </Text>
+              </CyberFrame>
             </View>
           </View>
 
-          {/* 메인 산 (배경에 자연스럽게 녹아듦) */}
+          {/* 산 */}
           <View style={styles.mountainSection}>
-            <MountainProgress members={memberProgress} startAnimation={isStampFinished} isNight={timePeriod === 'NIGHT'} />
+            <MountainProgress members={memberProgress} startAnimation={isStampFinished} isNight={timePeriod === 'NIGHT'} timePeriod={timePeriod} />
           </View>
 
-          {/* 오늘의 목표 (잔디 위에 놓인 종이) */}
-          <View style={styles.goalSection}>
-            <TodayGoalList 
-              goals={myActiveGoals} 
-              checkins={todayCheckins} 
-              onAnimationFinish={() => setIsStampFinished(true)}
-            />
+          {/* 목표 — 항상 다크 배경 */}
+          <View style={styles.goalDarkBg}>
+            <View style={styles.goalSection}>
+              <TodayGoalList
+                goals={myActiveGoals}
+                checkins={todayCheckins}
+                onAnimationFinish={() => setIsStampFinished(true)}
+              />
+            </View>
+            <View style={{ height: 80 }} />
           </View>
-
-          <View style={{ height: 80 }} />
         </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
 
-// ─── 장식용 컴포넌트 (SVG) ───
+// ─── 시간대별 배경 ───
 
-function Sun({ style }: any) {
+const SKY_COLORS = {
+  DAY:    { top: '#6AB0D8', mid: '#88C4E0', bot: '#A0D4EC', orb1: '#FFFFFF', orb2: '#C0E0F0', orb3: '#FFFFFF' },
+  SUNSET: { top: '#6AB0D8', mid: '#FFB898', bot: '#FFD0B8', orb1: '#FFE0D0', orb2: '#FFB090', orb3: '#FFC0A8' },
+  NIGHT:  { top: '#020208', mid: '#030310', bot: '#050510', orb1: COLORS.holoLavender, orb2: '#3030A0', orb3: '#181850' },
+} as const;
+
+function SkyBackground({ timePeriod }: { timePeriod: 'DAY' | 'SUNSET' | 'NIGHT' }) {
+  const c = SKY_COLORS[timePeriod];
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 400 800" preserveAspectRatio="none">
+      <Defs>
+        <LinearGradient id="skyG" x1="0" y1="0" x2="0.3" y2="1">
+          <Stop offset="0%" stopColor={c.top} />
+          <Stop offset="50%" stopColor={c.mid} />
+          <Stop offset="100%" stopColor={c.bot} />
+        </LinearGradient>
+        <RadialGradient id="orb1" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
+          <Stop offset="0%" stopColor={c.orb1} stopOpacity="0.18" />
+          <Stop offset="50%" stopColor={c.orb1} stopOpacity="0.06" />
+          <Stop offset="100%" stopColor={c.orb1} stopOpacity="0" />
+        </RadialGradient>
+        <RadialGradient id="orb2" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
+          <Stop offset="0%" stopColor={c.orb2} stopOpacity="0.14" />
+          <Stop offset="50%" stopColor={c.orb2} stopOpacity="0.05" />
+          <Stop offset="100%" stopColor={c.orb2} stopOpacity="0" />
+        </RadialGradient>
+        <RadialGradient id="orb3" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
+          <Stop offset="0%" stopColor={c.orb3} stopOpacity="0.12" />
+          <Stop offset="60%" stopColor={c.orb3} stopOpacity="0.04" />
+          <Stop offset="100%" stopColor={c.orb3} stopOpacity="0" />
+        </RadialGradient>
+        {/* 태양 글로우 */}
+        {(timePeriod === 'DAY' || timePeriod === 'SUNSET') && (
+          <RadialGradient id="sunGlow" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
+            <Stop offset="0%" stopColor="#FFF0C8" stopOpacity="0.9" />
+            <Stop offset="30%" stopColor="#FFD860" stopOpacity="0.5" />
+            <Stop offset="60%" stopColor="#FFD040" stopOpacity="0.15" />
+            <Stop offset="100%" stopColor="#FFD040" stopOpacity="0" />
+          </RadialGradient>
+        )}
+      </Defs>
+      <Rect x="0" y="0" width="400" height="800" fill="url(#skyG)" />
+      <Circle cx="312" cy="96" r="180" fill="url(#orb1)" />
+      <Circle cx="60" cy="440" r="140" fill="url(#orb2)" />
+      <Circle cx="240" cy="640" r="120" fill="url(#orb3)" />
+      {(timePeriod === 'DAY' || timePeriod === 'SUNSET') && <Clouds timePeriod={timePeriod} />}
+      {timePeriod === 'DAY' && <DaySun />}
+      {timePeriod === 'SUNSET' && <SunsetSun />}
+      {timePeriod === 'NIGHT' && <Stars />}
+    </Svg>
+  );
+}
+
+function DaySun() {
+  return (
+    <>
+      {/* 태양 글로우 */}
+      <Circle cx="325" cy="140" r="65" fill="url(#sunGlow)" />
+      
+    </>
+  );
+}
+
+function SunsetSun() {
+  return (
+    <>
+      <Circle cx="325" cy="140" r="65" fill="url(#sunGlow)" />
+    </>
+  );
+}
+
+function Clouds({ timePeriod }: { timePeriod: 'DAY' | 'SUNSET' }) {
+  // 작고 부드러운 구름들
+  const isSunset = timePeriod === 'SUNSET';
+  const cloudColor = isSunset ? '#FFE0F0' : '#FFFFFF';
+  const shadowColor = isSunset ? '#FFB0D0' : '#D0E8F8';
+  
+  return (
+    <>
+      {/* 작은 구름 1 — 왼쪽 하단 */}
+      <G opacity={0.35}>
+        <Circle cx="118" cy="360" r="18" fill={cloudColor} opacity={0.20} />
+        <Circle cx="90" cy="340" r="35" fill={cloudColor} opacity={0.20} />
+        <Path
+          d="M 99 355 Q 105 354 111 355 Q 117 354 122 356 Q 122 357 117 358 Q 111 359 105 358 Q 99 359 99 357 Z"
+          fill={shadowColor}
+          opacity={0.25}
+        />
+        <Path
+          d="M 97 350 C 97 348 99 347 103 348 C 107 346 111 346 115 348 C 119 346 122 348 123 350 C 124 352 122 354 118 355 C 114 356 110 356 106 354 C 102 356 99 355 98 354 C 97 353 96 352 97 350 Z"
+          fill={cloudColor}
+        />
+      </G>
+      
+      {/* 작은 구름 2 — 오른쪽 하단 */}
+      <G opacity={0.36}>
+        <Circle cx="323" cy="335" r="14" fill={cloudColor} opacity={0.3} />
+        <Circle cx="340" cy="355" r="22" fill={cloudColor} opacity={0.20} />
+
+        <Path
+          d="M 309 350 Q 315 349 321 350 Q 327 349 332 351 Q 332 352 327 353 Q 321 354 315 353 Q 309 354 309 352 Z"
+          fill={shadowColor}
+          opacity={0.25}
+        />
+        <Path
+          d="M 307 345 C 307 343 309 342 313 343 C 317 341 321 341 325 343 C 329 341 332 343 333 345 C 334 347 332 349 328 350 C 324 351 320 351 316 349 C 312 351 309 350 308 349 C 307 348 306 347 307 345 Z"
+          fill={cloudColor}
+        />
+      </G>
+      
+      {/* 작은 구름 3 — 중앙 상단 */}
+      <G opacity={0.35}>
+        <Circle cx="205" cy="195" r="14" fill={cloudColor} opacity={0.20} />
+        <Path
+          d="M 189 205 Q 195 204 201 205 Q 207 204 212 206 Q 212 207 207 208 Q 201 209 195 208 Q 189 209 189 207 Z"
+          fill={shadowColor}
+          opacity={0.25}
+        />
+        <Path
+          d="M 187 200 C 187 198 189 197 193 198 C 197 196 201 196 205 198 C 209 196 212 198 213 200 C 214 202 212 204 208 205 C 204 206 200 206 196 204 C 192 206 189 205 188 204 C 187 203 186 202 187 200 Z"
+          fill={cloudColor}
+        />
+      </G>
+    </>
+  );
+}
+
+// ─── 사이버 유리 프레임 ───
+
+// 은빛 메탈릭 팔레트
+const METAL = {
+  silver:      '#B8BCC6',
+  silverLight: '#D8DAE2',
+  silverBright:'#ECEEF4',
+  silverDim:   '#7E8290',
+  silverFrost: '#A0A4B0',
+} as const;
+
+function CyberFrame({ children }: { children: React.ReactNode }) {
+  const [size, setSize] = React.useState({ w: 0, h: 0 });
+  const C = 20;
+  const R = 8;
+  const SW = 1.8;
+
+  return (
+    <View
+      style={cyberStyles.wrapper}
+      onLayout={(e) => {
+        const { width: w, height: h } = e.nativeEvent.layout;
+        setSize({ w, h });
+      }}
+    >
+      {size.w > 0 && (
+        <Svg
+          width={size.w}
+          height={size.h}
+          viewBox={`0 0 ${size.w} ${size.h}`}
+          style={StyleSheet.absoluteFill}
+        >
+          <Defs>
+            {/* 글래스 배경 — 항상 밤 색상 */}
+            <LinearGradient id="metalBg" x1="0" y1="0" x2="0.8" y2="1">
+              <Stop offset="0%"   stopColor={METAL.silverBright} stopOpacity="0.16" />
+              <Stop offset="40%"  stopColor={METAL.silverLight}  stopOpacity="0.10" />
+              <Stop offset="70%"  stopColor={METAL.silverDim}    stopOpacity="0.08" />
+              <Stop offset="100%" stopColor={METAL.silverBright} stopOpacity="0.14" />
+            </LinearGradient>
+            {/* 보더 */}
+            <LinearGradient id="metalBorder" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0%"   stopColor={METAL.silverBright} stopOpacity="0.45" />
+              <Stop offset="35%"  stopColor={METAL.silverDim}    stopOpacity="0.20" />
+              <Stop offset="65%"  stopColor={METAL.silverLight}  stopOpacity="0.28" />
+              <Stop offset="100%" stopColor={METAL.silverBright} stopOpacity="0.45" />
+            </LinearGradient>
+            {/* 코너 그라디언트 */}
+            <LinearGradient id="cTL" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0%"   stopColor={METAL.silverBright} />
+              <Stop offset="100%" stopColor={METAL.silverFrost} />
+            </LinearGradient>
+            <LinearGradient id="cTR" x1="1" y1="0" x2="0" y2="1">
+              <Stop offset="0%"   stopColor={METAL.silverLight} />
+              <Stop offset="100%" stopColor={METAL.silverDim} />
+            </LinearGradient>
+            <LinearGradient id="cBL" x1="0" y1="1" x2="1" y2="0">
+              <Stop offset="0%"   stopColor={METAL.silverFrost} />
+              <Stop offset="100%" stopColor={METAL.silverBright} />
+            </LinearGradient>
+            <LinearGradient id="cBR" x1="1" y1="1" x2="0" y2="0">
+              <Stop offset="0%"   stopColor={METAL.silverLight} />
+              <Stop offset="100%" stopColor={METAL.silver} />
+            </LinearGradient>
+          </Defs>
+
+          {/* 글래스 배경 */}
+          <Rect
+            x={1} y={1}
+            width={size.w - 2} height={size.h - 2}
+            rx={R} ry={R}
+            fill="url(#metalBg)"
+            stroke="url(#metalBorder)"
+            strokeWidth={0.8}
+          />
+          {/* 상단 하이라이트 (유리 반사광) */}
+          <Rect
+            x={4} y={2}
+            width={size.w - 8} height={(size.h - 2) * 0.4}
+            rx={R - 2} ry={R - 2}
+            fill={METAL.silverBright}
+            opacity={0.04}
+          />
+
+          {/* ── 코너 브라켓 (좌상) ── */}
+          <Line x1={1} y1={R + C} x2={1} y2={R} stroke="url(#cTL)" strokeWidth={SW} />
+          <Path d={`M 1 ${R} Q 1 1 ${R} 1`} stroke="url(#cTL)" strokeWidth={SW} fill="none" />
+          <Line x1={R} y1={1} x2={R + C} y2={1} stroke="url(#cTL)" strokeWidth={SW} />
+          {/* ── 코너 브라켓 (우상) ── */}
+          <Line x1={size.w - R - C} y1={1} x2={size.w - R} y2={1} stroke="url(#cTR)" strokeWidth={SW} />
+          <Path d={`M ${size.w - R} 1 Q ${size.w - 1} 1 ${size.w - 1} ${R}`} stroke="url(#cTR)" strokeWidth={SW} fill="none" />
+          <Line x1={size.w - 1} y1={R} x2={size.w - 1} y2={R + C} stroke="url(#cTR)" strokeWidth={SW} />
+          {/* ── 코너 브라켓 (좌하) ── */}
+          <Line x1={1} y1={size.h - R - C} x2={1} y2={size.h - R} stroke="url(#cBL)" strokeWidth={SW} />
+          <Path d={`M 1 ${size.h - R} Q 1 ${size.h - 1} ${R} ${size.h - 1}`} stroke="url(#cBL)" strokeWidth={SW} fill="none" />
+          <Line x1={R} y1={size.h - 1} x2={R + C} y2={size.h - 1} stroke="url(#cBL)" strokeWidth={SW} />
+          {/* ── 코너 브라켓 (우하) ── */}
+          <Line x1={size.w - R - C} y1={size.h - 1} x2={size.w - R} y2={size.h - 1} stroke="url(#cBR)" strokeWidth={SW} />
+          <Path d={`M ${size.w - R} ${size.h - 1} Q ${size.w - 1} ${size.h - 1} ${size.w - 1} ${size.h - R}`} stroke="url(#cBR)" strokeWidth={SW} fill="none" />
+          <Line x1={size.w - 1} y1={size.h - R - C} x2={size.w - 1} y2={size.h - R} stroke="url(#cBR)" strokeWidth={SW} />
+
+          {/* 코너 글로우 점 */}
+          <Circle cx={2} cy={2 + R}            r={2.5} fill={METAL.silverBright} opacity={0.8} />
+          <Circle cx={size.w - 2} cy={2 + R}   r={2.5} fill={METAL.silverLight} opacity={0.8} />
+          <Circle cx={2} cy={size.h - 2 - R}   r={2.5} fill={METAL.silverFrost} opacity={0.8} />
+          <Circle cx={size.w - 2} cy={size.h - 2 - R} r={2.5} fill={METAL.silverBright} opacity={0.8} />
+        </Svg>
+      )}
+
+      <View style={cyberStyles.content}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+const cyberStyles = StyleSheet.create({
+  wrapper: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    shadowColor: METAL.silverLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.30,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  content: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    alignItems: 'flex-start',
+  },
+});
+
+// ─── 홀로그래픽 장식 ───
+
+function HoloGlow({ style, color1, color2 }: any) {
   return (
     <View style={[styles.decorItem, style]}>
-      <Svg width="80" height="80" viewBox="0 0 80 80">
-        <Circle cx="40" cy="40" r="35" fill="#FFD54F" opacity="0.3" />
-        <Circle cx="40" cy="40" r="20" fill="#FFD54F" opacity="0.5"/>
+      <Svg width="140" height="140" viewBox="0 0 140 140">
+        <Defs>
+          <RadialGradient id="hGlow" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
+            <Stop offset="0%" stopColor={color1} stopOpacity="0.20" />
+            <Stop offset="40%" stopColor={color2} stopOpacity="0.08" />
+            <Stop offset="100%" stopColor={color1} stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Circle cx="70" cy="70" r="68" fill="url(#hGlow)" />
+        <Circle cx="70" cy="70" r="25" fill={color1} opacity="0.08" />
       </Svg>
     </View>
   );
 }
 
-function Moon({ style }: any) {
+function HoloMoon({ style }: any) {
   return (
     <View style={[styles.decorItem, style]}>
-      <Svg width="80" height="80" viewBox="0 0 80 80">
-        {/* 달빛 은은하게 */}
-        <Circle cx="40" cy="40" r="35" fill="#FFF59D" opacity="0.1" />
-        <Circle cx="40" cy="40" r="25" fill="#FFF59D" opacity="0.2" />
-        {/* 초승달 모양 (C 형태) */}
+      <Svg width="90" height="90" viewBox="0 0 90 90">
+        <Defs>
+          <RadialGradient id="moonGlow" cx="0.4" cy="0.4" rx="0.6" ry="0.6">
+            <Stop offset="0%" stopColor={COLORS.holoLavender} stopOpacity="0.12" />
+            <Stop offset="100%" stopColor={COLORS.holoLavender} stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Circle cx="45" cy="45" r="42" fill="url(#moonGlow)" />
         <Path
-          d="M 52 15 A 25 25 0 1 0 52 65 A 20 20 0 1 1 52 15 Z"
-          fill="#FFF176"
+          d="M 55 12 A 28 28 0 1 0 55 78 A 22 22 0 1 1 55 12 Z"
+          fill="rgba(240,240,255,0.10)"
         />
-      </Svg>
-    </View>
-  );
-}
-
-function Cloud({ style, scale = 1 }: any) {
-  return (
-    <View style={[styles.decorItem, style, { transform: [{ scale }] }]}>
-      <Svg width="100" height="60" viewBox="0 0 100 60">
-        <Path
-          d="M 20 40 Q 10 40 10 30 Q 10 10 30 15 Q 40 0 60 10 Q 80 0 90 20 Q 100 30 90 40 Z"
-          fill="rgba(255,255,255,0.8)"
-        />
-      </Svg>
-    </View>
-  );
-}
-
-function Tree({ style, scale = 1 }: any) {
-  return (
-    <View style={[styles.decorItem, style, { transform: [{ scale }] }]}>
-      <Svg width="80" height="120" viewBox="0 0 80 120">
-        {/* 나무 기둥 */}
-        <Path d="M 35 80 L 35 120 L 45 120 L 45 80 Z" fill="#8D6E63" />
-        {/* 나뭇잎 (둥글둥글) */}
-        <Circle cx="40" cy="70" r="25" fill="#AED581" />
-        <Circle cx="25" cy="80" r="15" fill="#9CCC65" />
-        <Circle cx="55" cy="80" r="15" fill="#9CCC65" />
-        <Circle cx="40" cy="50" r="20" fill="#FFFFFF" />
       </Svg>
     </View>
   );
@@ -281,14 +483,13 @@ function Tree({ style, scale = 1 }: any) {
 
 function Stars() {
   const stars = React.useMemo(() => {
-    return [...Array(40)].map((_, i) => ({
-      x: Math.random() * 100 + '%',
-      y: Math.random() * 60 + '%',
-      r: Math.random() * 1.5 + 0.5,
-      opacity: Math.random() * 0.8 + 0.2,
+    return [...Array(60)].map((_, i) => ({
+      x: Math.random() * 400,
+      y: Math.random() * 480,
+      r: Math.random() * 1.5 + 0.3,
+      opacity: Math.random() * 0.5 + 0.1,
     }));
   }, []);
-
   return (
     <>
       {stars.map((s, i) => (
@@ -301,24 +502,13 @@ function Stars() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor: COLORS.sky, // 배경색 제거 (SVG가 전체를 덮도록 함)
+    backgroundColor: 'transparent',
   },
-  sky: {
-    ...StyleSheet.absoluteFillObject, // 전체 화면 채움
-    zIndex: -10, // 가장 뒤로
-  },
-  grass: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    height: '45%', // 화면 하단부는 잔디
-    backgroundColor: '#FFFFFF', // 눈 쌓인 바닥 (흰색)
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    zIndex: -5, // 하늘보다 앞, 콘텐츠보다 뒤
-  },
-  backgroundDecor: {
+  bgLayer: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: -4, // 잔디보다 앞
+  },
+  decorLayer: {
+    ...StyleSheet.absoluteFillObject,
     pointerEvents: 'none',
   },
   decorItem: {
@@ -327,78 +517,87 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
-  
+
+  testRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  testBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: COLORS.glass,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+  },
+  testBtnActive: {
+    backgroundColor: 'rgba(0,240,212,0.08)',
+    borderColor: 'rgba(0,240,212,0.25)',
+  },
+  testBtnText: {
+    fontSize: 14,
+  },
+
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  frameRow: {
+    flexDirection: 'row',
     alignItems: 'flex-start',
-  },
-  signBoard: {
-    backgroundColor: '#D7CCC8', // 나무색
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#8D6E63',
-    marginBottom: 8,
-    transform: [{ rotate: '-2deg' }], // 살짝 삐뚤게
-    shadowColor: '#5D4037',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 0,
-  },
-  nail: {
-    position: 'absolute',
-    width: 6, height: 6,
-    borderRadius: 3,
-    backgroundColor: '#5D4037',
-  },
-  dateText: {
-    fontSize: 12,
-    color: '#5D4037',
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  teamName: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#4E342E',
-  },
-  userBadge: {
-    marginLeft: 8,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
   },
   greeting: {
     fontSize: 14,
-    color: '#5D4037',
-    fontWeight: '700',
+    color: '#C8CCD4',
+    fontWeight: '600',
+    marginBottom: 2,
   },
-  
+  greetingDay: {
+    color: '#fdfcfb',
+  },
+  greetingSunset: {
+    color: '#E3E4E8',
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#A0A4B0',
+    fontWeight: '700',
+    letterSpacing: 2.5,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  dateTextDay: {
+    color: '#5080A0',
+  },
+  teamName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#ECEEF4',
+    letterSpacing: 0.5,
+  },
+  teamNameDay: {
+    color: '#ECEEF4',
+  },
+  dateTextSunset: {
+    color: '#808080',
+  },
+  teamNameSunset: {
+    color: '#ECEEF4',
+  },
   mountainSection: {
     alignItems: 'center',
     marginBottom: 0,
     zIndex: 10,
-    marginTop: 20,
+    marginTop: 12,
+  },
+  goalDarkBg: {
+    backgroundColor: '#08081A',
   },
   goalSection: {
     paddingHorizontal: 24,
-    paddingTop: 0,
-  },
-  testBtn: { 
-    backgroundColor: 'rgba(255,255,255,0.9)', 
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  testBtnText: { 
-    fontSize: 12, 
-    fontWeight: 'bold', 
-    color: '#5D4037' 
+    paddingTop: 20,
   },
 });

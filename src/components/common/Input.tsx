@@ -19,7 +19,7 @@ export default function Input({ label, error, style, ...props }: InputProps) {
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
         style={[styles.input, error ? styles.inputError : null, style]}
-        placeholderTextColor={COLORS.textSecondary}
+        placeholderTextColor={COLORS.textMuted}
         {...props}
       />
       {error && <Text style={styles.error}>{error}</Text>}
@@ -32,16 +32,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.text,
-    marginBottom: 6,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.glass,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 12,
+    borderColor: COLORS.glassBorder,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,

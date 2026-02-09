@@ -12,69 +12,91 @@ export const DEFAULT_TEAM_NAME = '어나더데이 팀';
 
 /** 산 위치 임계값 (달성률 기준) */
 export const MOUNTAIN_THRESHOLDS = {
-  /** 0% ~ 33% → base */
   MIDDLE: 0.34,
-  /** 34% ~ 99% → middle, 100% → summit */
   SUMMIT: 1.0,
 } as const;
 
-/** 앱 색상 팔레트 (Cozy Forest / Hand-drawn Style) */
+/** 앱 색상 팔레트 (Holographic Dark) */
 export const COLORS = {
-  primary: '#8D6E63',      // 따뜻한 갈색 (나무/흙)
-  primaryDark: '#5D4037',  // 진한 갈색 (테두리/텍스트)
-  secondary: '#AED581',    // 부드러운 연두색 (풀/잎)
-  background: '#F1F8E9',   // 아주 연한 민트/하늘 (배경)
-  surface: '#FFF8E1',      // 크림색 (종이/카드)
-  text: '#4E342E',         // 짙은 고동색 (가독성)
-  textSecondary: '#8D6E63', // 연한 갈색
-  border: '#6D4C41',       // 손그림 느낌의 테두리 색
-  success: '#81C784',      // 차분한 초록
-  warning: '#FFD54F',      // 따뜻한 노랑
-  error: '#E57373',        // 파스텔 레드
+  primary: '#6C5CE7',
+  primaryDark: '#5A4BD1',
+  primaryLight: '#A29BFE',
+  secondary: '#fcfc03',//'#00F0D4',
+  secondaryDark: '#F0F0FF',
 
-  // 테마 전용
-  sky: '#E1F5FE',          // 맑은 하늘색
-  grass: '#C5E1A5',        // 잔디색
-  wood: '#D7CCC8',         // 밝은 나무색
-  cloud: '#FFFFFF',        // 구름
+  background: '#050510',      // 딥 블랙 (더 깊게)
+  backgroundLight: '#0A0A1A',
+  surface: '#0F0F28',         // 어두운 표면
+  surfaceLight: '#181840',
+
+  text: '#F0F0FF',
+  textSecondary: 'rgba(240,240,255,0.50)',
+  textMuted: 'rgba(240,240,255,0.22)',
+
+  border: 'rgba(255,255,255,0.04)',
+  borderLight: 'rgba(255,255,255,0.10)',
+
+  success: '#00FFB2',         // 네온 민트 (더 생생)
+  warning: '#FFB547',
+  error: '#FF6B6B',
+
+  accent: '#FF69B4',          // 핫핑크 (더 생생)
+  accentYellow: '#FFD93D',
+
+  // 홀로그래픽 컬러 (이리데센트 효과)
+  holoCyan: '#00F5FF',
+  holoMint: '#00FF88',
+  holoPink: '#FF69B4',
+  holoLavender: '#A29BFE',
+
+  // 유리 효과
+  glass: 'rgba(255,255,255,0.04)',
+  glassBorder: 'rgba(255,255,255,0.06)',
+  glassLight: 'rgba(255,255,255,0.08)',
+
+  // 호환용
+  sky: '#050510',
+  grass: '#0F0F28',
+  wood: '#181840',
+  cloud: 'rgba(255,255,255,0.04)',
 } as const;
 
-/** 계절별 테마 (자연스러운 톤) */
+/** 계절별 테마 (Holographic Neon) */
 export const SEASON_THEMES = {
   spring: {
     name: '봄',
-    sky: '#E1F5FE',
-    mountain: '#C5E1A5', // 연두색 언덕
-    grass: '#AED581',    // 조금 더 진한 풀색
-    accent: '#F8BBD0',   // 벚꽃
+    sky: '#080820',
+    mountain: '#1A2A5C',
+    grass: '#0D1E4A',
+    accent: '#FF69B4',
     icon: 'flower-outline',
-    particle: '🌸',
+    particle: '✦',
   },
   summer: {
     name: '여름',
-    sky: '#B3E5FC',
-    mountain: '#81C784', // 진한 녹색
-    grass: '#66BB6A',    // 더 진한 녹색
-    accent: '#FFF59D',   // 햇살
+    sky: '#081620',
+    mountain: '#0A4A3C',
+    grass: '#0D3A2E',
+    accent: '#00F0D4',
     icon: 'sunny-outline',
-    particle: '🌿',
+    particle: '◆',
   },
   autumn: {
     name: '가을',
-    sky: '#FFF3E0',
-    mountain: '#FFCC80', // 주황색 언덕
-    grass: '#FFB74D',    // 갈색 풀
-    accent: '#FFAB91',   // 단풍
+    sky: '#150A08',
+    mountain: '#3A2A1A',
+    grass: '#2E1E0D',
+    accent: '#FFB547',
     icon: 'leaf-outline',
-    particle: '🍂',
+    particle: '▲',
   },
   winter: {
     name: '겨울',
-    sky: '#E8EAF6',
-    mountain: '#F5F5F5', // 눈 덮인 언덕
-    grass: '#E0E0E0',    // 눈 쌓인 바닥
-    accent: '#90CAF9',   // 얼음
+    sky: '#050510',
+    mountain: '#0F0F28',
+    grass: '#0A0A20',
+    accent: '#A29BFE',
     icon: 'snow-outline',
-    particle: '❄️',
+    particle: '❖',
   },
 };

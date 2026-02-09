@@ -59,7 +59,6 @@ export default function ProfileEditScreen() {
     try {
       let finalImageUrl = imageUri;
 
-      // 이미지가 변경되었고, http로 시작하지 않으면(로컬 파일이면) 업로드
       if (imageUri && !imageUri.startsWith('http')) {
         const uploadedUrl = await uploadProfileImage(user.id, imageUri);
         if (uploadedUrl) {
@@ -82,7 +81,6 @@ export default function ProfileEditScreen() {
       const result = await updateProfile(user.id, updates);
 
       if (result.success && result.data) {
-        // 스토어를 즉시 업데이트 (isLoading을 건드리지 않아 네비게이션 리셋 방지)
         setUser(result.data);
         navigation.goBack();
       } else {
@@ -117,11 +115,11 @@ export default function ProfileEditScreen() {
                 <Image source={{ uri: imageUri }} style={styles.profileImage} />
               ) : (
                 <View style={[styles.profileImage, styles.placeholderImage]}>
-                  <Ionicons name="person" size={40} color="#FFF" />
+                  <Ionicons name="person" size={36} color={COLORS.primaryLight} />
                 </View>
               )}
               <View style={styles.cameraIcon}>
-                <Ionicons name="camera" size={16} color="#FFF" />
+                <Ionicons name="camera" size={14} color="#FFF" />
               </View>
             </TouchableOpacity>
           </View>
@@ -209,7 +207,7 @@ const styles = StyleSheet.create({
   },
   profileImageContainer: {
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 28,
   },
   imageWrapper: {
     position: 'relative',
@@ -220,63 +218,67 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   placeholderImage: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: 'rgba(108,92,231,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(108,92,231,0.3)',
   },
   cameraIcon: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: COLORS.text,
+    backgroundColor: COLORS.primary,
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: COLORS.surface,
+    borderColor: COLORS.background,
   },
   form: {
     padding: 16,
-    gap: 16,
+    gap: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: COLORS.text,
+    color: COLORS.textSecondary,
     marginBottom: 8,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   genderContainer: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   genderBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.glassBorder,
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.glass,
   },
   genderBtnActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '10', // 10% opacity
+    borderColor: 'rgba(108,92,231,0.4)',
+    backgroundColor: 'rgba(108,92,231,0.1)',
   },
   genderText: {
     fontSize: 14,
     color: COLORS.textSecondary,
   },
   genderTextActive: {
-    color: COLORS.primary,
+    color: COLORS.primaryLight,
     fontWeight: '700',
   },
   footer: {
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.backgroundLight,
   },
 });

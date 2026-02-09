@@ -35,13 +35,10 @@ export default function CalendarScreen() {
   useFocusEffect(
     useCallback(() => {
       if (user) {
-        // 캘린더 마킹 & 선택 날짜 체크인
         fetchCalendarMarkings(user.id, currentMonth);
         if (selectedDate) {
           fetchCheckinsForDate(user.id, selectedDate);
         }
-        
-        // 목표 목록도 최신화 (CheckinList에 미완료 항목 표시를 위해)
         fetchMyGoals(user.id);
         fetchTeamGoals(currentTeam?.id ?? '', user.id);
       }
@@ -57,14 +54,18 @@ export default function CalendarScreen() {
 
         <Calendar
           theme={{
-            todayTextColor: COLORS.primary,
-            selectedDayBackgroundColor: COLORS.primary,
+            calendarBackground: COLORS.surface,
+            todayTextColor: COLORS.secondary,
+            selectedDayBackgroundColor: COLORS.secondary,
             selectedDayTextColor: '#fff',
-            arrowColor: COLORS.primary,
+            arrowColor: COLORS.secondary,
             monthTextColor: COLORS.text,
+            dayTextColor: COLORS.text,
+            textDisabledColor: COLORS.textMuted,
             textDayFontWeight: '500',
             textMonthFontWeight: '700',
             textDayHeaderFontWeight: '500',
+            textSectionTitleColor: COLORS.textSecondary,
           }}
           style={styles.calendar}
         />
@@ -102,29 +103,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   screenTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
     color: COLORS.text,
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: 12,
+    paddingBottom: 12,
+    letterSpacing: -0.5,
   },
   calendar: {
-    marginHorizontal: 8,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    marginHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    overflow: 'hidden',
   },
   summary: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 16,
   },
   summaryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: COLORS.primaryLight,
   },
 });

@@ -8,8 +8,8 @@ import { COLORS } from '../../constants/defaults';
 interface CheckinListProps {
   checkins: CheckinWithGoal[];
   date: string;
-  goals?: Goal[]; // 전체 목표 목록 (옵션)
-  myGoals?: UserGoal[]; // 내 목표 매핑 정보 (옵션)
+  goals?: Goal[];
+  myGoals?: UserGoal[];
 }
 
 /**
@@ -24,12 +24,8 @@ export default function CheckinList({
   const formatted = dayjs(date).format('M월 D일');
   const isFuture = dayjs(date).isAfter(dayjs(), 'day');
 
-  // 1. 내 활성 목표 ID 목록 추출
-  // (날짜가 created_at 이후인 것만 필터링하면 좋지만, MVP에서는 일단 현재 활성 목표 기준)
   const myActiveGoalIds = myGoals.map((ug) => ug.goal_id);
 
-  // 2. 해당 날짜에 수행했어야 할 목표 리스트 구성
-  // (이미 체크인된 것 + 체크인 안 된 것 모두 포함)
   const combinedList = myActiveGoalIds.map((goalId) => {
     const goal = goals.find((g) => g.id === goalId);
     const checkin = checkins.find((c) => c.goal_id === goalId);
@@ -37,11 +33,10 @@ export default function CheckinList({
     return {
       goalId,
       goalName: goal?.name ?? '알 수 없는 목표',
-      checkin, // 있을 수도 있고 없을 수도 있음
+      checkin,
     };
   });
 
-  // 3. 체크인 목록에는 있지만, 현재 내 목표 목록에는 없는 경우 (과거 목표 등) 추가
   checkins.forEach((c) => {
     if (!myActiveGoalIds.includes(c.goal_id)) {
       combinedList.push({
@@ -141,42 +136,44 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.glassBorder,
     gap: 12,
     alignItems: 'center',
   },
   itemPending: {
-    backgroundColor: '#F7FAFC',
-    borderColor: '#EDF2F7',
+    backgroundColor: COLORS.glass,
+    borderColor: COLORS.border,
   },
   thumbnail: {
     width: 48,
     height: 48,
-    borderRadius: 8,
-    backgroundColor: COLORS.border,
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceLight,
   },
   checkIcon: {
     width: 48,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconSuccess: {
-    backgroundColor: COLORS.success,
+    backgroundColor: 'rgba(0,255,178,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,178,0.20)',
   },
   iconPass: {
-    backgroundColor: COLORS.warning,
+    backgroundColor: 'rgba(255,181,71,0.2)',
   },
   checkIconPending: {
     width: 48,
     height: 48,
-    borderRadius: 8,
-    backgroundColor: '#EDF2F7',
+    borderRadius: 10,
+    backgroundColor: COLORS.glass,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -204,7 +201,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#A0AEC0',
+    color: COLORS.textMuted,
     fontWeight: '500',
   },
 });

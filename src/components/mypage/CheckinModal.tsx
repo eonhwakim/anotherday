@@ -22,13 +22,10 @@ import dayjs from '../../lib/dayjs';
 
 interface CheckinModalProps {
   visible: boolean;
-  date: string; // 'YYYY-MM-DD'
-  /** 해당 날짜에 유저가 가진 목표 */
+  date: string;
   goals: Goal[];
-  /** 해당 날짜에 이미 완료된 체크인 */
   checkins: Checkin[];
   onClose: () => void;
-  /** 체크인 완료 후 콜백 (캘린더 새로고침 등) */
   onCheckinDone?: () => void;
 }
 
@@ -43,13 +40,11 @@ export default function CheckinModal({
   const user = useAuthStore((s) => s.user);
   const createCheckin = useGoalStore((s) => s.createCheckin);
 
-  // ── 상태 ──
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [mode, setMode] = useState<'list' | 'pass'>('list');
   const [passReason, setPassReason] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // 모달 열릴 때마다 초기화
   useEffect(() => {
     if (visible) {
       setSelectedGoalId(null);
@@ -62,11 +57,9 @@ export default function CheckinModal({
   const isFuture = dayjs(date).isAfter(dayjs(), 'day');
   const formattedDate = dayjs(date).format('M월 D일 (ddd)');
 
-  /** 해당 목표가 이미 체크인됐는지 */
   const isGoalDone = (goalId: string) =>
     checkins.some((c) => c.goal_id === goalId);
 
-  /** 성공 인증 (카메라 촬영) */
   const handleSuccess = async (goalId: string) => {
     if (!user) return;
     setSelectedGoalId(goalId);
@@ -104,14 +97,12 @@ export default function CheckinModal({
     }
   };
 
-  /** 패스 모드 진입 */
   const enterPassMode = (goalId: string) => {
     setSelectedGoalId(goalId);
     setMode('pass');
     setPassReason('');
   };
 
-  /** 패스 사유 제출 */
   const handlePassSubmit = async () => {
     if (!user || !selectedGoalId) return;
     if (!passReason.trim()) {
@@ -142,7 +133,6 @@ export default function CheckinModal({
     }
   };
 
-  /** 뒤로가기 (패스 모드 → 목록) */
   const handleBack = () => {
     setMode('list');
     setSelectedGoalId(null);
@@ -185,11 +175,10 @@ export default function CheckinModal({
 
           {isLoading ? (
             <View style={styles.loadingWrap}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
+              <ActivityIndicator size="large" color={COLORS.primaryLight} />
               <Text style={styles.loadingText}>처리 중...</Text>
             </View>
           ) : mode === 'list' ? (
-            /* ── 목표 목록 ── */
             <ScrollView style={styles.body} bounces={false}>
               {isFuture ? (
                 <Text style={styles.emptyText}>
@@ -262,7 +251,7 @@ export default function CheckinModal({
                           >
                             <Ionicons
                               name="camera"
-                              size={16}
+                              size={15}
                               color="#fff"
                             />
                             <Text style={styles.successBtnText}>
@@ -275,7 +264,7 @@ export default function CheckinModal({
                           >
                             <Ionicons
                               name="close-circle-outline"
-                              size={16}
+                              size={15}
                               color={COLORS.warning}
                             />
                             <Text style={styles.passBtnText}>패스</Text>
@@ -288,7 +277,6 @@ export default function CheckinModal({
               )}
             </ScrollView>
           ) : (
-            /* ── 패스 사유 입력 ── */
             <View style={styles.body}>
               <Text style={styles.passTitle}>패스 사유 작성</Text>
               <Text style={styles.passSubtitle}>
@@ -297,7 +285,7 @@ export default function CheckinModal({
               <TextInput
                 style={styles.passInput}
                 placeholder="예) 몸이 안 좋아서 쉬었어요"
-                placeholderTextColor={COLORS.textSecondary}
+                placeholderTextColor={COLORS.textMuted}
                 value={passReason}
                 onChangeText={setPassReason}
                 multiline
@@ -326,20 +314,23 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.backgroundLight,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 34,
     maxHeight: '75%',
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: COLORS.glassBorder,
   },
   handleBar: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: COLORS.border,
+    backgroundColor: COLORS.borderLight,
     alignSelf: 'center',
     marginTop: 12,
     marginBottom: 8,
@@ -385,16 +376,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surface,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.glassBorder,
   },
   goalRowDone: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#D1FAE5',
+    backgroundColor: 'rgba(0,210,160,0.06)',
+    borderColor: 'rgba(0,210,160,0.15)',
   },
   goalInfo: {
     flexDirection: 'row',
@@ -419,11 +410,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   badgeSuccess: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: 'rgba(0,210,160,0.15)',
     color: COLORS.success,
   },
   badgePass: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: 'rgba(255,181,71,0.15)',
     color: COLORS.warning,
   },
   actionRow: {
@@ -434,22 +425,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.secondary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
   successBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: '#000',
   },
   passBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
-    borderColor: COLORS.warning,
+    borderColor: 'rgba(255,181,71,0.3)',
+    backgroundColor: 'rgba(255,181,71,0.08)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
@@ -473,10 +469,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   passInput: {
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
+    backgroundColor: COLORS.glass,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.glassBorder,
     padding: 14,
     fontSize: 15,
     color: COLORS.text,
@@ -486,12 +482,17 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     backgroundColor: COLORS.warning,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
+    shadowColor: COLORS.warning,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
   submitBtnDisabled: {
-    opacity: 0.4,
+    opacity: 0.35,
+    shadowOpacity: 0,
   },
   submitBtnText: {
     fontSize: 16,

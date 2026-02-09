@@ -11,7 +11,7 @@ import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
 
 interface MonthlyGoalCalendarProps {
-  yearMonth: string; // 'YYYY-MM'
+  yearMonth: string;
   nickname: string;
   teamGoals: Goal[];
   myGoals: UserGoal[];
@@ -24,7 +24,7 @@ interface MonthlyGoalCalendarProps {
 const DOW_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 /**
- * 마이페이지 월간 캘린더 (3D Clay 스타일)
+ * 마이페이지 월간 캘린더 (Neo Glass Style)
  */
 export default function MonthlyGoalCalendar({
   yearMonth,
@@ -38,23 +38,20 @@ export default function MonthlyGoalCalendar({
 }: MonthlyGoalCalendarProps) {
   const today = dayjs().format('YYYY-MM-DD');
 
-  /** 내 활성 목표 ID 목록 */
   const myGoalIds = useMemo(
     () => (myGoals || []).map((ug) => ug.goal_id),
     [myGoals],
   );
 
-  /** 내 활성 목표 이름 (첫 번째) */
   const primaryGoalName = useMemo(() => {
     if (myGoalIds.length === 0) return null;
     return (teamGoals || []).find((g) => g.id === myGoalIds[0])?.name ?? null;
   }, [myGoalIds, teamGoals]);
 
-  /** 캘린더 그리드 생성 */
   const weeks = useMemo(() => {
     const first = dayjs(`${yearMonth}-01`);
     const daysInMonth = first.daysInMonth();
-    const startDow = first.day(); // 0=일요일
+    const startDow = first.day();
 
     const cells: (number | null)[] = [];
     for (let i = 0; i < startDow; i++) cells.push(null);
@@ -68,7 +65,6 @@ export default function MonthlyGoalCalendar({
     return result;
   }, [yearMonth]);
 
-  /** 특정 날짜의 체크인 상태 계산 */
   const getDayStatus = (dateStr: string) => {
     const dayCheckins = (checkins || []).filter((c) => c.date === dateStr);
     const doneGoalIds = dayCheckins.map((c) => c.goal_id);
@@ -77,7 +73,6 @@ export default function MonthlyGoalCalendar({
     ).length;
     const total = myGoalIds.length;
 
-    // 패스 여부 확인
     const hasPass = dayCheckins.some((c) =>
       c.memo?.startsWith('[패스]'),
     );
@@ -92,7 +87,7 @@ export default function MonthlyGoalCalendar({
         <TouchableOpacity onPress={onPrevMonth} style={styles.arrowBtn}>
           <Ionicons
             name="chevron-back"
-            size={20}
+            size={18}
             color={COLORS.text}
           />
         </TouchableOpacity>
@@ -102,7 +97,7 @@ export default function MonthlyGoalCalendar({
         <TouchableOpacity onPress={onNextMonth} style={styles.arrowBtn}>
           <Ionicons
             name="chevron-forward"
-            size={20}
+            size={18}
             color={COLORS.text}
           />
         </TouchableOpacity>
@@ -116,7 +111,7 @@ export default function MonthlyGoalCalendar({
             style={[
               styles.dowLabel,
               i === 0 && { color: COLORS.error },
-              i === 6 && { color: COLORS.primary },
+              i === 6 && { color: COLORS.primaryLight },
             ]}
           >
             {label}
@@ -152,21 +147,20 @@ export default function MonthlyGoalCalendar({
                 disabled={isFuture}
                 activeOpacity={0.6}
               >
-                {/* 날짜 */}
                 <Text
                   style={[
                     styles.dayNumber,
                     isToday && styles.dayNumberToday,
                     isFuture && styles.dayNumberFuture,
                     di === 0 && { color: COLORS.error },
-                    di === 6 && { color: COLORS.primary },
-                    allDone && { color: '#fff' }, // 완료된 날짜는 흰색 텍스트
+                    di === 6 && { color: COLORS.primaryLight },
+                    allDone && { color: '#fff' },
                   ]}
                 >
                   {day}
                 </Text>
 
-                {/* 목표 이름 (작은 텍스트) -> 닉네임 + 목표 스티커 */}
+                {/* 닉네임 + 목표 스티커 */}
                 {!isFuture && primaryGoalName && (
                   <View style={[
                     styles.sticker,
@@ -174,13 +168,13 @@ export default function MonthlyGoalCalendar({
                   ]}>
                     <Text style={[
                       styles.stickerText,
-                      allDone && { color: '#fff' }
+                      allDone && { color: 'rgba(255,255,255,0.9)' }
                     ]} numberOfLines={1}>
                       {nickname}
                     </Text>
                     <Text style={[
                       styles.stickerGoal,
-                      allDone && { color: 'rgba(255,255,255,0.8)' }
+                      allDone && { color: 'rgba(255,255,255,0.7)' }
                     ]} numberOfLines={1}>
                       {primaryGoalName}
                     </Text>
@@ -193,7 +187,7 @@ export default function MonthlyGoalCalendar({
                     {allDone ? (
                       <Ionicons
                         name="checkmark-circle"
-                        size={12}
+                        size={11}
                         color="#fff"
                       />
                     ) : someDone ? (
@@ -213,7 +207,7 @@ export default function MonthlyGoalCalendar({
                 {!isFuture && myGoalIds.length > 1 && (
                   <Text style={[
                     styles.moreGoals,
-                    allDone && { color: 'rgba(255,255,255,0.8)' }
+                    allDone && { color: 'rgba(255,255,255,0.7)' }
                   ]}>
                     +{myGoalIds.length - 1}
                   </Text>
@@ -247,17 +241,13 @@ const CELL_HEIGHT = 72;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.surface,
     marginHorizontal: 16,
     padding: 20,
-    borderRadius: 32, // 더 둥글게
-    marginBottom: 20,
-    // Clay Shadow
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 6,
+    borderRadius: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   monthHeader: {
     flexDirection: 'row',
@@ -267,134 +257,137 @@ const styles = StyleSheet.create({
   },
   arrowBtn: {
     padding: 8,
-    backgroundColor: '#F7FAFC',
-    borderRadius: 12,
+    backgroundColor: COLORS.glass,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   monthTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: COLORS.text,
   },
-  // ── 요일 ──
   dowRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   dowLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.textSecondary,
     paddingVertical: 6,
+    letterSpacing: 0.5,
   },
-  // ── 주 / 날짜 셀 ──
   weekRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   dayCell: {
     flex: 1,
     height: CELL_HEIGHT,
     alignItems: 'center',
     paddingTop: 6,
-    borderRadius: 18,
-    marginHorizontal: 2,
-    backgroundColor: '#F7FAFC', // 기본 배경 (연한 회색)
+    borderRadius: 12,
+    marginHorizontal: 1.5,
+    backgroundColor: COLORS.glass,
   },
   dayCellToday: {
-    backgroundColor: '#FFF',
-    borderWidth: 2,
-    borderColor: COLORS.primary,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: COLORS.secondary,
   },
   dayCellAllDone: {
-    backgroundColor: COLORS.success, // 성공 시 진한 색상
-    shadowColor: COLORS.success,
-    shadowOffset: { width: 0, height: 4 },
+    backgroundColor: 'rgba(0,240,212,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,240,212,0.35)',
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 3,
   },
   dayCellPartial: {
-    backgroundColor: COLORS.accentYellow,
+    backgroundColor: 'rgba(255,217,61,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,217,61,0.2)',
   },
   dayNumber: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.text,
   },
   dayNumberToday: {
-    color: COLORS.primary,
+    color: COLORS.secondary,
     fontWeight: '900',
   },
   dayNumberFuture: {
-    opacity: 0.3,
+    opacity: 0.2,
   },
   sticker: {
-    marginTop: 4,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    width: '94%',
+    marginTop: 3,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    width: '92%',
     alignItems: 'center',
   },
   stickerDone: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   stickerText: {
-    fontSize: 9,
-    color: COLORS.text,
-    fontWeight: '800',
+    fontSize: 8,
+    color: COLORS.textSecondary,
+    fontWeight: '700',
   },
   stickerGoal: {
-    fontSize: 8,
-    color: COLORS.text,
+    fontSize: 7,
+    color: COLORS.textMuted,
     fontWeight: '600',
-    opacity: 0.8,
   },
   indicators: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    marginTop: 4,
+    marginTop: 3,
   },
   partialDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#fff',
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: COLORS.accentYellow,
   },
   pendingDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#CBD5E0',
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: COLORS.textMuted,
   },
   passIndicator: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
     color: '#fff',
     backgroundColor: COLORS.warning,
-    paddingHorizontal: 4,
-    borderRadius: 4,
+    paddingHorizontal: 3,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   moreGoals: {
-    fontSize: 9,
-    color: COLORS.textSecondary,
+    fontSize: 8,
+    color: COLORS.textMuted,
     marginTop: 2,
   },
 
-  // ── 범례 ──
   legend: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 20,
-    marginTop: 20,
-    paddingTop: 16,
+    marginTop: 18,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#EDF2F7',
+    borderTopColor: COLORS.border,
   },
   legendItem: {
     flexDirection: 'row',
@@ -402,12 +395,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   legendText: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textSecondary,
     fontWeight: '600',
   },

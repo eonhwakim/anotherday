@@ -1,10 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import type { Goal, Checkin } from '../../types/domain';
 import { COLORS } from '../../constants/defaults';
-
 import { useIsFocused } from '@react-navigation/native';
 
 interface TodayGoalListProps {
@@ -20,152 +19,76 @@ export default function TodayGoalList({ goals, checkins, onAnimationFinish }: To
   const progress = total > 0 ? completed / total : 0;
 
   const getEncouragement = () => {
-    if (total === 0) return '목표\n추가+';
+    if (total === 0) return '얼른\n목표 추가해요!';
     if (progress === 0) return '오늘도\n화이팅!';
     if (progress === 1) return '완벽\n최고!';
     return '잘하고\n있어요!';
   };
 
-  // ── 애니메이션 ──
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;
-  const translateXAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (isFocused) {
-      // 초기화
       scaleAnim.setValue(0);
       translateYAnim.setValue(0);
       rotateAnim.setValue(0);
-
       setTimeout(() => {
         Animated.sequence([
-          // 1단계: 화면 중앙으로 거대하게 튀어나옴 (Pop to Center)
           Animated.parallel([
-            Animated.timing(scaleAnim, {
-              toValue: 1, // interpolate로 2.5배 매핑
-              duration: 500,
-              easing: Easing.out(Easing.elastic(1.5)),
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateYAnim, {
-              toValue: 1, // interpolate로 화면 중앙 이동
-              duration: 500,
-              easing: Easing.out(Easing.exp),
-              useNativeDriver: true,
-            }),
-            Animated.timing(rotateAnim, {
-              toValue: 1, // 삐딱하게 회전
-              duration: 500,
-              useNativeDriver: true,
-            }),
+            Animated.timing(scaleAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.elastic(1.5)), useNativeDriver: true }),
+            Animated.timing(translateYAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.exp), useNativeDriver: true }),
+            Animated.timing(rotateAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
           ]),
-          // 2단계: 잠시 멈춤 (주목!)
           Animated.delay(800),
-          // 3단계: 제자리로 쏙 들어감 (Back to Home)
           Animated.parallel([
-            Animated.spring(scaleAnim, {
-              toValue: 0, // 원래 크기(interpolate 0 -> scale 1)
-              friction: 7,
-              tension: 40,
-              useNativeDriver: true,
-            }),
-            Animated.spring(translateYAnim, {
-              toValue: 0,
-              friction: 7,
-              tension: 40,
-              useNativeDriver: true,
-            }),
-            Animated.spring(rotateAnim, {
-              toValue: 0,
-              friction: 7,
-              tension: 40,
-              useNativeDriver: true,
-            }),
+            Animated.spring(scaleAnim, { toValue: 0, friction: 7, tension: 40, useNativeDriver: true }),
+            Animated.spring(translateYAnim, { toValue: 0, friction: 7, tension: 40, useNativeDriver: true }),
+            Animated.spring(rotateAnim, { toValue: 0, friction: 7, tension: 40, useNativeDriver: true }),
           ]),
         ]).start(({ finished }) => {
-          if (finished && onAnimationFinish) {
-            onAnimationFinish();
-          }
+          if (finished && onAnimationFinish) onAnimationFinish();
         });
       }, 200);
     }
   }, [isFocused, progress, total]);
 
-  // 애니메이션 값 보간
-  const scale = scaleAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.7, 1.9], // 평소 0.9배 (잘 보이게) -> 튀어나올 때 2.2배
-  });
-  
-  const translateY = translateYAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -250], // 위로 250px 이동 (화면 중앙 느낌)
-  });
-
-  const translateX = translateYAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -100], // 중앙 정렬을 위해 살짝 왼쪽으로
-  });
-
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '-12deg'], // 12도 기울기
-  });
-
-  // 투명도 보간 (0일때는 Matte만 보임, 1일때는 Shiny가 보임)
-  const shinyOpacity = scaleAnim.interpolate({
-    inputRange: [0, 0.2, 1],
-    outputRange: [0, 1, 1], // 조금만 움직여도 바로 반짝이게
-  });
+  const scale = scaleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.9] });
+  const translateY = translateYAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -250] });
+  const translateX = translateYAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -100] });
+  const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-12deg'] });
+  const glowOpacity = scaleAnim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 1] });
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>TODAY'S MISSION</Text>
-        
-        {/* 애니메이션 적용된 응원 문구 */}
         <Animated.View
-          style={[
-            styles.encouragementWrapper,
-            {
-              transform: [
-                { translateX },
-                { translateY },
-                { scale },
-                { rotate }
-              ],
-              zIndex: 100,
-            }
-          ]}
+          style={[styles.badgeWrapper, {
+            transform: [{ translateX }, { translateY }, { scale }, { rotate }],
+            zIndex: 100,
+          }]}
         >
-          {/* 1. 기본 상태: 무광/탁한 느낌 (Matte) */}
-          <MatteWaxSeal text={getEncouragement()} />
-          
-          {/* 2. 애니메이션 상태: 유광/금색 느낌 (Shiny Overlay) */}
-          <Animated.View style={[StyleSheet.absoluteFill, { opacity: shinyOpacity }]}>
-            <ShinyWaxSeal text={getEncouragement()} />
+          <ThumbBadge text={getEncouragement()} isActive={false} />
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: glowOpacity }]}>
+            <ThumbBadge text={getEncouragement()} isActive={true} />
           </Animated.View>
         </Animated.View>
       </View>
 
       <View style={styles.listContainer}>
         {goals.length === 0 ? (
-          <Text style={styles.emptyText}>비어있음</Text>
+          <Text style={styles.emptyText}>목표를 추가해보세요</Text>
         ) : (
           goals.map((goal) => {
             const isCompleted = checkins.some((c) => c.goal_id === goal.id);
             return (
-              <View key={goal.id} style={styles.goalItem}>
-                {/* 3D 버튼 느낌의 체크박스 */}
-                <View style={[styles.checkBoxOuter, isCompleted && styles.checkBoxOuterCompleted]}>
-                  <View style={[styles.checkBoxInner, isCompleted && styles.checkBoxInnerCompleted]}>
-                    {isCompleted && <Ionicons name="checkmark" size={14} color="#FFF" />}
-                  </View>
+              <View key={goal.id} style={[styles.goalItem, isCompleted && styles.goalItemDone]}>
+                <View style={[styles.checkBox, isCompleted && styles.checkBoxDone]}>
+                  {isCompleted && <Ionicons name="checkmark" size={14} color="#000" />}
                 </View>
-                
-                <Text style={[styles.goalName, isCompleted && styles.goalNameCompleted]}>
+                <Text style={[styles.goalName, isCompleted && styles.goalNameDone]}>
                   {goal.name}
                 </Text>
               </View>
@@ -177,167 +100,49 @@ export default function TodayGoalList({ goals, checkins, onAnimationFinish }: To
   );
 }
 
-// ─── 유광(Shiny) 실링 왁스 (애니메이션 중) ───
-function ShinyWaxSeal({ text }: { text: string }) {
-  return (
-    <View style={styles.waxContainer}>
-      <Svg width="120" height="120" viewBox="0 0 120 120" style={styles.waxSvg}>
-        <Defs>
-          <RadialGradient
-            id="goldGrad"
-            cx="30%"
-            cy="30%"
-            rx="80%"
-            ry="80%"
-            fx="25%"
-            fy="25%"
-          >
-            <Stop offset="0%" stopColor="#FFF59D" stopOpacity="1" />
-            <Stop offset="40%" stopColor="#FBC02D" stopOpacity="1" />
-            <Stop offset="80%" stopColor="#F57F17" stopOpacity="1" />
-            <Stop offset="100%" stopColor="#E65100" stopOpacity="1" />
-          </RadialGradient>
-          
-          <RadialGradient
-            id="innerShadow"
-            cx="50%"
-            cy="50%"
-            rx="50%"
-            ry="50%"
-          >
-            <Stop offset="70%" stopColor="#FBC02D" stopOpacity="0" />
-            <Stop offset="100%" stopColor="#E65100" stopOpacity="0.4" />
-          </RadialGradient>
-        </Defs>
-        
-        {/* 왁스 몸통 */}
-        <Path
-          d="M60 10 
-             C75 8, 88 15, 98 25 
-             C108 35, 115 50, 110 70 
-             C105 90, 90 105, 70 110 
-             C50 115, 30 108, 18 95 
-             C5 80, 2 60, 12 40 
-             C22 20, 40 12, 60 10 Z"
-          fill="url(#goldGrad)"
-          stroke="#E65100"
-          strokeWidth="1"
-        />
-        
-        {/* 테두리 디테일 */}
-        <Path
-          d="M60 15 
-             Q70 14, 80 20 Q90 28, 94 40 
-             Q98 55, 92 70 Q86 85, 75 90 
-             Q60 96, 45 92 Q30 86, 24 70 
-             Q18 55, 24 40 Q30 25, 45 18 
-             Q52 14, 60 15 Z"
-          fill="none"
-          stroke="#FFF176"
-          strokeWidth="2"
-          opacity="0.4"
-        />
+// ─── 엄지척 배지 (글래스) ───
+const THUMB_UP = 'M50 8C50 2 64 2 64 10L66 42 92 42C98 42 102 48 102 54C102 58 100 61 97 62C100 64 102 68 102 72C102 76 100 79 97 80C100 82 102 86 102 90C102 94 99 98 94 98L48 98C42 98 36 94 34 88L26 70C24 66 20 64 16 64L12 64C8 64 6 60 6 56L6 46C6 42 8 40 12 40L34 40C40 40 44 34 46 26Z';
+// 상단 반사광 클립용 (살짝 축소한 윗부분)
+const THUMB_HIGHLIGHT = 'M50 10C50 4 62 4 63 11L64 42 88 42C92 42 96 46 96 50C96 54 94 56 92 57L50 57 50 10Z';
 
-        {/* 내부 원형 테두리 */}
-        <Circle
-          cx="60"
-          cy="60"
-          r="38"
-          fill="none"
-          stroke="#E65100"
-          strokeWidth="2"
-          strokeOpacity="0.3"
-        />
-        <Circle
-          cx="60"
-          cy="60"
-          r="38"
-          fill="url(#innerShadow)"
-        />
-        
-        {/* 하이라이트 (광택) */}
-        <Path
-          d="M40 30 Q50 25 65 28"
-          stroke="#FFFFFF"
-          strokeWidth="3"
-          strokeLinecap="round"
-          opacity="0.7"
-        />
-        <Circle cx="35" cy="45" r="2" fill="#FFFFFF" opacity="0.8" />
-      </Svg>
-      
-      <View style={styles.waxTextContainer}>
-        <Text style={styles.waxText}>{text}</Text>
-      </View>
-    </View>
-  );
-}
+function ThumbBadge({ text, isActive }: { text: string; isActive: boolean }) {
+  const strokeAlpha = isActive ? 0.45 : 0.12;
+  const textColor = isActive ? 'rgba(236,238,244,0.95)' : COLORS.textSecondary;
 
-// ─── 무광(Matte) 실링 왁스 (평상시) ───
-function MatteWaxSeal({ text }: { text: string }) {
   return (
-    <View style={styles.waxContainer}>
-      <Svg width="120" height="120" viewBox="0 0 120 120" style={styles.waxSvg}>
+    <View style={styles.thumbBadge}>
+      <Svg width={110} height={106} viewBox="0 0 108 106" style={StyleSheet.absoluteFill}>
         <Defs>
-          {/* 탁하고 무광 느낌의 그라데이션 - 요청하신 #e2d1c3 톤 적용 */}
-          <RadialGradient
-            id="matteGrad"
-            cx="30%"
-            cy="30%"
-            rx="80%"
-            ry="80%"
-            fx="25%"
-            fy="25%"
-          >
-            <Stop offset="0%" stopColor="#F2E6DE" stopOpacity="1" />
-            <Stop offset="100%" stopColor="#C9B2A6" stopOpacity="1" />
-          </RadialGradient>
+          {/* 글래스 배경 그라디언트 */}
+          <LinearGradient id="glassFill" x1="0.2" y1="0" x2="0.8" y2="1">
+            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={isActive ? '0.18' : '0.08'} />
+            <Stop offset="40%" stopColor="#D8DAE2" stopOpacity={isActive ? '0.10' : '0.04'} />
+            <Stop offset="100%" stopColor="#FFFFFF" stopOpacity={isActive ? '0.14' : '0.06'} />
+          </LinearGradient>
+          {/* 글래스 보더 그라디언트 */}
+          <LinearGradient id="glassBorder" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0%" stopColor="#ECEEF4" stopOpacity={String(strokeAlpha)} />
+            <Stop offset="50%" stopColor="#A0A4B0" stopOpacity={String(strokeAlpha * 0.5)} />
+            <Stop offset="100%" stopColor="#ECEEF4" stopOpacity={String(strokeAlpha)} />
+          </LinearGradient>
         </Defs>
-        
-        {/* 왁스 몸통 */}
+        {/* 메인 글래스 배경 */}
         <Path
-          d="M60 10 
-             C75 8, 88 15, 98 25 
-             C108 35, 115 50, 110 70 
-             C105 90, 90 105, 70 110 
-             C50 115, 30 108, 18 95 
-             C5 80, 2 60, 12 40 
-             C22 20, 40 12, 60 10 Z"
-          fill="url(#matteGrad)"
-          stroke="#A1887F" // 부드러운 브라운 스트로크
-          strokeWidth="1"
+          d={THUMB_UP}
+          fill="url(#glassFill)"
+          stroke="url(#glassBorder)"
+          strokeWidth={isActive ? 1.5 : 0.8}
+          strokeLinejoin="round"
         />
-        
-        {/* 내부 원형 테두리 (음각만 표현, 광택 없음) */}
-        <Circle
-          cx="60"
-          cy="60"
-          r="38"
-          fill="none"
-          stroke="#8D6E63"
-          strokeWidth="1.5"
-          strokeOpacity="0.2"
-        />
-        
-        {/* 아주 약한 하이라이트 (무광이지만 입체감은 유지) */}
+        {/* 상단 반사광 (유리 하이라이트) */}
         <Path
-          d="M40 30 Q50 25 65 28"
-          stroke="#FFFFFF"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          opacity="0.3"
+          d={THUMB_HIGHLIGHT}
+          fill="#FFFFFF"
+          opacity={isActive ? 0.06 : 0.03}
         />
       </Svg>
-      
-      <View style={styles.waxTextContainer}>
-        <Text style={[
-          styles.waxText, 
-          { 
-            color: '#5D4037', // 텍스트는 가독성을 위해 진한 브라운 유지하되 조금 더 부드럽게
-            textShadowColor: 'rgba(255,255,255,0.4)', // 음각 효과
-            textShadowOffset: { width: 0, height: 1 } 
-          }
-        ]}>{text}</Text>
+      <View style={styles.thumbTextWrap}>
+        <Text style={[styles.holoText, { color: textColor }]}>{text}</Text>
       </View>
     </View>
   );
@@ -347,80 +152,54 @@ const styles = StyleSheet.create({
   container: { marginTop: 10 },
   headerRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
-    height: 30, // 애니메이션 공간 확보
+    height: 30,
   },
   title: {
-    fontSize: 16, fontWeight: '900', color: 'rgba(255,255,255,0.8)', 
-    letterSpacing: 1, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 1,
+    fontSize: 13, fontWeight: '700', color: COLORS.textSecondary,
+    letterSpacing: 2,
   },
-  encouragementWrapper: {
-    position: 'relative',
-  },
-  // 왁스 스타일
-  waxContainer: {
-    width: 120,
-    height: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // 전체 그림자
-    shadowColor: '#E65100',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  waxSvg: {
-    position: 'absolute',
-  },
-  waxTextContainer: {
-    width: 76,
-    height: 76,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  waxText: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#BF360C', // 진한 오렌지 브라운 (금색 위 음각 느낌)
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    // 음각 효과 (밝은 그림자를 아래로, 어두운 그림자를 위로)
-    textShadowColor: 'rgba(255,255,255,0.6)', 
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 0,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia-Bold' : 'serif',
-    lineHeight: 19,
-  },
-  listContainer: { gap: 12 },
-  emptyText: { fontSize: 14, color: '#A1887F', fontStyle: 'italic' },
-  goalItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  
-  // 3D Checkbox
-  checkBoxOuter: {
-    width: 24, height: 24, borderRadius: 8,
-    backgroundColor: '#89B0D9',
-    paddingBottom: 4,
-  },
-  checkBoxOuterCompleted: {
-    backgroundColor: '#58B163',
-    paddingBottom: 0,
-    marginTop: 4,
-  },
-  checkBoxInner: {
-    width: '100%', height: '100%', borderRadius: 8,
-    backgroundColor: '#FFF',
+  badgeWrapper: { position: 'relative' },
+  thumbBadge: {
+    width: 110, height: 106,
     alignItems: 'center', justifyContent: 'center',
   },
-  checkBoxInnerCompleted: {
+  thumbTextWrap: {
+    position: 'absolute', left: 20, right: 10, top: 44, bottom: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  holoText: {
+    fontSize: 13, fontWeight: '800', textAlign: 'center',
+    letterSpacing: 0.3, lineHeight: 17,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  listContainer: { gap: 8 },
+  emptyText: { fontSize: 14, color: COLORS.textSecondary, fontStyle: 'italic' },
+  goalItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: COLORS.glass,
+    borderWidth: 1, borderColor: COLORS.glassBorder,
+    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+  },
+  goalItemDone: {
+    backgroundColor: 'rgba(0,255,178,0.05)',
+    borderColor: 'rgba(0,255,178,0.15)',
+  },
+  checkBox: {
+    width: 22, height: 22, borderRadius: 6,
+    borderWidth: 1.5, borderColor: COLORS.borderLight,
+    backgroundColor: 'transparent',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkBoxDone: {
     backgroundColor: COLORS.success,
+    borderColor: COLORS.success,
   },
-  
   goalName: {
-    fontSize: 16, fontWeight: '700', color: '#333',
-    textShadowColor: 'rgba(255,255,255,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 0,
+    fontSize: 15, fontWeight: '600', color: COLORS.text,
   },
-  goalNameCompleted: {
-    color: 'rgba(0,0,0,0.4)', textDecorationLine: 'line-through',
+  goalNameDone: {
+    color: COLORS.success,
+    textDecorationLine: 'line-through',
+    textDecorationColor: 'rgba(0,255,178,0.35)',
   },
 });

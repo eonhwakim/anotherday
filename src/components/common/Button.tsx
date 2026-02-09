@@ -8,6 +8,7 @@ import {
   TextStyle,
   View,
 } from 'react-native';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { COLORS } from '../../constants/defaults';
 
 interface ButtonProps {
@@ -43,16 +44,31 @@ export default function Button({
       ]}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
     >
+      {/* 홀로그래픽 그라디언트 배경 (primary) */}
+      {variant === 'primary' && !isDisabled && (
+        <Svg style={StyleSheet.absoluteFill}>
+          <Defs>
+            <LinearGradient id="holoBtn" x1="0" y1="0.5" x2="1" y2="0.5">
+              <Stop offset="0%" stopColor={COLORS.secondary} />
+              <Stop offset="35%" stopColor="#2EE8A5" />
+              <Stop offset="65%" stopColor={COLORS.holoCyan} />
+              <Stop offset="100%" stopColor={COLORS.secondary} />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#holoBtn)" rx={14} />
+        </Svg>
+      )}
       {loading ? (
         <ActivityIndicator
-          color={variant === 'outline' ? COLORS.primary : '#fff'}
+          color={variant === 'outline' ? COLORS.primaryLight : '#fff'}
         />
       ) : (
         <Text
           style={[
             styles.text,
+            variant === 'primary' && styles.primaryText,
             variant === 'outline' && styles.outlineText,
             variant === 'secondary' && styles.secondaryText,
             textStyle,
@@ -68,48 +84,45 @@ export default function Button({
 const styles = StyleSheet.create({
   container: {
     height: 52,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    // Hand-drawn feel shadow
-    shadowColor: '#5D4037',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 0,
-    elevation: 3,
+    overflow: 'hidden',
   },
   primary: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primaryDark,
+    backgroundColor: COLORS.secondary,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 10,
   },
   secondary: {
     backgroundColor: COLORS.surface,
-    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    shadowOpacity: 0,
-    elevation: 0,
+    borderWidth: 1.5,
+    borderColor: COLORS.primaryLight,
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.3,
     shadowOpacity: 0,
     elevation: 0,
-    backgroundColor: '#D7CCC8',
-    borderColor: 'transparent',
   },
   text: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  primaryText: {
+    color: '#000',
   },
   outlineText: {
-    color: COLORS.primary,
+    color: COLORS.primaryLight,
   },
   secondaryText: {
     color: COLORS.text,
