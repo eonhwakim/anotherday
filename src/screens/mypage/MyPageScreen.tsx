@@ -91,13 +91,19 @@ export default function MyPageScreen() {
     await fetchMonthlyCheckins(user.id, yearMonth);
   };
 
-  const handleAddGoal = async (name: string): Promise<boolean> => {
+  const handleAddGoal = async (
+    name: string,
+    frequency: 'daily' | 'weekly_count' = 'daily',
+    targetCount: number | null = null,
+  ): Promise<boolean> => {
     if (!user) return false;
     const activeTeam = useTeamStore.getState().currentTeam;
     const ok = await addGoal({
       teamId: activeTeam?.id,
       userId: user.id,
       name,
+      frequency,
+      targetCount,
     });
     if (ok) {
       await fetchMyGoals(user.id);
@@ -184,18 +190,103 @@ export default function MyPageScreen() {
     ]);
   };
 
-  const currentMonthLabel = dayjs().format('YYYY년 M월');
-  const todayCompleted = todayCheckins?.length ?? 0;
-  const monthlyTotal = monthlyCheckins?.length ?? 0;
-  const monthlySuccessCount = monthlyCheckins?.filter(
-    (c) => c.photo_url != null,
-  ).length ?? 0;
-  const monthlyPassCount = monthlyCheckins?.filter((c) =>
-    c.memo?.startsWith('[패스]'),
-  ).length ?? 0;
+  const currentMonthLabel = dayjs(`${yearMonth}-01`).format('YYYY년 M월');
 
+  // ── 월간 통계 계산 ──
+  const monthlyStats = React.useMemo(() => {
+    const checkins = monthlyCheckins ?? [];
+    const goals = myGoals ?? [];
+    const allGoals = teamGoals ?? [];
+    const startDate = `${yearMonth}-01`;
+    const today = dayjs().format('YYYY-MM-DD');
+    const daysInMonth = dayjs(startDate).daysInMonth();
+
+    const doneTotal = checkins.filter((c) => c.status === 'done').length;
+    const passTotal = checkins.filter((c) => c.status === 'pass').length;
+
+    // 날짜별 퍼센트 계산 (PASS 제외)
+    const dailyPercents: number[] = [];
+    const goalDoneMap: Record<string, number> = {};
+    const goalPassMap: Record<string, number> = {};
+    const goalFailMap: Record<string, number> = {};
+    const passReasons: string[] = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = dayjs(startDate).date(d).format('YYYY-MM-DD');
+      if (dateStr > today) break;
+
+      const dayIdx = dayjs(dateStr).day();
+      const todayGoals = goals.filter((ug) => {
+        // start_date 이전은 목표가 없던 날
+        if (ug.start_date && dateStr < ug.start_date) return false;
+        if (ug.frequency === 'daily') return true;
+        if (ug.frequency === 'weekly_count') return true;
+        return true;
+      });
+      const totalForDay = todayGoals.length;
+      if (totalForDay === 0) continue;
+
+      const dayCheckins = checkins.filter((c) => c.date === dateStr);
+      const done = dayCheckins.filter((c) => c.status === 'done').length;
+      const pass = dayCheckins.filter((c) => c.status === 'pass').length;
+      const effectiveTotal = totalForDay - pass;
+      const pct = effectiveTotal > 0 ? (done / effectiveTotal) * 100 : (done > 0 ? 100 : 0);
+      dailyPercents.push(pct);
+
+      // 목표별 통계
+      todayGoals.forEach((ug) => {
+        const gid = ug.goal_id;
+        const c = dayCheckins.find((ci) => ci.goal_id === gid);
+        if (c?.status === 'done') {
+          goalDoneMap[gid] = (goalDoneMap[gid] || 0) + 1;
+        } else if (c?.status === 'pass') {
+          goalPassMap[gid] = (goalPassMap[gid] || 0) + 1;
+          if (c.memo) passReasons.push(c.memo);
+        } else {
+          goalFailMap[gid] = (goalFailMap[gid] || 0) + 1;
+        }
+      });
+    }
+
+    // PASS 사유 TOP3
+    const reasonCounts: Record<string, number> = {};
+    passReasons.forEach((r) => {
+      const cleaned = r.replace(/^\[패스\]\s*/, '').trim();
+      if (cleaned) reasonCounts[cleaned] = (reasonCounts[cleaned] || 0) + 1;
+    });
+    const topReasons = Object.entries(reasonCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+
+    const avg = dailyPercents.length > 0
+      ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
+      : 0;
+    const max = dailyPercents.length > 0 ? Math.round(Math.max(...dailyPercents)) : 0;
+    const min = dailyPercents.length > 0 ? Math.round(Math.min(...dailyPercents)) : 0;
+
+    // 목표별 상세 통계
+    const goalStats = goals.map((ug) => {
+      const goal = allGoals.find((g) => g.id === ug.goal_id);
+      return {
+        goalId: ug.goal_id,
+        name: goal?.name ?? '알 수 없음',
+        done: goalDoneMap[ug.goal_id] || 0,
+        pass: goalPassMap[ug.goal_id] || 0,
+        fail: goalFailMap[ug.goal_id] || 0,
+      };
+    });
+
+    return { doneTotal, passTotal, avg, max, min, goalStats, topReasons };
+  }, [monthlyCheckins, myGoals, teamGoals, yearMonth]);
+
+  // 선택한 날짜에 유효한 목표만 필터 (start_date 이후만)
   const selectedDateGoals = (teamGoals || []).filter((g) =>
-    (myGoals || []).some((ug) => ug.goal_id === g.id),
+    (myGoals || []).some((ug) => {
+      if (ug.goal_id !== g.id) return false;
+      // start_date 이전이면 해당 날짜에 목표 없음
+      if (ug.start_date && selectedDate < ug.start_date) return false;
+      return true;
+    }),
   );
   const selectedDateCheckins = (monthlyCheckins || []).filter(
     (c) => c.date === selectedDate,
@@ -322,32 +413,51 @@ export default function MyPageScreen() {
         {/* ── 월간 통계 ── */}
         <View style={styles.statsCard}>
           <Text style={styles.cardTitle}>{currentMonthLabel} 통계</Text>
+
+          {/* 달성률 요약 */}
           <View style={styles.statsRow}>
-            <StatItem
-              label="오늘 달성"
-              value={`${todayCompleted}개`}
-              icon="checkmark-circle"
-              color={COLORS.success}
-            />
-            <StatItem
-              label="이번 달 성공"
-              value={`${monthlySuccessCount}개`}
-              icon="camera"
-              color={COLORS.primaryLight}
-            />
-            <StatItem
-              label="패스"
-              value={`${monthlyPassCount}회`}
-              icon="pause-circle"
-              color={COLORS.warning}
-            />
-            <StatItem
-              label="소속 팀"
-              value={`${teams?.length ?? 0}개`}
-              icon="people"
-              color={COLORS.secondary}
-            />
+            <StatItem label="평균 달성률" value={`${monthlyStats.avg}%`} icon="analytics" color="#fff" />
+            <StatItem label="최고" value={`${monthlyStats.max}%`} icon="arrow-up" color="#4ADE80" />
+            <StatItem label="최저" value={`${monthlyStats.min}%`} icon="arrow-down" color="#EF4444" />
           </View>
+
+          {/* DONE / PASS 카운트 */}
+          <View style={[styles.statsRow, { marginTop: 16 }]}>
+            <StatItem label="완료" value={`${monthlyStats.doneTotal}회`} icon="checkmark-circle" color="#fff" />
+            <StatItem label="패스" value={`${monthlyStats.passTotal}/5`} icon="pause-circle" color="#FFB547" />
+            <StatItem label="소속 팀" value={`${teams?.length ?? 0}개`} icon="people" color="rgba(255,255,255,0.60)" />
+          </View>
+
+          {/* 목표별 통계 */}
+          {monthlyStats.goalStats.length > 0 && (
+            <View style={styles.goalStatsSection}>
+              <Text style={styles.goalStatsTitle}>목표별 현황</Text>
+              {monthlyStats.goalStats.map((gs) => (
+                <View key={gs.goalId} style={styles.goalStatRow}>
+                  <Text style={styles.goalStatName} numberOfLines={1}>{gs.name}</Text>
+                  <View style={styles.goalStatBadges}>
+                    <Text style={styles.goalStatDone}>{gs.done}완료</Text>
+                    {gs.pass > 0 && <Text style={styles.goalStatPass}>{gs.pass}패스</Text>}
+                    {gs.fail > 0 && <Text style={styles.goalStatFail}>{gs.fail}미달</Text>}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* PASS 사유 TOP3 */}
+          {monthlyStats.topReasons.length > 0 && (
+            <View style={styles.passReasonsSection}>
+              <Text style={styles.goalStatsTitle}>패스 사유 TOP</Text>
+              {monthlyStats.topReasons.map(([reason, count], idx) => (
+                <View key={idx} style={styles.passReasonRow}>
+                  <Text style={styles.passReasonRank}>{idx + 1}</Text>
+                  <Text style={styles.passReasonText} numberOfLines={1}>{reason}</Text>
+                  <Text style={styles.passReasonCount}>{count}회</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* ── 로그아웃 ── */}
@@ -678,5 +788,101 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     flex: 1,
+  },
+
+  // ── 목표별 통계 ──
+  goalStatsSection: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.04)',
+  },
+  goalStatsTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.50)',
+    marginBottom: 10,
+    letterSpacing: 0.3,
+  },
+  goalStatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.03)',
+  },
+  goalStatName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.80)',
+    flex: 1,
+    marginRight: 8,
+  },
+  goalStatBadges: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  goalStatDone: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  goalStatPass: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFB547',
+    backgroundColor: 'rgba(255,181,71,0.10)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  goalStatFail: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EF4444',
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+
+  // ── PASS 사유 ──
+  passReasonsSection: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.04)',
+  },
+  passReasonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+  },
+  passReasonRank: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.30)',
+    width: 16,
+    textAlign: 'center',
+  },
+  passReasonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.70)',
+    flex: 1,
+  },
+  passReasonCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFB547',
   },
 });

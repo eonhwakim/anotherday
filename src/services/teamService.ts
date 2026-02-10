@@ -10,24 +10,20 @@ import type { Team } from '../types/domain';
  */
 export async function setupDefaultTeam(userId: string): Promise<Team | null> {
   try {
-    // 1) 팀 생성
-    const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const { data: team, error: teamError } = await supabase
-      .from('teams')
-      .insert({ name: DEFAULT_TEAM_NAME, invite_code: inviteCode })
-      .select()
-      .single();
-
-    if (teamError || !team) return null;
-
-    // 2) 생성자를 리더로 추가
-    await supabase.from('team_members').insert({
-      team_id: team.id,
-      user_id: userId,
-      role: 'leader',
+    // 1) RPC로 팀 생성 + 멤버 등록 (RLS 이슈 해결)
+    const { data: teamData, error: teamError } = await supabase.rpc('create_team_with_member', {
+      team_name: DEFAULT_TEAM_NAME,
+      member_user_id: userId,
     });
 
-    // 3) 기본 목표 생성
+    if (teamError || !teamData) {
+      console.error('setupDefaultTeam: team creation failed', teamError?.message);
+      return null;
+    }
+
+    const team = teamData as Team;
+
+    // 2) 기본 목표 생성
     const goalInserts = DEFAULT_GOALS.map((g) => ({
       team_id: team.id,
       name: g.name,
@@ -39,7 +35,7 @@ export async function setupDefaultTeam(userId: string): Promise<Team | null> {
       .insert(goalInserts)
       .select();
 
-    // 4) 유저에게 모든 기본 목표 배정
+    // 3) 유저에게 모든 기본 목표 배정
     if (goals) {
       const userGoalInserts = goals.map((g) => ({
         user_id: userId,
@@ -59,52 +55,22 @@ export async function setupDefaultTeam(userId: string): Promise<Team | null> {
   }
 }
 
-/** 초대 코드로 팀 참가 */
+/** 초대 코드로 팀 참가 (RPC로 RLS 우회) */
 export async function joinTeamByCode(
   inviteCode: string,
   userId: string
 ): Promise<Team | null> {
-  const { data: team } = await supabase
-    .from('teams')
-    .select('*')
-    .eq('invite_code', inviteCode.toUpperCase())
-    .single();
+  const { data, error } = await supabase.rpc('join_team_by_invite', {
+    invite: inviteCode,
+    member_user_id: userId,
+  });
 
-  if (!team) return null;
-
-  // 이미 멤버인지 확인
-  const { data: existing } = await supabase
-    .from('team_members')
-    .select('id')
-    .eq('team_id', team.id)
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (!existing) {
-    await supabase.from('team_members').insert({
-      team_id: team.id,
-      user_id: userId,
-      role: 'member',
-    });
-
-    // 팀의 활성 목표를 유저에게도 배정
-    const { data: goals } = await supabase
-      .from('goals')
-      .select('id')
-      .eq('team_id', team.id)
-      .eq('is_active', true);
-
-    if (goals) {
-      const userGoalInserts = goals.map((g) => ({
-        user_id: userId,
-        goal_id: g.id,
-        is_active: true,
-        frequency: 'daily',
-        week_days: null,
-      }));
-      await supabase.from('user_goals').insert(userGoalInserts);
-    }
+  if (error) {
+    console.error('[TeamService] joinTeamByCode RPC error:', error.message);
+    return null;
   }
 
-  return team;
+  if (!data) return null;
+
+  return data as Team;
 }

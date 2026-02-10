@@ -38,15 +38,28 @@ export default function MonthlyGoalCalendar({
 }: MonthlyGoalCalendarProps) {
   const today = dayjs().format('YYYY-MM-DD');
 
-  const myGoalIds = useMemo(
+  /** 특정 날짜에 유효한 목표 ID 목록 (start_date 이후만) */
+  const getActiveGoalIdsForDate = (dateStr: string): string[] => {
+    return (myGoals || [])
+      .filter((ug) => {
+        // start_date가 없으면 항상 유효
+        if (!ug.start_date) return true;
+        // start_date 이후인 날짜만 유효
+        return dateStr >= ug.start_date;
+      })
+      .map((ug) => ug.goal_id);
+  };
+
+  /** 전체 목표 ID (범례, 요약용) */
+  const allMyGoalIds = useMemo(
     () => (myGoals || []).map((ug) => ug.goal_id),
     [myGoals],
   );
 
   const primaryGoalName = useMemo(() => {
-    if (myGoalIds.length === 0) return null;
-    return (teamGoals || []).find((g) => g.id === myGoalIds[0])?.name ?? null;
-  }, [myGoalIds, teamGoals]);
+    if (allMyGoalIds.length === 0) return null;
+    return (teamGoals || []).find((g) => g.id === allMyGoalIds[0])?.name ?? null;
+  }, [allMyGoalIds, teamGoals]);
 
   const weeks = useMemo(() => {
     const first = dayjs(`${yearMonth}-01`);
@@ -66,18 +79,20 @@ export default function MonthlyGoalCalendar({
   }, [yearMonth]);
 
   const getDayStatus = (dateStr: string) => {
+    // 해당 날짜에 유효한 목표만 필터링 (start_date 이후)
+    const activeIds = getActiveGoalIdsForDate(dateStr);
     const dayCheckins = (checkins || []).filter((c) => c.date === dateStr);
     const doneGoalIds = dayCheckins.map((c) => c.goal_id);
-    const completed = myGoalIds.filter((id) =>
+    const completed = activeIds.filter((id) =>
       doneGoalIds.includes(id),
     ).length;
-    const total = myGoalIds.length;
+    const total = activeIds.length;
 
     const hasPass = dayCheckins.some((c) =>
       c.memo?.startsWith('[패스]'),
     );
 
-    return { completed, total, allDone: total > 0 && completed >= total, hasPass };
+    return { completed, total, allDone: total > 0 && completed >= total, hasPass, activeIds };
   };
 
   return (
@@ -130,9 +145,15 @@ export default function MonthlyGoalCalendar({
             const dateStr = `${yearMonth}-${String(day).padStart(2, '0')}`;
             const isToday = dateStr === today;
             const isFuture = dayjs(dateStr).isAfter(dayjs(), 'day');
-            const { completed, total, allDone, hasPass } =
+            const { completed, total, allDone, hasPass, activeIds } =
               getDayStatus(dateStr);
             const someDone = completed > 0;
+            const hasGoals = total > 0; // 해당 날짜에 유효 목표가 있는지
+
+            // 해당 날짜의 첫 번째 유효 목표 이름
+            const dayPrimaryGoalName = hasGoals
+              ? (teamGoals || []).find((g) => g.id === activeIds[0])?.name ?? null
+              : null;
 
             return (
               <TouchableOpacity
@@ -140,7 +161,7 @@ export default function MonthlyGoalCalendar({
                 style={[
                   styles.dayCell,
                   isToday && styles.dayCellToday,
-                  allDone && styles.dayCellAllDone,
+                  allDone && hasGoals && styles.dayCellAllDone,
                   !allDone && someDone && styles.dayCellPartial,
                 ]}
                 onPress={() => onDayPress(dateStr)}
@@ -154,14 +175,14 @@ export default function MonthlyGoalCalendar({
                     isFuture && styles.dayNumberFuture,
                     di === 0 && { color: COLORS.error },
                     di === 6 && { color: COLORS.primaryLight },
-                    allDone && { color: '#fff' },
+                    allDone && hasGoals && { color: '#fff' },
                   ]}
                 >
                   {day}
                 </Text>
 
-                {/* 닉네임 + 목표 스티커 */}
-                {!isFuture && primaryGoalName && (
+                {/* 닉네임 + 목표 스티커 (해당 날짜에 유효 목표가 있을 때만) */}
+                {!isFuture && hasGoals && dayPrimaryGoalName && (
                   <View style={[
                     styles.sticker,
                     allDone && styles.stickerDone
@@ -176,13 +197,13 @@ export default function MonthlyGoalCalendar({
                       styles.stickerGoal,
                       allDone && { color: 'rgba(255,255,255,0.7)' }
                     ]} numberOfLines={1}>
-                      {primaryGoalName}
+                      {dayPrimaryGoalName}
                     </Text>
                   </View>
                 )}
 
-                {/* 상태 인디케이터 */}
-                {!isFuture && total > 0 && (
+                {/* 상태 인디케이터 (유효 목표가 있을 때만) */}
+                {!isFuture && hasGoals && (
                   <View style={styles.indicators}>
                     {allDone ? (
                       <Ionicons
@@ -203,13 +224,13 @@ export default function MonthlyGoalCalendar({
                   </View>
                 )}
 
-                {/* 추가 목표 수 */}
-                {!isFuture && myGoalIds.length > 1 && (
+                {/* 추가 목표 수 (해당 날짜 유효 목표 기준) */}
+                {!isFuture && activeIds.length > 1 && (
                   <Text style={[
                     styles.moreGoals,
                     allDone && { color: 'rgba(255,255,255,0.7)' }
                   ]}>
-                    +{myGoalIds.length - 1}
+                    +{activeIds.length - 1}
                   </Text>
                 )}
               </TouchableOpacity>

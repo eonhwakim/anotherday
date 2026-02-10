@@ -82,16 +82,21 @@ export default function HomeScreen() {
 
   const today = dayjs().format('YY년 M월 D일');
 
+  // 오늘 해당되는 목표: DAILY(start_date이후) + WEEKLY_COUNT(이번 주 미달성)
+  // 주 N회의 이번 주 완료 수는 todayCheckins + 이번 주 과거 데이터에서 계산
   const myActiveGoals = React.useMemo(() => {
-    const todayDayIndex = dayjs().day();
+    const todayStr = dayjs().format('YYYY-MM-DD');
     const activeUserGoalIds = myGoals
       .filter((ug) => {
         if (!ug.is_active) return false;
+        // start_date 체크
+        if (ug.start_date && todayStr < ug.start_date) return false;
+        // DAILY는 항상 포함
         if (ug.frequency === 'daily') return true;
-        if (ug.frequency === 'weekly' && ug.week_days) {
-          return ug.week_days.includes(todayDayIndex);
-        }
-        return false;
+        // WEEKLY_COUNT: store의 fetchMemberProgress에서 이미 계산하므로
+        // 여기서는 일단 포함 (UI에서 "이번 주 X/N" 표시 가능)
+        if (ug.frequency === 'weekly_count') return true;
+        return true;
       })
       .map((ug) => ug.goal_id);
     return teamGoals.filter((g) => activeUserGoalIds.includes(g.id));

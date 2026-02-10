@@ -173,6 +173,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
+    // 모든 스토어 초기화 (이전 유저 데이터 잔류 방지)
+    const { useTeamStore } = require('./teamStore');
+    const { useGoalStore } = require('./goalStore');
+    useTeamStore.getState().reset();
+    useGoalStore.getState().reset();
     set({ user: null, error: null });
   },
 

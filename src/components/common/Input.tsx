@@ -11,18 +11,25 @@ import { COLORS } from '../../constants/defaults';
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
+  success?: string;
 }
 
-export default function Input({ label, error, style, ...props }: InputProps) {
+export default function Input({ label, error, success, style, ...props }: InputProps) {
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
-        style={[styles.input, error ? styles.inputError : null, style]}
+        style={[
+          styles.input,
+          error ? styles.inputError : null,
+          success ? styles.inputSuccess : null,
+          style,
+        ]}
         placeholderTextColor={COLORS.textMuted}
         {...props}
       />
       {error && <Text style={styles.error}>{error}</Text>}
+      {!error && success && <Text style={styles.success}>{success}</Text>}
     </View>
   );
 }
@@ -52,9 +59,17 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: COLORS.error,
   },
+  inputSuccess: {
+    borderColor: '#4ADE80',
+  },
   error: {
     fontSize: 12,
     color: COLORS.error,
+    marginTop: 4,
+  },
+  success: {
+    fontSize: 12,
+    color: '#4ADE80',
     marginTop: 4,
   },
 });

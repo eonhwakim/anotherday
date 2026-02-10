@@ -6,60 +6,14 @@ import type {
   Checkin,
   CheckinWithGoal,
   MemberProgress,
+  MemberCheckinSummary,
   MountainPosition,
   CalendarDayMarking,
 } from '../types/domain';
 import { MOUNTAIN_THRESHOLDS } from '../constants/defaults';
 import dayjs from '../lib/dayjs';
 
-interface GoalState {
-  /** 팀 공통 목표 목록 */
-  teamGoals: Goal[];
-  /** 내가 선택한 목표 목록 */
-  myGoals: UserGoal[];
-  /** 오늘 나의 체크인 목록 */
-  todayCheckins: Checkin[];
-  /** 팀 멤버 진행 상황 */
-  memberProgress: MemberProgress[];
-  /** 캘린더 마킹 데이터 */
-  calendarMarkings: CalendarDayMarking;
-  /** 선택한 날짜의 체크인 목록 */
-  selectedDateCheckins: CheckinWithGoal[];
-  /** 월간 체크인 목록 (마이페이지 캘린더 용) */
-  monthlyCheckins: Checkin[];
-
-  isLoading: boolean;
-
-  // ─── Actions ────────────────────────────────────────────────
-  /** 팀 목표 로드 (개인 목표 포함) */
-  fetchTeamGoals: (teamId: string, userId?: string) => Promise<void>;
-  /** 내가 선택한 목표 로드 */
-  fetchMyGoals: (userId: string) => Promise<void>;
-  /** 오늘 나의 체크인 로드 */
-  fetchTodayCheckins: (userId: string) => Promise<void>;
-  /** 체크인 생성 (인증하기) — date 를 생략하면 오늘 */
-  createCheckin: (params: {
-    userId: string;
-    goalId: string;
-    date?: string;
-    photoUrl?: string | null;
-    memo?: string | null;
-  }) => Promise<boolean>;
-  /** 목표 선택/해제 토글 */
-  toggleUserGoal: (userId: string, goalId: string) => Promise<void>;
-  /** 목표 추가 (팀 or 개인) */
-  addGoal: (params: { teamId?: string; userId: string; name: string }) => Promise<boolean>;
-  /** 팀 목표 삭제 (비활성화) */
-  removeTeamGoal: (teamId: string, userId: string, goalId: string) => Promise<void>;
-  /** 팀 멤버 산 진행상황 계산 */
-  fetchMemberProgress: (teamId?: string, userId?: string) => Promise<void>;
-  /** 월별 캘린더 마킹 로드 */
-  fetchCalendarMarkings: (userId: string, yearMonth: string) => Promise<void>;
-  /** 특정 날짜의 체크인 목록 로드 */
-  fetchCheckinsForDate: (userId: string, date: string) => Promise<void>;
-  /** 월간 체크인 로드 (마이페이지 캘린더) */
-  fetchMonthlyCheckins: (userId: string, yearMonth: string) => Promise<void>;
-}
+// ─── Helpers ──────────────────────────────────────────────────
 
 /** 달성률 → 산 위치 매핑 */
 function getPosition(completed: number, total: number): MountainPosition {
@@ -70,6 +24,93 @@ function getPosition(completed: number, total: number): MountainPosition {
   return 'base';
 }
 
+/** 주의 시작 월요일 (dayjs 기준) */
+function getWeekMonday(dateStr: string): string {
+  const d = dayjs(dateStr);
+  const day = d.day(); // 0=일, 1=월, ...
+  const diff = day === 0 ? 6 : day - 1; // 월요일 기준 offset
+  return d.subtract(diff, 'day').format('YYYY-MM-DD');
+}
+
+/** 해당 날짜에 이 목표가 유효한지 판별 */
+function isGoalActiveOnDate(ug: any, dateStr: string): boolean {
+  if (!ug.start_date) return true; // start_date가 없으면 항상 유효
+  return dateStr >= ug.start_date;
+}
+
+/** 주 N회 목표가 연습 주인지 (생성 주와 같은 주) */
+function isPracticeWeek(startDate: string, dateStr: string): boolean {
+  if (!startDate) return false;
+  return getWeekMonday(startDate) === getWeekMonday(dateStr);
+}
+
+/**
+ * 주 N회 목표의 이번 주 완료 횟수를 세어서,
+ * 오늘 목표에 포함해야 하는지 판별
+ */
+async function getWeekDoneCount(
+  userId: string,
+  goalId: string,
+  dateStr: string,
+): Promise<number> {
+  const monday = getWeekMonday(dateStr);
+  const sunday = dayjs(monday).add(6, 'day').format('YYYY-MM-DD');
+
+  const { count } = await supabase
+    .from('checkins')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('goal_id', goalId)
+    .eq('status', 'done')
+    .gte('date', monday)
+    .lte('date', sunday);
+
+  return count ?? 0;
+}
+
+// ─── Store Interface ──────────────────────────────────────────
+
+interface GoalState {
+  teamGoals: Goal[];
+  myGoals: UserGoal[];
+  todayCheckins: Checkin[];
+  memberProgress: MemberProgress[];
+  calendarMarkings: CalendarDayMarking;
+  selectedDateCheckins: CheckinWithGoal[];
+  monthlyCheckins: Checkin[];
+  memberDateCheckins: MemberCheckinSummary[];
+  isLoading: boolean;
+
+  fetchTeamGoals: (teamId: string, userId?: string) => Promise<void>;
+  fetchMyGoals: (userId: string) => Promise<void>;
+  fetchTodayCheckins: (userId: string) => Promise<void>;
+  createCheckin: (params: {
+    userId: string;
+    goalId: string;
+    date?: string;
+    photoUrl?: string | null;
+    memo?: string | null;
+  }) => Promise<boolean>;
+  toggleUserGoal: (userId: string, goalId: string) => Promise<void>;
+  addGoal: (params: {
+    teamId?: string;
+    userId: string;
+    name: string;
+    frequency?: 'daily' | 'weekly_count';
+    targetCount?: number | null;
+  }) => Promise<boolean>;
+  removeTeamGoal: (teamId: string, userId: string, goalId: string) => Promise<void>;
+  fetchMemberProgress: (teamId?: string, userId?: string) => Promise<void>;
+  fetchCalendarMarkings: (userId: string, yearMonth: string) => Promise<void>;
+  fetchCheckinsForDate: (userId: string, date: string) => Promise<void>;
+  fetchMonthlyCheckins: (userId: string, yearMonth: string) => Promise<void>;
+  fetchMemberDateCheckins: (teamId: string | undefined, userId: string, date: string) => Promise<void>;
+  /** 스토어 초기화 (로그아웃 시) */
+  reset: () => void;
+}
+
+// ─── Store ────────────────────────────────────────────────────
+
 export const useGoalStore = create<GoalState>((set, get) => ({
   teamGoals: [],
   myGoals: [],
@@ -78,8 +119,10 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   calendarMarkings: {},
   selectedDateCheckins: [],
   monthlyCheckins: [],
+  memberDateCheckins: [],
   isLoading: false,
 
+  // ── 팀 목표 로드 ──
   fetchTeamGoals: async (teamId, userId) => {
     let query = supabase
       .from('goals')
@@ -89,34 +132,30 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     if (userId) {
       if (teamId) {
-        // 팀 목표 OR 내 개인 목표
         query = query.or(`team_id.eq.${teamId},owner_id.eq.${userId}`);
       } else {
-        // 팀 없음 -> 내 개인 목표만
         query = query.eq('owner_id', userId);
       }
     } else {
-      // userId 없음 -> 팀 목표만 (기존 로직 유지용)
       query = query.eq('team_id', teamId);
     }
 
     const { data, error } = await query;
-    if (error) {
-      console.error('fetchTeamGoals error:', error);
-    }
+    if (error) console.error('fetchTeamGoals error:', error);
     set({ teamGoals: data ?? [] });
   },
 
+  // ── 내 목표 로드 ──
   fetchMyGoals: async (userId) => {
     const { data } = await supabase
       .from('user_goals')
       .select('*')
       .eq('user_id', userId)
       .eq('is_active', true);
-
     set({ myGoals: data ?? [] });
   },
 
+  // ── 오늘 체크인 로드 ──
   fetchTodayCheckins: async (userId) => {
     const today = dayjs().format('YYYY-MM-DD');
     const { data } = await supabase
@@ -124,14 +163,13 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .select('*')
       .eq('user_id', userId)
       .eq('date', today);
-
     set({ todayCheckins: data ?? [] });
   },
 
+  // ── 체크인 생성 ──
   createCheckin: async ({ userId, goalId, date, photoUrl, memo }) => {
     const checkinDate = date ?? dayjs().format('YYYY-MM-DD');
 
-    // 중복 체크인 방지
     const { data: existing } = await supabase
       .from('checkins')
       .select('id')
@@ -140,7 +178,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .eq('date', checkinDate)
       .maybeSingle();
 
-    if (existing) return false; // 이미 인증 완료
+    if (existing) return false;
 
     const { error } = await supabase.from('checkins').insert({
       user_id: userId,
@@ -151,86 +189,73 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     });
 
     if (error) return false;
-
-    // 체크인 목록 새로고침
     await get().fetchTodayCheckins(userId);
     return true;
   },
 
+  // ── 목표 토글 ──
   toggleUserGoal: async (userId, goalId) => {
     const existing = get().myGoals.find(
-      (ug) => ug.goal_id === goalId && ug.user_id === userId
+      (ug) => ug.goal_id === goalId && ug.user_id === userId,
     );
 
     if (existing) {
-      // 비활성화
-      await supabase
-        .from('user_goals')
-        .update({ is_active: false })
-        .eq('id', existing.id);
+      await supabase.from('user_goals').update({ is_active: false }).eq('id', existing.id);
     } else {
-      // 새로 추가하거나 다시 활성화 (Upsert)
-      // unique constraint: (user_id, goal_id)
+      const today = dayjs().format('YYYY-MM-DD');
       await supabase.from('user_goals').upsert(
         {
           user_id: userId,
           goal_id: goalId,
           is_active: true,
+          start_date: today,
         },
-        { onConflict: 'user_id, goal_id' }
+        { onConflict: 'user_id, goal_id' },
       );
     }
 
     await get().fetchMyGoals(userId);
   },
 
-  addGoal: async ({ teamId, userId, name }) => {
+  // ── 목표 추가 ──
+  addGoal: async ({ teamId, userId, name, frequency = 'daily', targetCount = null }) => {
     const trimmed = name.trim();
     if (!trimmed) return false;
 
-    // 중복 이름 방지 (목록 내) -> 이미 있으면 내 목표로 연결
+    const today = dayjs().format('YYYY-MM-DD');
+
     const existing = get().teamGoals.find(
       (g) => g.name.toLowerCase() === trimmed.toLowerCase(),
     );
 
     if (existing) {
-      // 이미 존재하는 목표라면, 내 목표로 등록되어 있는지 확인
       const myGoal = get().myGoals.find(
-        (ug) => ug.goal_id === existing.id && ug.user_id === userId
+        (ug) => ug.goal_id === existing.id && ug.user_id === userId,
       );
 
       if (myGoal) {
-        // 이미 내 목표로 등록됨 (활성 상태면 중복 알림, 비활성이면 활성화)
-        if (myGoal.is_active) {
-          return false; // 이미 등록됨 -> UI에서 알림 처리
-        } else {
-          // 비활성 상태면 다시 활성화
-          await supabase
-            .from('user_goals')
-            .update({ is_active: true })
-            .eq('id', myGoal.id);
-        }
+        if (myGoal.is_active) return false;
+        await supabase
+          .from('user_goals')
+          .update({ is_active: true, frequency, target_count: targetCount, start_date: today })
+          .eq('id', myGoal.id);
       } else {
-        // 내 목표 목록에 없으면 새로 연결 (insert)
         await supabase.from('user_goals').insert({
           user_id: userId,
           goal_id: existing.id,
           is_active: true,
+          frequency,
+          target_count: targetCount,
+          start_date: today,
         });
       }
 
-      // 새로고침 후 성공 리턴
       await get().fetchMyGoals(userId);
       return true;
     }
 
-    // 1) goals 테이블에 추가
-    // teamId가 있으면 팀 목표, 없으면 개인 목표(owner_id)
-    const payload: any = {
-      name: trimmed,
-      is_active: true,
-      owner_id: userId,
-    };
+    // goals 테이블에 추가
+    const payload: any = { name: trimmed, is_active: true, owner_id: userId };
     if (teamId) payload.team_id = teamId;
 
     const { data: newGoal, error } = await supabase
@@ -244,79 +269,51 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       return false;
     }
 
-    // 2) user_goals 에 자동 선택
+    // user_goals에 자동 선택
     await supabase.from('user_goals').insert({
       user_id: userId,
       goal_id: newGoal.id,
       is_active: true,
+      frequency,
+      target_count: targetCount,
+      start_date: today,
     });
 
-    // 새로고침
-    if (teamId) {
-      await get().fetchTeamGoals(teamId, userId);
-    } else {
-      // 팀이 없어도 내 목표는 다시 불러와야 함 (구조상 fetchTeamGoals를 재활용하거나 분리해야 함)
-      // 여기서는 fetchTeamGoals가 'availableGoals' 역할을 하므로 호출
-      // teamId가 없으면 fetchTeamGoals 호출이 애매하므로, 로직 보완 필요.
-      // 일단 teamId가 있는 경우만 상정하거나, fetchTeamGoals 로직을 수정했으므로 teamId null 처리를 해야함.
-    }
     await get().fetchMyGoals(userId);
-    
-    // teamGoals가 업데이트되었을 수 있으므로 다시 불러오기
     if (teamId) await get().fetchTeamGoals(teamId, userId);
-    
     return true;
   },
 
+  // ── 목표 삭제 ──
   removeTeamGoal: async (teamId, userId, goalId) => {
-    // 목표 비활성화
-    await supabase
-      .from('goals')
-      .update({ is_active: false })
-      .eq('id', goalId);
-
-    // 유저 선택도 비활성화
+    await supabase.from('goals').update({ is_active: false }).eq('id', goalId);
     await supabase
       .from('user_goals')
       .update({ is_active: false })
       .eq('user_id', userId)
       .eq('goal_id', goalId);
 
-    await Promise.all([
-      get().fetchTeamGoals(teamId),
-      get().fetchMyGoals(userId),
-    ]);
+    await Promise.all([get().fetchTeamGoals(teamId), get().fetchMyGoals(userId)]);
   },
 
+  // ── 멤버 진행상황 (산 애니메이션) ──
   fetchMemberProgress: async (teamId, userId) => {
     const today = dayjs().format('YYYY-MM-DD');
 
     let members: any[] = [];
-
     if (teamId) {
-      // 1) 팀이 있는 경우: 팀 멤버 조회
       const { data } = await supabase
         .from('team_members')
-        .select(`
-          user_id,
-          user:users(id, nickname, profile_image_url)
-        `)
+        .select('user_id, user:users(id, nickname, profile_image_url)')
         .eq('team_id', teamId);
       members = data ?? [];
     } else if (userId) {
-      // 2) 팀이 없는 경우: 나 자신만 조회
       const { data } = await supabase
         .from('users')
         .select('id, nickname, profile_image_url')
         .eq('id', userId)
         .single();
-      
-      if (data) {
-        members = [{
-          user_id: data.id,
-          user: data,
-        }];
-      }
+      if (data) members = [{ user_id: data.id, user: data }];
     }
 
     if (members.length === 0) {
@@ -328,78 +325,133 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     for (const member of members) {
       const user = member.user as any;
-      const targetUserId = member.user_id || user.id; // user_id가 없을 수도 있음(users 테이블 직접 조회 시)
+      const uid = member.user_id || user.id;
 
-      // 해당 유저의 활성 목표 수
-      const { count: totalGoals } = await supabase
+      // 활성 목표
+      const { data: userGoals } = await supabase
         .from('user_goals')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', targetUserId)
+        .select('goal_id, frequency, target_count, start_date')
+        .eq('user_id', uid)
         .eq('is_active', true);
 
-      // 오늘 체크인 수
-      const { count: completedGoals } = await supabase
-        .from('checkins')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', targetUserId)
-        .eq('date', today);
+      // 오늘 해당되는 목표 필터링
+      const todayGoalIds: string[] = [];
+      for (const ug of userGoals ?? []) {
+        if (!isGoalActiveOnDate(ug, today)) continue;
 
-      const total = totalGoals ?? 0;
-      const completed = completedGoals ?? 0;
+        if (ug.frequency === 'daily') {
+          todayGoalIds.push(ug.goal_id);
+        } else if (ug.frequency === 'weekly_count') {
+          const practice = isPracticeWeek(ug.start_date, today);
+          if (practice) {
+            todayGoalIds.push(ug.goal_id); // 연습 주에도 목표에 포함
+          } else {
+            const weekDone = await getWeekDoneCount(uid, ug.goal_id, today);
+            if (weekDone < (ug.target_count ?? 1)) {
+              todayGoalIds.push(ug.goal_id);
+            }
+          }
+        } else {
+          todayGoalIds.push(ug.goal_id);
+        }
+      }
+
+      const total = todayGoalIds.length;
+
+      // 오늘 체크인
+      const { data: todayCheckins } = await supabase
+        .from('checkins')
+        .select('goal_id, status')
+        .eq('user_id', uid)
+        .eq('date', today)
+        .in('goal_id', total > 0 ? todayGoalIds : ['__none__']);
+
+      const doneCount = (todayCheckins ?? []).filter((c: any) => c.status === 'done').length;
+      const passCount = (todayCheckins ?? []).filter((c: any) => c.status === 'pass').length;
+      const effectiveTotal = total - passCount;
 
       progress.push({
-        userId: targetUserId,
+        userId: uid,
         nickname: user?.nickname ?? '알 수 없음',
         profileImageUrl: user?.profile_image_url ?? null,
-        totalGoals: total,
-        completedGoals: completed,
-        position: getPosition(completed, total),
+        totalGoals: effectiveTotal > 0 ? effectiveTotal : total,
+        completedGoals: doneCount,
+        position: getPosition(doneCount, effectiveTotal > 0 ? effectiveTotal : total),
       });
     }
 
     set({ memberProgress: progress });
   },
 
+  // ── 캘린더 마킹 ──
   fetchCalendarMarkings: async (userId, yearMonth) => {
-    // yearMonth: 'YYYY-MM'
     const startDate = `${yearMonth}-01`;
     const endDate = dayjs(startDate).endOf('month').format('YYYY-MM-DD');
 
-    const { data } = await supabase
+    const { data: checkins } = await supabase
       .from('checkins')
-      .select('date')
+      .select('date, status, goal_id')
       .eq('user_id', userId)
       .gte('date', startDate)
       .lte('date', endDate);
 
+    const { data: userGoals } = await supabase
+      .from('user_goals')
+      .select('goal_id, frequency, target_count, start_date')
+      .eq('user_id', userId)
+      .eq('is_active', true);
+
     const markings: CalendarDayMarking = {};
+    const today = dayjs().format('YYYY-MM-DD');
+    const daysInMonth = dayjs(startDate).daysInMonth();
 
-    if (data) {
-      // 날짜별 카운트
-      const counts: Record<string, number> = {};
-      data.forEach((c) => {
-        counts[c.date] = (counts[c.date] || 0) + 1;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = dayjs(startDate).date(d).format('YYYY-MM-DD');
+      if (dateStr > today) break;
+
+      // 해당 날짜에 유효한 목표 (start_date 이후 + frequency 규칙)
+      const activeGoals = (userGoals ?? []).filter((ug: any) => {
+        if (!isGoalActiveOnDate(ug, dateStr)) return false;
+        if (ug.frequency === 'daily') return true;
+        if (ug.frequency === 'weekly_count') return true; // weekly_count는 일단 모두 포함
+        return true;
       });
 
-      Object.entries(counts).forEach(([date, count]) => {
-        markings[date] = {
-          marked: true,
-          dotColor: '#4F46E5',
-          checkinCount: count,
-        };
-      });
+      const totalGoals = activeGoals.length;
+      if (totalGoals === 0) continue;
+
+      const dayCheckins = (checkins ?? []).filter((c) => c.date === dateStr);
+      const doneCount = dayCheckins.filter((c) => c.status === 'done').length;
+      const passCount = dayCheckins.filter((c) => c.status === 'pass').length;
+
+      let dayStatus: 'all_done' | 'mixed' | 'mostly_fail' | 'partial' | 'none' = 'none';
+      if (doneCount + passCount >= totalGoals && doneCount > 0) {
+        dayStatus = passCount > 0 ? 'mixed' : 'all_done';
+      } else if (doneCount > 0 || passCount > 0) {
+        dayStatus = 'partial';
+      } else {
+        dayStatus = 'mostly_fail';
+      }
+
+      markings[dateStr] = {
+        marked: true,
+        dotColor: dayStatus === 'all_done' ? '#4ADE80' : dayStatus === 'mixed' ? '#FBBF24' : '#EF4444',
+        checkinCount: doneCount + passCount,
+        dayStatus,
+        doneCount,
+        passCount,
+        totalGoals,
+      };
     }
 
     set({ calendarMarkings: markings });
   },
 
+  // ── 날짜별 체크인 ──
   fetchCheckinsForDate: async (userId, date) => {
     const { data } = await supabase
       .from('checkins')
-      .select(`
-        *,
-        goal:goals(id, name)
-      `)
+      .select('*, goal:goals(id, name)')
       .eq('user_id', userId)
       .eq('date', date)
       .order('created_at');
@@ -407,6 +459,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     set({ selectedDateCheckins: (data as CheckinWithGoal[]) ?? [] });
   },
 
+  // ── 월간 체크인 ──
   fetchMonthlyCheckins: async (userId, yearMonth) => {
     const startDate = `${yearMonth}-01`;
     const endDate = dayjs(startDate).endOf('month').format('YYYY-MM-DD');
@@ -420,5 +473,81 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .order('date');
 
     set({ monthlyCheckins: data ?? [] });
+  },
+
+  // ── 팀 멤버 날짜별 체크인 ──
+  fetchMemberDateCheckins: async (teamId, userId, date) => {
+    let members: any[] = [];
+
+    if (teamId) {
+      const { data } = await supabase
+        .from('team_members')
+        .select('user_id, user:users(id, nickname, profile_image_url)')
+        .eq('team_id', teamId);
+      members = data ?? [];
+    } else {
+      const { data } = await supabase
+        .from('users')
+        .select('id, nickname, profile_image_url')
+        .eq('id', userId)
+        .single();
+      if (data) members = [{ user_id: data.id, user: data }];
+    }
+
+    const summaries: MemberCheckinSummary[] = [];
+
+    for (const member of members) {
+      const u = member.user as any;
+      const uid = member.user_id || u.id;
+
+      // 활성 목표 (start_date 기준 필터링)
+      const { data: userGoals } = await supabase
+        .from('user_goals')
+        .select('goal_id, frequency, target_count, start_date')
+        .eq('user_id', uid)
+        .eq('is_active', true);
+
+      const activeGoalIds = (userGoals ?? [])
+        .filter((ug: any) => isGoalActiveOnDate(ug, date))
+        .map((ug: any) => ug.goal_id);
+
+      // 해당 날짜 체크인
+      const { data: checkins } = await supabase
+        .from('checkins')
+        .select('*, goal:goals(id, name)')
+        .eq('user_id', uid)
+        .eq('date', date)
+        .order('created_at');
+
+      const typedCheckins = (checkins ?? []) as CheckinWithGoal[];
+      const doneCount = typedCheckins.filter((c) => c.status === 'done').length;
+      const passCount = typedCheckins.filter((c) => c.status === 'pass').length;
+
+      summaries.push({
+        userId: uid,
+        nickname: u?.nickname ?? '알 수 없음',
+        profileImageUrl: u?.profile_image_url ?? null,
+        checkins: typedCheckins,
+        totalGoals: activeGoalIds.length,
+        doneCount,
+        passCount,
+      });
+    }
+
+    set({ memberDateCheckins: summaries });
+  },
+
+  reset: () => {
+    set({
+      teamGoals: [],
+      myGoals: [],
+      todayCheckins: [],
+      memberProgress: [],
+      calendarMarkings: {},
+      selectedDateCheckins: [],
+      monthlyCheckins: [],
+      memberDateCheckins: [],
+      isLoading: false,
+    });
   },
 }));

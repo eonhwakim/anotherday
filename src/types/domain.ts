@@ -47,15 +47,17 @@ export interface Goal {
 }
 
 /** 개인이 선택한 목표 */
-export type GoalFrequency = 'daily' | 'weekly';
+export type GoalFrequency = 'daily' | 'weekly_count';
 
 export interface UserGoal {
   id: string;
   user_id: string;
   goal_id: string;
   is_active: boolean;
-  frequency: GoalFrequency; // 'daily' | 'weekly'
-  week_days: number[] | null; // 0(일) ~ 6(토). weekly일 때만 유효
+  frequency: GoalFrequency; // 'daily' | 'weekly_count'
+  target_count: number | null; // weekly_count일 때 주 N회
+  start_date: string | null; // 목표 시작일 (YYYY-MM-DD), 이 날짜부터 유효
+  week_days: number[] | null; // deprecated, 호환용
   created_at: string;
 }
 
@@ -120,11 +122,27 @@ export interface MemberProgress {
   position: MountainPosition;
 }
 
-/** 캘린더 날짜별 체크인 수 마킹 */
+/** 캘린더 날짜별 상태 마킹 */
 export interface CalendarDayMarking {
   [date: string]: {
     marked: boolean;
     dotColor?: string;
     checkinCount: number;
+    /** 상태: all_done(✅), mixed(✅💤), mostly_fail(❌), partial */
+    dayStatus?: 'all_done' | 'mixed' | 'mostly_fail' | 'partial' | 'none';
+    doneCount?: number;
+    passCount?: number;
+    totalGoals?: number;
   };
+}
+
+/** 팀 멤버 체크인 (캘린더 상세용) */
+export interface MemberCheckinSummary {
+  userId: string;
+  nickname: string;
+  profileImageUrl: string | null;
+  checkins: CheckinWithGoal[];
+  totalGoals: number;
+  doneCount: number;
+  passCount: number;
 }

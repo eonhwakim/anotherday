@@ -19,6 +19,8 @@ interface TeamState {
   selectTeam: (team: Team) => void;
   /** 팀 생성 (회원가입 시 기본 팀 생성 등) */
   createTeam: (name: string, userId: string) => Promise<Team | null>;
+  /** 스토어 초기화 (로그아웃 시) */
+  reset: () => void;
 }
 
 export const useTeamStore = create<TeamState>((set, get) => ({
@@ -46,14 +48,17 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         const teamList = teams ?? [];
         set({ teams: teamList });
 
-        // 현재 팀이 없으면 첫 번째 팀 자동 선택
-        if (!get().currentTeam && teamList.length > 0) {
+        // 현재 팀이 이 유저의 팀 목록에 없으면 첫 번째 팀으로 재설정
+        const current = get().currentTeam;
+        const currentStillValid = current && teamList.some((t) => t.id === current.id);
+        if (!currentStillValid && teamList.length > 0) {
           set({ currentTeam: teamList[0] });
-          // 멤버도 바로 로드
           get().fetchMembers(teamList[0].id);
+        } else if (!currentStillValid) {
+          set({ currentTeam: null, members: [] });
         }
       } else {
-        set({ teams: [] });
+        set({ teams: [], currentTeam: null, members: [] });
       }
     } finally {
       set({ isLoading: false });
@@ -77,23 +82,19 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   createTeam: async (name, userId) => {
-    // 간단한 초대 코드 생성 (6자리 랜덤)
-    const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    const { data: team, error } = await supabase
-      .from('teams')
-      .insert({ name, invite_code: inviteCode })
-      .select()
-      .single();
-
-    if (error || !team) return null;
-
-    // 생성자를 leader로 team_members에 추가
-    await supabase.from('team_members').insert({
-      team_id: team.id,
-      user_id: userId,
-      role: 'leader',
+    // RPC로 팀 생성 + 멤버 등록을 한 트랜잭션으로 처리
+    // (RLS SELECT 정책이 team_members 기반이라, INSERT 후 .select()가 안 되는 문제 해결)
+    const { data, error } = await supabase.rpc('create_team_with_member', {
+      team_name: name,
+      member_user_id: userId,
     });
+
+    if (error || !data) {
+      console.error('[TeamStore] createTeam RPC error:', error?.message);
+      return null;
+    }
+
+    const team = data as Team;
 
     set((state) => ({
       teams: [...state.teams, team],
@@ -101,5 +102,9 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     }));
 
     return team;
+  },
+
+  reset: () => {
+    set({ currentTeam: null, members: [], teams: [], isLoading: false });
   },
 }));

@@ -73,6 +73,7 @@ export default function MountainProgress({ members, startAnimation, isNight, tim
             totalMembers={members.length}
             containerWidth={containerWidth}
             avatarColor={AVATAR_COLORS[idx % AVATAR_COLORS.length]}
+            startAnimation={startAnimation}
           />
         ))}
       </View>
@@ -643,25 +644,84 @@ function GeometricParticle({ emoji, index }: any) {
   );
 }
 
-function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatarColor }: any) {
+function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatarColor, startAnimation }: any) {
   const progress = Math.min(1, Math.max(0, member.totalGoals > 0 ? member.completedGoals / member.totalGoals : 0));
   const spreadOffset = totalMembers > 1 ? ((index / (totalMembers - 1)) * 2 - 1) * 20 : 0;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
+  const displayPercent = useRef(new Animated.Value(0)).current;
+  const hasStarted = useRef(false);
 
-  useEffect(() => { Animated.spring(progressAnim, { toValue: progress, tension: 10, friction: 8, useNativeDriver: false }).start(); }, [progress]);
-  useEffect(() => { Animated.loop(Animated.sequence([
-    Animated.timing(bounceAnim, { toValue: -4, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
-    Animated.timing(bounceAnim, { toValue: 0, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
-  ])).start(); }, []);
+  // startAnimation이 true가 되면 0% → 목표 퍼센트까지 클라이밍 시작
+  useEffect(() => {
+    if (startAnimation && !hasStarted.current) {
+      hasStarted.current = true;
+      // 멤버별로 약간의 딜레이를 줘서 순차적으로 올라가는 느낌
+      const delay = index * 200;
+      setTimeout(() => {
+        Animated.timing(progressAnim, {
+          toValue: progress,
+          duration: 1200 + progress * 800, // 높이 올라갈수록 더 오래 걸림
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start();
+        Animated.timing(displayPercent, {
+          toValue: progress * 100,
+          duration: 1200 + progress * 800,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start();
+      }, delay);
+    }
+  }, [startAnimation, progress]);
+
+  // 데이터가 변경될 때 (이미 애니메이션 시작 후 리프레시)
+  useEffect(() => {
+    if (hasStarted.current) {
+      Animated.timing(progressAnim, {
+        toValue: progress,
+        duration: 600,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+      Animated.timing(displayPercent, {
+        toValue: progress * 100,
+        duration: 600,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [progress]);
+
+  // 통통 바운스 (클라이밍 시작 후에만)
+  useEffect(() => {
+    if (startAnimation) {
+      const delay = index * 200 + 400;
+      const timeout = setTimeout(() => {
+        Animated.loop(Animated.sequence([
+          Animated.timing(bounceAnim, { toValue: -4, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+          Animated.timing(bounceAnim, { toValue: 0, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+        ])).start();
+      }, delay);
+      return () => clearTimeout(timeout);
+    }
+  }, [startAnimation]);
 
   const animatedLeft = progressAnim.interpolate({ inputRange: TRAIL_INPUT_RANGE, outputRange: TRAIL_POINTS.map(pt => (pt.x / SVG_W) * containerWidth + spreadOffset) });
   const animatedTop = progressAnim.interpolate({ inputRange: TRAIL_INPUT_RANGE, outputRange: TRAIL_POINTS.map(pt => (pt.y / SVG_H) * CONTAINER_HEIGHT) });
 
+  // 퍼센트 텍스트를 애니메이션 값으로 표시
+  const AnimatedText = Animated.createAnimatedComponent(Text);
+  const percentText = displayPercent.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0', '100'],
+    extrapolate: 'clamp',
+  });
+
   return (
     <Animated.View style={[styles.characterWrapper, { left: animatedLeft, top: Animated.add(animatedTop, bounceAnim) }]}>
       <View style={[styles.bubble, { borderColor: avatarColor + '50' }]}>
-        <Text style={styles.bubbleText}>{Math.floor(progress * 100)}%</Text>
+        <PercentLabel value={displayPercent} color={COLORS.text} />
       </View>
       <View style={[styles.bubbleTail, { borderTopColor: avatarColor + '50' }]} />
       <View style={[styles.avatarGlow, { shadowColor: avatarColor }]}>
@@ -676,6 +736,20 @@ function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatar
       <View style={[styles.shadow, { backgroundColor: avatarColor + '15' }]} />
     </Animated.View>
   );
+}
+
+/** 퍼센트 숫자가 올라가는 라벨 */
+function PercentLabel({ value, color }: { value: Animated.Value; color: string }) {
+  const [display, setDisplay] = useState('0%');
+
+  useEffect(() => {
+    const id = value.addListener(({ value: v }) => {
+      setDisplay(`${Math.floor(v)}%`);
+    });
+    return () => value.removeListener(id);
+  }, [value]);
+
+  return <Text style={[styles.bubbleText, { color }]}>{display}</Text>;
 }
 
 const styles = StyleSheet.create({
