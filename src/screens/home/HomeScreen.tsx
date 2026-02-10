@@ -527,14 +527,14 @@ const styles = StyleSheet.create({
   testBtn: {
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: COLORS.glass,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
-    borderColor: COLORS.glassBorder,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   testBtnActive: {
-    backgroundColor: 'rgba(0,240,212,0.08)',
-    borderColor: 'rgba(0,240,212,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.20)',
   },
   testBtnText: {
     fontSize: 14,
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   goalDarkBg: {
-    backgroundColor: '#08081A',
+    backgroundColor: '#000000',
   },
   goalSection: {
     paddingHorizontal: 24,

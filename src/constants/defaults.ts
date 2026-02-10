@@ -16,49 +16,49 @@ export const MOUNTAIN_THRESHOLDS = {
   SUMMIT: 1.0,
 } as const;
 
-/** 앱 색상 팔레트 (Holographic Dark) */
+/** 앱 색상 팔레트 (Black + Liquid Glass) */
 export const COLORS = {
-  primary: '#6C5CE7',
-  primaryDark: '#5A4BD1',
-  primaryLight: '#A29BFE',
-  secondary: '#fcfc03',//'#00F0D4',
-  secondaryDark: '#F0F0FF',
+  primary: '#FFFFFF',
+  primaryDark: '#E0E0E0',
+  primaryLight: 'rgba(255,255,255,0.70)',
+  secondary: '#FFFFFF',
+  secondaryDark: '#F0F0F0',
 
-  background: '#050510',      // 딥 블랙 (더 깊게)
-  backgroundLight: '#0A0A1A',
-  surface: '#0F0F28',         // 어두운 표면
-  surfaceLight: '#181840',
+  background: '#000000',
+  backgroundLight: '#060606',
+  surface: '#0A0A0A',
+  surfaceLight: '#141414',
 
-  text: '#F0F0FF',
-  textSecondary: 'rgba(240,240,255,0.50)',
-  textMuted: 'rgba(240,240,255,0.22)',
+  text: '#FFFFFF',
+  textSecondary: 'rgba(255,255,255,0.45)',
+  textMuted: 'rgba(255,255,255,0.20)',
 
   border: 'rgba(255,255,255,0.04)',
   borderLight: 'rgba(255,255,255,0.10)',
 
-  success: '#00FFB2',         // 네온 민트 (더 생생)
+  success: '#FFFFFF',
   warning: '#FFB547',
   error: '#FF6B6B',
 
-  accent: '#FF69B4',          // 핫핑크 (더 생생)
+  accent: '#FFFFFF',
   accentYellow: '#FFD93D',
 
-  // 홀로그래픽 컬러 (이리데센트 효과)
-  holoCyan: '#00F5FF',
-  holoMint: '#00FF88',
-  holoPink: '#FF69B4',
-  holoLavender: '#A29BFE',
+  // 홀로그래픽 컬러 (호환용)
+  holoCyan: '#FFFFFF',
+  holoMint: '#FFFFFF',
+  holoPink: '#FFFFFF',
+  holoLavender: '#FFFFFF',
 
-  // 유리 효과
-  glass: 'rgba(255,255,255,0.04)',
-  glassBorder: 'rgba(255,255,255,0.06)',
-  glassLight: 'rgba(255,255,255,0.08)',
+  // 리퀴드 글래스
+  glass: 'rgba(255,255,255,0.03)',
+  glassBorder: 'rgba(255,255,255,0.08)',
+  glassLight: 'rgba(255,255,255,0.06)',
 
   // 호환용
-  sky: '#050510',
-  grass: '#0F0F28',
-  wood: '#181840',
-  cloud: 'rgba(255,255,255,0.04)',
+  sky: '#000000',
+  grass: '#0A0A0A',
+  wood: '#141414',
+  cloud: 'rgba(255,255,255,0.03)',
 } as const;
 
 /** 계절별 테마 (Holographic Neon) */

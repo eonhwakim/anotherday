@@ -6,9 +6,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
-  View,
 } from 'react-native';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { COLORS } from '../../constants/defaults';
 
 interface ButtonProps {
@@ -46,24 +44,8 @@ export default function Button({
       disabled={isDisabled}
       activeOpacity={0.7}
     >
-      {/* 홀로그래픽 그라디언트 배경 (primary) */}
-      {variant === 'primary' && !isDisabled && (
-        <Svg style={StyleSheet.absoluteFill}>
-          <Defs>
-            <LinearGradient id="holoBtn" x1="0" y1="0.5" x2="1" y2="0.5">
-              <Stop offset="0%" stopColor={COLORS.secondary} />
-              <Stop offset="35%" stopColor="#2EE8A5" />
-              <Stop offset="65%" stopColor={COLORS.holoCyan} />
-              <Stop offset="100%" stopColor={COLORS.secondary} />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#holoBtn)" rx={14} />
-        </Svg>
-      )}
       {loading ? (
-        <ActivityIndicator
-          color={variant === 'outline' ? COLORS.primaryLight : '#fff'}
-        />
+        <ActivityIndicator color="rgba(255,255,255,0.70)" />
       ) : (
         <Text
           style={[
@@ -84,29 +66,31 @@ export default function Button({
 const styles = StyleSheet.create({
   container: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
     overflow: 'hidden',
   },
   primary: {
-    backgroundColor: COLORS.secondary,
-    shadowColor: COLORS.secondary,
-    shadowOffset: { width: 0, height: 4 },
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    shadowColor: 'rgba(255,255,255,0.08)',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowRadius: 12,
+    elevation: 3,
   },
   secondary: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: COLORS.primaryLight,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   disabled: {
     opacity: 0.3,
@@ -119,12 +103,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   primaryText: {
-    color: '#000',
+    color: 'rgba(255,255,255,0.85)',
   },
   outlineText: {
-    color: COLORS.primaryLight,
+    color: 'rgba(255,255,255,0.60)',
   },
   secondaryText: {
-    color: COLORS.text,
+    color: 'rgba(255,255,255,0.50)',
   },
 });

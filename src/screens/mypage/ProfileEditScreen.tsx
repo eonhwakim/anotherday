@@ -141,7 +141,7 @@ export default function ProfileEditScreen() {
 
             <Text style={styles.label}>성별</Text>
             <View style={styles.genderContainer}>
-              {['남성', '여성', '기타'].map((g) => (
+              {['남성', '여성'].map((g) => (
                 <TouchableOpacity
                   key={g}
                   style={[
@@ -218,24 +218,24 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   placeholderImage: {
-    backgroundColor: 'rgba(108,92,231,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(108,92,231,0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   cameraIcon: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: COLORS.primary,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
   },
   form: {
     padding: 16,
@@ -257,28 +257,28 @@ const styles = StyleSheet.create({
   genderBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.glassBorder,
+    borderColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
-    backgroundColor: COLORS.glass,
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   genderBtnActive: {
-    borderColor: 'rgba(108,92,231,0.4)',
-    backgroundColor: 'rgba(108,92,231,0.1)',
+    borderColor: 'rgba(255,255,255,0.20)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   genderText: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: 'rgba(255,255,255,0.50)',
   },
   genderTextActive: {
-    color: COLORS.primaryLight,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   footer: {
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    backgroundColor: COLORS.backgroundLight,
+    borderTopColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: COLORS.background,
   },
 });
