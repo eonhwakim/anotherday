@@ -185,7 +185,7 @@ export default function HomeScreen() {
 // ─── 시간대별 배경 ───
 
 const SKY_COLORS = {
-  DAY:    { top: '#6AB0D8', mid: '#88C4E0', bot: '#A0D4EC', orb1: '#FFFFFF', orb2: '#C0E0F0', orb3: '#FFFFFF' },
+  DAY:    { top: '#F0F8FF', mid: '#88C4E0', bot: '#A0D4EC', orb1: '#FFFFFF', orb2: '#C0E0F0', orb3: '#FFFFFF' },
   SUNSET: { top: '#6AB0D8', mid: '#FFB898', bot: '#FFD0B8', orb1: '#FFE0D0', orb2: '#FFB090', orb3: '#FFC0A8' },
   NIGHT:  { top: '#020208', mid: '#030310', bot: '#050510', orb1: COLORS.holoLavender, orb2: '#3030A0', orb3: '#181850' },
 } as const;

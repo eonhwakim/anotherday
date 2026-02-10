@@ -90,6 +90,7 @@ interface GoalState {
     date?: string;
     photoUrl?: string | null;
     memo?: string | null;
+    status?: 'done' | 'pass';
   }) => Promise<boolean>;
   toggleUserGoal: (userId: string, goalId: string) => Promise<void>;
   addGoal: (params: {
@@ -131,12 +132,16 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .order('created_at');
 
     if (userId) {
-      if (teamId) {
+      if (teamId && teamId.trim().length > 0) {
         query = query.or(`team_id.eq.${teamId},owner_id.eq.${userId}`);
       } else {
         query = query.eq('owner_id', userId);
       }
     } else {
+      if (!teamId || teamId.trim().length === 0) {
+        set({ teamGoals: [] });
+        return;
+      }
       query = query.eq('team_id', teamId);
     }
 
@@ -167,7 +172,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   },
 
   // ── 체크인 생성 ──
-  createCheckin: async ({ userId, goalId, date, photoUrl, memo }) => {
+  createCheckin: async ({ userId, goalId, date, photoUrl, memo, status = 'done' }) => {
     const checkinDate = date ?? dayjs().format('YYYY-MM-DD');
 
     const { data: existing } = await supabase
@@ -186,6 +191,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       date: checkinDate,
       photo_url: photoUrl ?? null,
       memo: memo ?? null,
+      status,
     });
 
     if (error) return false;
@@ -366,8 +372,8 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         .eq('date', today)
         .in('goal_id', total > 0 ? todayGoalIds : ['__none__']);
 
-      const doneCount = (todayCheckins ?? []).filter((c: any) => c.status === 'done').length;
-      const passCount = (todayCheckins ?? []).filter((c: any) => c.status === 'pass').length;
+      const doneCount = (todayCheckins ?? []).filter((c: any) => c.status === 'done' && !(c.memo && c.memo.startsWith('[패스]'))).length;
+      const passCount = (todayCheckins ?? []).filter((c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]'))).length;
       const effectiveTotal = total - passCount;
 
       progress.push({
@@ -390,7 +396,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     const { data: checkins } = await supabase
       .from('checkins')
-      .select('date, status, goal_id')
+      .select('date, status, goal_id, memo')
       .eq('user_id', userId)
       .gte('date', startDate)
       .lte('date', endDate);
@@ -421,8 +427,8 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       if (totalGoals === 0) continue;
 
       const dayCheckins = (checkins ?? []).filter((c) => c.date === dateStr);
-      const doneCount = dayCheckins.filter((c) => c.status === 'done').length;
-      const passCount = dayCheckins.filter((c) => c.status === 'pass').length;
+      const doneCount = dayCheckins.filter((c) => c.status === 'done' && !(c.memo && (c.memo as string).startsWith('[패스]'))).length;
+      const passCount = dayCheckins.filter((c) => c.status === 'pass' || (c.memo && (c.memo as string).startsWith('[패스]'))).length;
 
       let dayStatus: 'all_done' | 'mixed' | 'mostly_fail' | 'partial' | 'none' = 'none';
       if (doneCount + passCount >= totalGoals && doneCount > 0) {
@@ -520,8 +526,8 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         .order('created_at');
 
       const typedCheckins = (checkins ?? []) as CheckinWithGoal[];
-      const doneCount = typedCheckins.filter((c) => c.status === 'done').length;
-      const passCount = typedCheckins.filter((c) => c.status === 'pass').length;
+      const doneCount = typedCheckins.filter((c) => c.status === 'done' && !(c.memo && (c.memo as string).startsWith('[패스]'))).length;
+      const passCount = typedCheckins.filter((c) => c.status === 'pass' || (c.memo && (c.memo as string).startsWith('[패스]'))).length;
 
       summaries.push({
         userId: uid,

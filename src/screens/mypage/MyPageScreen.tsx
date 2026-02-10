@@ -201,8 +201,12 @@ export default function MyPageScreen() {
     const today = dayjs().format('YYYY-MM-DD');
     const daysInMonth = dayjs(startDate).daysInMonth();
 
-    const doneTotal = checkins.filter((c) => c.status === 'done').length;
-    const passTotal = checkins.filter((c) => c.status === 'pass').length;
+    // 패스 판별 헬퍼 (status='pass' 또는 memo가 '[패스]'로 시작하면 패스)
+    const isPass = (c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]'));
+    const isDone = (c: any) => !isPass(c);
+
+    const doneTotal = checkins.filter(isDone).length;
+    const passTotal = checkins.filter(isPass).length;
 
     // 날짜별 퍼센트 계산 (PASS 제외)
     const dailyPercents: number[] = [];
@@ -227,8 +231,8 @@ export default function MyPageScreen() {
       if (totalForDay === 0) continue;
 
       const dayCheckins = checkins.filter((c) => c.date === dateStr);
-      const done = dayCheckins.filter((c) => c.status === 'done').length;
-      const pass = dayCheckins.filter((c) => c.status === 'pass').length;
+      const done = dayCheckins.filter(isDone).length;
+      const pass = dayCheckins.filter(isPass).length;
       const effectiveTotal = totalForDay - pass;
       const pct = effectiveTotal > 0 ? (done / effectiveTotal) * 100 : (done > 0 ? 100 : 0);
       dailyPercents.push(pct);
@@ -237,13 +241,13 @@ export default function MyPageScreen() {
       todayGoals.forEach((ug) => {
         const gid = ug.goal_id;
         const c = dayCheckins.find((ci) => ci.goal_id === gid);
-        if (c?.status === 'done') {
-          goalDoneMap[gid] = (goalDoneMap[gid] || 0) + 1;
-        } else if (c?.status === 'pass') {
+        if (!c) {
+          goalFailMap[gid] = (goalFailMap[gid] || 0) + 1;
+        } else if (isPass(c)) {
           goalPassMap[gid] = (goalPassMap[gid] || 0) + 1;
           if (c.memo) passReasons.push(c.memo);
         } else {
-          goalFailMap[gid] = (goalFailMap[gid] || 0) + 1;
+          goalDoneMap[gid] = (goalDoneMap[gid] || 0) + 1;
         }
       });
     }
@@ -423,8 +427,12 @@ export default function MyPageScreen() {
 
           {/* DONE / PASS 카운트 */}
           <View style={[styles.statsRow, { marginTop: 16 }]}>
-            <StatItem label="완료" value={`${monthlyStats.doneTotal}회`} icon="checkmark-circle" color="#fff" />
-            <StatItem label="패스" value={`${monthlyStats.passTotal}/5`} icon="pause-circle" color="#FFB547" />
+            <StatItem 
+              label="체크인" 
+              value={`${monthlyStats.passTotal} 패스 ${monthlyStats.doneTotal} 완료`} 
+              icon="checkmark-circle" 
+              color="#fff" 
+            />
             <StatItem label="소속 팀" value={`${teams?.length ?? 0}개`} icon="people" color="rgba(255,255,255,0.60)" />
           </View>
 

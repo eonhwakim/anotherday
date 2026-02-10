@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,15 +7,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useTeamStore } from '../../stores/teamStore';
+import MemberProfileModal from '../../components/calendar/MemberProfileModal';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
 
-const STATUS_EMOJI: Record<string, string> = {
-  all_done: '✅',
-  mixed: '💤',
-  mostly_fail: '❌',
-  partial: '🔸',
-  none: '',
+const STATUS_IMAGES: Record<string, any> = {
+  all_done: require('../../../assets/wow.png'),
+  mixed: require('../../../assets/boom.png'),
+  mostly_fail: require('../../../assets/oops.png'),
+  partial: require('../../../assets/bang.png'),
+  none: null,
 };
 
 export default function CalendarScreen() {
@@ -36,6 +37,7 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
   const [photoModal, setPhotoModal] = useState<string | null>(null);
+  const [selectedMember, setSelectedMember] = useState<{ userId: string; nickname: string; profileImageUrl: string | null } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -118,12 +120,16 @@ export default function CalendarScreen() {
           <Text style={styles.dateSummaryTitle}>{formattedDate}</Text>
           {selectedMarking && (
             <View style={styles.statusRow}>
-              <Text style={styles.statusEmoji}>
-                {STATUS_EMOJI[selectedMarking.dayStatus ?? 'none']}
-              </Text>
+              {STATUS_IMAGES[selectedMarking.dayStatus ?? 'none'] && (
+                <Image
+                  source={STATUS_IMAGES[selectedMarking.dayStatus ?? 'none']}
+                  style={styles.statusImage}
+                  resizeMode="contain"
+                />
+              )}
               <Text style={styles.statusText}>
+                {(selectedMarking.passCount ?? 0) > 0 && ` ${selectedMarking.passCount}패스 · `}
                 {selectedMarking.doneCount ?? 0}완료
-                {(selectedMarking.passCount ?? 0) > 0 && ` · ${selectedMarking.passCount}패스`}
                 {' / '}{selectedMarking.totalGoals ?? 0}개 목표
               </Text>
               {selectedMarking.totalGoals && selectedMarking.totalGoals > 0 && (
@@ -150,7 +156,16 @@ export default function CalendarScreen() {
             {memberDateCheckins.map((member) => (
               <View key={member.userId} style={styles.memberCard}>
                 {/* 멤버 헤더 */}
-                <View style={styles.memberHeader}>
+                <TouchableOpacity 
+                  style={styles.memberHeader}
+                  onPress={() => {
+                    setSelectedMember({
+                      userId: member.userId,
+                      nickname: member.nickname,
+                      profileImageUrl: member.profileImageUrl,
+                    });
+                  }}
+                >
                   <View style={styles.memberAvatar}>
                     {member.profileImageUrl ? (
                       <Image source={{ uri: member.profileImageUrl }} style={styles.memberAvatarImg} />
@@ -160,11 +175,10 @@ export default function CalendarScreen() {
                   </View>
                   <Text style={styles.memberName}>{member.nickname}</Text>
                   <Text style={styles.memberStat}>
-                    {member.doneCount}완료
-                    {member.passCount > 0 && ` · ${member.passCount}패스`}
-                    {' / '}{member.totalGoals}
+                    {member.passCount > 0 && `${member.passCount} 패스 `}
+                    {member.doneCount} 완료 / {member.totalGoals}
                   </Text>
-                </View>
+                </TouchableOpacity>
 
                 {/* 체크인 목록 */}
                 {member.checkins.length === 0 && (
@@ -230,6 +244,17 @@ export default function CalendarScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── 멤버 프로필 모달 ── */}
+      {selectedMember && (
+        <MemberProfileModal
+          visible={!!selectedMember}
+          userId={selectedMember.userId}
+          nickname={selectedMember.nickname}
+          profileImageUrl={selectedMember.profileImageUrl}
+          onClose={() => setSelectedMember(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -261,7 +286,7 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
   },
-  statusEmoji: { fontSize: 16 },
+  statusImage: { width: 32, height: 32 },
   statusText: {
     fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.60)', flex: 1,
   },

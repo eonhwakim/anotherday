@@ -63,18 +63,37 @@ export default function CheckinModal({
   const handleSuccess = async (goalId: string) => {
     if (!user) return;
     setSelectedGoalId(goalId);
+
+    // 1) 카메라 촬영 (모달 외부에서 실행 — 카메라 UI가 먼저 나와야 함)
+    let imageUri: string | null = null;
+    try {
+      imageUri = await takePhoto();
+    } catch (cameraErr: any) {
+      console.error('[Checkin] 카메라 오류:', cameraErr);
+      Alert.alert('카메라 오류', '카메라를 실행할 수 없습니다.\n앱 설정에서 카메라 권한을 확인해주세요.');
+      setSelectedGoalId(null);
+      return;
+    }
+
+    if (!imageUri) {
+      // 사용자가 취소했거나 권한 없음
+      setSelectedGoalId(null);
+      return;
+    }
+
+    // 2) 이제부터 로딩 표시
     setIsLoading(true);
 
     try {
-      const imageUri = await takePhoto();
-      if (!imageUri) {
-        setIsLoading(false);
-        setSelectedGoalId(null);
-        return;
+      // 3) 사진 업로드 (실패해도 체크인은 진행)
+      let photoUrl: string | null = null;
+      try {
+        photoUrl = await uploadCheckinPhoto(user.id, imageUri);
+      } catch (uploadErr) {
+        console.warn('[Checkin] 사진 업로드 실패, 사진 없이 진행:', uploadErr);
       }
 
-      const photoUrl = await uploadCheckinPhoto(user.id, imageUri);
-
+      // 4) 체크인 생성
       const success = await createCheckin({
         userId: user.id,
         goalId,
@@ -83,14 +102,15 @@ export default function CheckinModal({
       });
 
       if (success) {
-        Alert.alert('인증 완료!', '사진 인증이 완료되었어요.');
+        Alert.alert('인증 완료!', photoUrl ? '사진 인증이 완료되었어요.' : '인증이 완료되었어요. (사진 업로드 실패)');
         onCheckinDone?.();
         onClose();
       } else {
         Alert.alert('알림', '이미 인증이 완료된 목표입니다.');
       }
-    } catch {
-      Alert.alert('오류', '인증 중 문제가 발생했어요.');
+    } catch (e: any) {
+      console.error('[Checkin] handleSuccess error:', e);
+      Alert.alert('오류', `인증 처리 중 문제가 발생했어요.\n${e?.message ?? ''}`);
     } finally {
       setIsLoading(false);
       setSelectedGoalId(null);
@@ -117,6 +137,7 @@ export default function CheckinModal({
         goalId: selectedGoalId,
         date,
         memo: `[패스] ${passReason.trim()}`,
+        status: 'pass',
       });
 
       if (success) {
@@ -252,7 +273,7 @@ export default function CheckinModal({
                             <Ionicons
                               name="camera"
                               size={15}
-                              color="#fff"
+                              color="black"
                             />
                             <Text style={styles.successBtnText}>
                               성공

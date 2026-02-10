@@ -110,8 +110,8 @@ function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme;
             </LinearGradient>
             {/* 메인 산 — 선명한 하늘빛 */}
             <LinearGradient id="dayMain" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#70A8D0" stopOpacity="0.60" />
-              <Stop offset="40%" stopColor="#85B8DC" stopOpacity="0.50" />
+              <Stop offset="0%" stopColor="#5f656aff" stopOpacity="0.60" />
+              <Stop offset="40%" stopColor="#7c8f9dff" stopOpacity="0.50" />
               <Stop offset="80%" stopColor="#9CC8E8" stopOpacity="0.45" />
               <Stop offset="100%" stopColor="#B0D8F0" stopOpacity="0.40" />
             </LinearGradient>
@@ -160,10 +160,10 @@ function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme;
             </LinearGradient>
             {/* 메인 산 — 밤과 같은 색상 */}
             <LinearGradient id="sunsetMain" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor={theme.accent} stopOpacity="0.20" />
-              <Stop offset="40%" stopColor={COLORS.primary} stopOpacity="0.10" />
-              <Stop offset="80%" stopColor={COLORS.surface} stopOpacity="0.20" />
-              <Stop offset="100%" stopColor={COLORS.surface} stopOpacity="0.20" />
+              <Stop offset="0%" stopColor="#5f656aff" stopOpacity="0.60" />
+              <Stop offset="40%" stopColor="#7c8f9dff" stopOpacity="0.50" />
+              <Stop offset="80%" stopColor={COLORS.primary} stopOpacity="0.45" />
+              <Stop offset="100%" stopColor='#FFE0B0' stopOpacity="0.40" />
             </LinearGradient>
             {/* 노을 안개 */}
             <LinearGradient id="sunsetHaze" x1="0" y1="0" x2="0" y2="1">
@@ -675,6 +675,17 @@ function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatar
     }
   }, [startAnimation, progress]);
 
+  // startAnimation이 false가 되면 (탭 이동 등으로 포커스 아웃됐다가 다시 돌아올 때)
+  // 상태를 리셋하여 0%부터 다시 시작하도록 함
+  useEffect(() => {
+    if (!startAnimation) {
+      hasStarted.current = false;
+      progressAnim.setValue(0);
+      displayPercent.setValue(0);
+      bounceAnim.setValue(0);
+    }
+  }, [startAnimation]);
+
   // 데이터가 변경될 때 (이미 애니메이션 시작 후 리프레시)
   useEffect(() => {
     if (hasStarted.current) {
@@ -749,15 +760,15 @@ function PercentLabel({ value, color }: { value: Animated.Value; color: string }
     return () => value.removeListener(id);
   }, [value]);
 
-  return <Text style={[styles.bubbleText, { color }]}>{display}</Text>;
+  return <Text style={[styles.bubbleText, { color, textAlign: 'center' }]}>{display}</Text>;
 }
 
 const styles = StyleSheet.create({
   sceneContainer: { width: '100%', height: CONTAINER_HEIGHT, alignItems: 'center', justifyContent: 'center' },
   sceneInner: { width: '100%', height: '100%' },
-  characterWrapper: { position: 'absolute', alignItems: 'center', width: 40, marginLeft: -20, marginTop: -40, zIndex: 20 },
-  bubble: { backgroundColor: 'rgba(5,5,16,0.75)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, marginBottom: 0 },
-  bubbleText: { fontSize: 10, fontWeight: '700', color: COLORS.text },
+  characterWrapper: { position: 'absolute', alignItems: 'center', marginLeft: -20, marginTop: -40, zIndex: 20 },
+  bubble: { backgroundColor: 'rgba(5,5,16,0.75)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, marginBottom: 0 },
+  bubbleText: { fontSize: 10, fontWeight: '700', color: COLORS.text, flexShrink: 0 },
   bubbleTail: { width: 0, height: 0, borderLeftWidth: 3, borderRightWidth: 3, borderTopWidth: 4, borderLeftColor: 'transparent', borderRightColor: 'transparent', marginBottom: 2 },
   avatarGlow: { shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 10, elevation: 8, zIndex: 2, borderRadius: 18 },
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, overflow: 'hidden' },
