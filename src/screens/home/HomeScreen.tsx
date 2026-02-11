@@ -193,9 +193,9 @@ const SKY_COLORS = {
 function SkyBackground({ timePeriod }: { timePeriod: 'DAY' | 'SUNSET' | 'NIGHT' }) {
   const c = SKY_COLORS[timePeriod];
   return (
-    <Svg width="100%" height="100%" viewBox="0 0 400 800" preserveAspectRatio="none">
+    <Svg width="100%" height="100%" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice">
       <Defs>
-        <LinearGradient id="skyG" x1="0" y1="0" x2="0.3" y2="1">
+        <LinearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0%" stopColor={c.top} />
           <Stop offset="50%" stopColor={c.mid} />
           <Stop offset="100%" stopColor={c.bot} />
@@ -507,10 +507,14 @@ function Stars() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: '#000000',
   },
   bgLayer: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '80%',
   },
   decorLayer: {
     ...StyleSheet.absoluteFillObject,
