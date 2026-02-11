@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Auth: undefined;
   App: undefined;
   ProfileEdit: undefined;
+  TeamDetail: { teamId: string };
 };
 
 export type AuthStackParamList = {

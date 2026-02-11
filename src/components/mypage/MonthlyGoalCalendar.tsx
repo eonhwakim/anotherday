@@ -246,10 +246,6 @@ export default function MonthlyGoalCalendar({
           <Text style={styles.legendText}>성공</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: COLORS.accentYellow }]} />
-          <Text style={styles.legendText}>진행중</Text>
-        </View>
-        <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
           <Text style={styles.legendText}>패스</Text>
         </View>

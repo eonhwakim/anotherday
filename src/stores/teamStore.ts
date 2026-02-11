@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabaseClient';
-import type { Team, TeamMemberWithUser } from '../types/domain';
+import type { Team, TeamMemberWithUser, TeamMemberRole } from '../types/domain';
+
+export interface TeamWithRole extends Team {
+  role?: TeamMemberRole;
+}
 
 interface TeamState {
   /** 현재 선택된 팀 */
@@ -8,7 +12,7 @@ interface TeamState {
   /** 현재 팀의 멤버 목록 (유저 정보 포함) */
   members: TeamMemberWithUser[];
   /** 유저가 속한 팀 목록 */
-  teams: Team[];
+  teams: TeamWithRole[];
   isLoading: boolean;
 
   /** 유저가 속한 팀 목록 로드 */
@@ -35,7 +39,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       // team_members 테이블에서 유저가 속한 팀 ID 조회
       const { data: memberships } = await supabase
         .from('team_members')
-        .select('team_id')
+        .select('team_id, role')
         .eq('user_id', userId);
 
       if (memberships && memberships.length > 0) {
@@ -45,7 +49,11 @@ export const useTeamStore = create<TeamState>((set, get) => ({
           .select('*')
           .in('id', teamIds);
 
-        const teamList = teams ?? [];
+        const teamList: TeamWithRole[] = (teams ?? []).map(t => ({
+          ...t,
+          role: memberships.find(m => m.team_id === t.id)?.role as TeamMemberRole
+        }));
+        
         set({ teams: teamList });
 
         // 현재 팀이 이 유저의 팀 목록에 없으면 첫 번째 팀으로 재설정

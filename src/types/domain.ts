@@ -96,6 +96,26 @@ export interface Reaction {
   created_at: string;
 }
 
+/** 월별 한마디 (Resolution) */
+export interface MonthlyResolution {
+  id: string;
+  user_id: string;
+  team_id: string;
+  year_month: string; // 'YYYY-MM'
+  content: string;
+  created_at: string;
+}
+
+/** 월별 회고 (Retrospective) */
+export interface MonthlyRetrospective {
+  id: string;
+  user_id: string;
+  team_id: string;
+  year_month: string; // 'YYYY-MM'
+  content: string;
+  created_at: string;
+}
+
 // ─── DTO / Insert Types ────────────────────────────────────────
 // Supabase insert 시 사용할 타입 (id, created_at 제외)
 
