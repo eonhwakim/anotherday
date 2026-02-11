@@ -287,7 +287,7 @@ export default function CalendarScreen() {
                                     <Image source={{ uri: r.user.profile_image_url }} style={styles.reactionAvatar} />
                                   ) : (
                                     <View style={[styles.reactionAvatar, { backgroundColor: '#555' }]}>
-                                      <Ionicons name="person" size={10} color="#fff" />
+                                      <Ionicons name="person" size={14} color="#fff" />
                                     </View>
                                   )}
                                 </View>
@@ -331,7 +331,7 @@ export default function CalendarScreen() {
             {/* 탭 힌트 & 좋아요 버튼 */}
             <View style={styles.photoHint}>
               <Text style={styles.photoHintText}>탭하여 봤어요(인증) 표시</Text>
-              <TouchableOpacity onPress={handleReactionPress} style={styles.reactionBtn}>
+              <TouchableOpacity onPress={handleReactionPress} style={[styles.reactionBtn, isReacted && styles.reactionBtnActive]}>
                 <Image 
                   source={require('../../../assets/thumb-up.png')} 
                   style={[styles.reactionIcon, isReacted && styles.reactionIconActive]} 
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   photoHint: {
-    position: 'absolute', bottom: -60, width: '100%', alignItems: 'center', gap: 8,
+    position: 'absolute', bottom: -100, width: '100%', alignItems: 'center', gap: 8,
   },
   photoHintText: {
     color: 'rgba(255,255,255,0.6)', fontSize: 12,
@@ -486,6 +486,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
+  reactionBtnActive: {
+    borderColor: '#4ADE80',
+  },
   reactionIcon: {
     width: 36,
     height: 36,
@@ -494,7 +497,6 @@ const styles = StyleSheet.create({
   },
   reactionIconActive: {
     tintColor: '#4ADE80', // 활성화 색상
-    borderColor: '#4ADE80',
   },
   
   // ── 리액션 스티커 ──
@@ -509,6 +511,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   reactionAvatar: {
-    width: '100%', height: '100%',
+    width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center',
   },
 });

@@ -131,7 +131,7 @@ export default function HomeScreen() {
           }
         >
           {/* 시간대 테스트 */}
-          <View style={styles.testRow}>
+          {/* <View style={styles.testRow}>
             {(['DAY', 'SUNSET', 'NIGHT'] as const).map((p) => (
               <TouchableOpacity
                 key={p}
@@ -143,7 +143,7 @@ export default function HomeScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </View> */}
 
           {/* 헤더 */}
           <View style={styles.header}>
