@@ -7,7 +7,6 @@ import { useTeamStore } from '../stores/teamStore';
 import { RootStackParamList } from '../types/navigation';
 import AuthStack from './AuthStack';
 import AppTabs from './AppTabs';
-import TeamSelectScreen from '../screens/team/TeamSelectScreen';
 import TeamDetailScreen from '../screens/team/TeamDetailScreen';
 import ProfileEditScreen from '../screens/mypage/ProfileEditScreen';
 import { COLORS } from '../constants/defaults';

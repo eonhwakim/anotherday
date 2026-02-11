@@ -39,7 +39,6 @@ async function ensureProfile(
     return null;
   }
 
-  console.log('[Auth] Profile loaded:', data);
   return data as User;
 }
 
