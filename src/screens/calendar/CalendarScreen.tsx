@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Alert } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Alert, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
@@ -32,24 +32,48 @@ export default function CalendarScreen() {
     fetchMemberDateCheckins,
     fetchTeamGoals,
     fetchMyGoals,
+    toggleReaction,
   } = useGoalStore();
 
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
-  const [photoModal, setPhotoModal] = useState<string | null>(null);
+  const [photoModal, setPhotoModal] = useState<{ url: string; checkinId: string } | null>(null);
   const [selectedMember, setSelectedMember] = useState<{ userId: string; nickname: string; profileImageUrl: string | null } | null>(null);
+  const [lastTap, setLastTap] = useState<number | null>(null);
 
+  // selectedDate를 ref로 관리하여 useFocusEffect에서 최신 값을 참조
+  const selectedDateRef = useRef(selectedDate);
+  selectedDateRef.current = selectedDate;
+
+  // 현재 모달에 띄워진 체크인 정보 찾기
+  const currentCheckin = React.useMemo(() => {
+    if (!photoModal) return null;
+    for (const member of memberDateCheckins) {
+      const found = member.checkins.find(c => c.id === photoModal.checkinId);
+      if (found) return found;
+    }
+    return null;
+  }, [photoModal, memberDateCheckins]);
+
+  // 내가 리액션 했는지 여부
+  const isReacted = React.useMemo(() => {
+    if (!currentCheckin || !user) return false;
+    return currentCheckin.reactions?.some(r => r.user_id === user.id) ?? false;
+  }, [currentCheckin, user]);
+
+  // 화면 포커스 시 데이터 로드 (selectedDate는 ref로 참조하여 deps에서 제거)
+  // → 날짜 클릭 시 handleDayPress에서만 fetchMemberDateCheckins를 호출하도록 하여
+  //   useFocusEffect와의 race condition 방지
   useFocusEffect(
     useCallback(() => {
       if (user) {
         fetchCalendarMarkings(user.id, currentMonth);
         fetchMyGoals(user.id);
         fetchTeamGoals(currentTeam?.id ?? '', user.id);
-        if (selectedDate) {
-          fetchMemberDateCheckins(currentTeam?.id, user.id, selectedDate);
-        }
+        // ref를 사용하여 항상 최신 selectedDate를 참조
+        fetchMemberDateCheckins(currentTeam?.id, user.id, selectedDateRef.current);
       }
-    }, [user, currentMonth, selectedDate, currentTeam]),
+    }, [user, currentMonth, currentTeam]),
   );
 
   const handleDayPress = (day: DateData) => {
@@ -65,7 +89,35 @@ export default function CalendarScreen() {
     if (user) fetchCalendarMarkings(user.id, ym);
   };
 
-  // 캘린더 마킹 변환
+  const handlePhotoPress = async () => {
+    if (!photoModal || !user) return;
+    
+    // 더블 탭 로직 (300ms)
+    const now = Date.now();
+    if (lastTap && now - lastTap < 300) {
+      await handleReactionPress();
+      setLastTap(null);
+    } else {
+      setLastTap(now);
+    }
+  };
+
+  const handleReactionPress = async () => {
+    if (!photoModal || !user) return;
+    
+    // Optimistic Update: 즉시 store 상태 변경 (await 안함)
+    toggleReaction(photoModal.checkinId, {
+      id: user.id,
+      nickname: user.nickname,
+      profile_image_url: user.profile_image_url
+    });
+    
+    // 백그라운드에서 최신 데이터 동기화 (선택사항, 정합성 유지를 위해)
+    // 낙관적 업데이트가 있으므로 즉시 호출하지 않아도 됨.
+    // 필요하다면 약간의 딜레이 후 호출하거나 생략 가능.
+    // 여기선 제거하여 반응 속도 최적화 (어차피 store가 업데이트됨)
+  };
+
   const calendarMarkedDates = React.useMemo(() => {
     const marks: Record<string, any> = {};
     Object.entries(calendarMarkings).forEach(([date, m]) => {
@@ -188,11 +240,13 @@ export default function CalendarScreen() {
                 )}
                 {member.checkins.map((checkin) => {
                   const isPass = checkin.status === 'pass';
+                  const reactions = checkin.reactions || [];
+
                   return (
                     <View key={checkin.id} style={styles.checkinRow}>
                       {/* 사진 or 아이콘 */}
                       {checkin.photo_url ? (
-                        <TouchableOpacity onPress={() => setPhotoModal(checkin.photo_url)}>
+                        <TouchableOpacity onPress={() => setPhotoModal({ url: checkin.photo_url!, checkinId: checkin.id })}>
                           <Image source={{ uri: checkin.photo_url }} style={styles.checkinThumb} />
                           <View style={styles.zoomIcon}>
                             <Ionicons name="expand" size={10} color="#fff" />
@@ -208,12 +262,40 @@ export default function CalendarScreen() {
                         </View>
                       )}
                       <View style={styles.checkinInfo}>
-                        <Text style={styles.checkinGoalName}>
-                          {checkin.goal?.name ?? '목표'}
-                        </Text>
-                        <Text style={styles.checkinTime}>
-                          {dayjs(checkin.created_at).format('HH:mm')} · {isPass ? '패스' : '완료'}
-                        </Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <View>
+                            <Text style={styles.checkinGoalName}>
+                              {checkin.goal?.name ?? '목표'}
+                            </Text>
+                            <Text style={styles.checkinTime}>
+                              {dayjs(checkin.created_at).format('HH:mm')} · {isPass ? '패스' : '완료'}
+                            </Text>
+                          </View>
+                          
+                          {/* 리액션 스티커들 (사진 옆/정보 우측) */}
+                          {reactions.length > 0 && (
+                            <View style={styles.reactionContainer}>
+                              {reactions.map((r, idx) => (
+                                <View 
+                                  key={r.id} 
+                                  style={[
+                                    styles.reactionSticker, 
+                                    { zIndex: reactions.length - idx, marginLeft: idx > 0 ? -8 : 0 }
+                                  ]}
+                                >
+                                  {r.user.profile_image_url ? (
+                                    <Image source={{ uri: r.user.profile_image_url }} style={styles.reactionAvatar} />
+                                  ) : (
+                                    <View style={[styles.reactionAvatar, { backgroundColor: '#555' }]}>
+                                      <Ionicons name="person" size={10} color="#fff" />
+                                    </View>
+                                  )}
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+
                         {checkin.memo && (
                           <Text style={styles.checkinMemo} numberOfLines={2}>
                             {checkin.memo}
@@ -233,16 +315,32 @@ export default function CalendarScreen() {
 
       {/* ── 사진 확대 모달 ── */}
       <Modal visible={!!photoModal} transparent animationType="fade" onRequestClose={() => setPhotoModal(null)}>
-        <TouchableOpacity style={styles.photoOverlay} activeOpacity={1} onPress={() => setPhotoModal(null)}>
+        <View style={styles.photoOverlay}>
+          {/* 백그라운드 클릭 시 닫기 (Absolute Fill) */}
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setPhotoModal(null)} />
+          
           <View style={styles.photoContainer}>
             {photoModal && (
-              <Image source={{ uri: photoModal }} style={styles.photoFull} resizeMode="contain" />
+              <Pressable onPress={handlePhotoPress}>
+                <Image source={{ uri: photoModal.url }} style={styles.photoFull} resizeMode="contain" />
+              </Pressable>
             )}
             <TouchableOpacity style={styles.photoCloseBtn} onPress={() => setPhotoModal(null)}>
               <Ionicons name="close" size={24} color="#fff" />
             </TouchableOpacity>
+            {/* 탭 힌트 & 좋아요 버튼 */}
+            <View style={styles.photoHint}>
+              <Text style={styles.photoHintText}>탭하여 봤어요(인증) 표시</Text>
+              <TouchableOpacity onPress={handleReactionPress} style={styles.reactionBtn}>
+                <Image 
+                  source={require('../../../assets/thumb-up.png')} 
+                  style={[styles.reactionIcon, isReacted && styles.reactionIconActive]} 
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* ── 멤버 프로필 모달 ── */}
@@ -374,5 +472,43 @@ const styles = StyleSheet.create({
   photoCloseBtn: {
     position: 'absolute', top: -40, right: 0,
     padding: 8,
+  },
+  photoHint: {
+    position: 'absolute', bottom: -60, width: '100%', alignItems: 'center', gap: 8,
+  },
+  photoHintText: {
+    color: 'rgba(255,255,255,0.6)', fontSize: 12,
+  },
+  reactionBtn: {
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  reactionIcon: {
+    width: 36,
+    height: 36,
+    tintColor: 'rgba(255,255,255,0.5)',
+    
+  },
+  reactionIconActive: {
+    tintColor: '#4ADE80', // 활성화 색상
+    borderColor: '#4ADE80',
+  },
+  
+  // ── 리액션 스티커 ──
+  reactionContainer: {
+    flexDirection: 'row', alignItems: 'center',
+  },
+  reactionSticker: {
+    width: 22, height: 22, borderRadius: 10,
+    borderWidth: 1.5, borderColor: '#1a1a1a', // 배경색과 맞춰서 겹침 효과
+    overflow: 'hidden',
+    backgroundColor: '#333',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  reactionAvatar: {
+    width: '100%', height: '100%',
   },
 });

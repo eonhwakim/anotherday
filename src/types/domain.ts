@@ -41,6 +41,7 @@ export interface TeamMemberWithUser extends TeamMember {
 export interface Goal {
   id: string;
   team_id: string;
+  owner_id: string | null;
   name: string;
   is_active: boolean;
   created_at: string;
@@ -86,14 +87,21 @@ export interface CheckinWithGoal extends Checkin {
 }
 
 /** 리액션 (MVP에서는 타입 정의만) */
-export type ReactionType = 'like' | 'fire' | 'comment';
-
 export interface Reaction {
   id: string;
   checkin_id: string;
   user_id: string;
-  type: ReactionType;
   created_at: string;
+}
+
+export interface ReactionWithUser extends Reaction {
+  user: Pick<User, 'id' | 'nickname' | 'profile_image_url'>;
+}
+
+/** 체크인 + 목표명 + 리액션 조인 결과 */
+export interface CheckinWithGoal extends Checkin {
+  goal: Pick<Goal, 'id' | 'name'>;
+  reactions?: ReactionWithUser[];
 }
 
 /** 월별 한마디 (Resolution) */

@@ -106,6 +106,7 @@ interface GoalState {
   fetchCheckinsForDate: (userId: string, date: string) => Promise<void>;
   fetchMonthlyCheckins: (userId: string, yearMonth: string) => Promise<void>;
   fetchMemberDateCheckins: (teamId: string | undefined, userId: string, date: string) => Promise<void>;
+  toggleReaction: (checkinId: string, user: { id: string; nickname: string; profile_image_url: string | null }) => Promise<void>;
   /** 스토어 초기화 (로그아웃 시) */
   reset: () => void;
 }
@@ -517,10 +518,10 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         .filter((ug: any) => isGoalActiveOnDate(ug, date))
         .map((ug: any) => ug.goal_id);
 
-      // 해당 날짜 체크인
+      // 해당 날짜 체크인 (리액션 포함)
       const { data: checkins } = await supabase
         .from('checkins')
-        .select('*, goal:goals(id, name)')
+        .select('*, goal:goals(id, name), reactions:checkin_reactions(id, checkin_id, user_id, created_at, user:users(id, nickname, profile_image_url))')
         .eq('user_id', uid)
         .eq('date', date)
         .order('created_at');
@@ -541,6 +542,77 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     }
 
     set({ memberDateCheckins: summaries });
+  },
+
+  // ── 리액션 토글 (좋아요) - 낙관적 업데이트 적용 ──
+  toggleReaction: async (checkinId, user) => {
+    const userId = user.id;
+    
+    // 1. 현재 상태에서 리액션 여부 확인 (낙관적 업데이트를 위함)
+    const currentMemberCheckins = get().memberDateCheckins;
+    let isReacted = false;
+    let reactionIdToRemove: string | undefined;
+
+    // 현재 상태 복사 및 수정
+    const nextMemberCheckins = currentMemberCheckins.map(summary => ({
+      ...summary,
+      checkins: summary.checkins.map(c => {
+        if (c.id !== checkinId) return c;
+        
+        const reactions = c.reactions || [];
+        const existing = reactions.find(r => r.user_id === userId);
+        isReacted = !!existing;
+        
+        let newReactions;
+        if (existing) {
+          // 이미 있으면 제거 (삭제)
+          reactionIdToRemove = existing.id; // DB 삭제용 (ID가 있다면)
+          newReactions = reactions.filter(r => r.user_id !== userId);
+        } else {
+          // 없으면 추가 (생성)
+          newReactions = [
+            ...reactions,
+            {
+              id: 'temp-' + Date.now(), // 임시 ID
+              checkin_id: checkinId,
+              user_id: userId,
+              created_at: new Date().toISOString(),
+              user: {
+                id: user.id,
+                nickname: user.nickname,
+                profile_image_url: user.profile_image_url
+              }
+            }
+          ];
+        }
+        return { ...c, reactions: newReactions };
+      })
+    }));
+
+    // 2. UI 즉시 업데이트
+    set({ memberDateCheckins: nextMemberCheckins });
+
+    try {
+      if (isReacted) {
+        // 삭제
+        // DB에서 정확한 ID를 찾아서 지워야 함 (낙관적 업데이트라 ID를 모를 수 있음)
+        // checkin_id + user_id로 삭제
+        await supabase
+          .from('checkin_reactions')
+          .delete()
+          .match({ checkin_id: checkinId, user_id: userId });
+      } else {
+        // 추가
+        await supabase.from('checkin_reactions').insert({
+          checkin_id: checkinId,
+          user_id: userId,
+        });
+      }
+    } catch (e) {
+      console.error('toggleReaction error:', e);
+      // 에러 시 롤백 (여기선 생략, 필요 시 previousState 저장 후 복구)
+      // fetchMemberDateCheckins 등을 통해 다시 동기화 권장
+    }
   },
 
   reset: () => {

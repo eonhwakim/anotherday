@@ -19,15 +19,15 @@ export default function TodayGoalList({ goals, checkins, onAnimationFinish }: To
   const progress = total > 0 ? completed / total : 0;
 
   const getEncouragement = () => {
-    if (total === 0) return '목표를\n추가해봐!';
-    if (progress === 0) return '오늘도\n화이팅!';
-    if (progress === 1) return '완벽한\n하루!';
+    if (total === 0) return '목표를\n 추가해봐!';
+    if (progress === 0) return '오늘도\n 화이팅!';
+    if (progress === 1) return '완벽한\n 하루!';
     const pct = Math.floor(progress * 100);
-    if (pct >= 80) return '거의\n다 왔어!';
-    if (pct >= 60) return '절반\n넘었다!';
-    if (pct >= 40) return '좋은\n페이스!';
-    if (pct >= 20) return '좋아\n계속!';
-    return '시작이\n반이야!';
+    if (pct >= 80) return '거의\n 다 왔어!';
+    if (pct >= 60) return '절반\n 넘었다!';
+    if (pct >= 40) return '좋은\n 페이스!';
+    if (pct >= 20) return '좋아\n 계속!';
+    return '시작이\n 반이야!';
   };
 
   const scaleAnim = useRef(new Animated.Value(0)).current;

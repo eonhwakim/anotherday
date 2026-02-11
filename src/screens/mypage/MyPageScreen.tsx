@@ -187,7 +187,14 @@ export default function MyPageScreen() {
   const handleLogout = () => {
     Alert.alert('로그아웃', '정말 로그아웃하시겠어요?', [
       { text: '취소', style: 'cancel' },
-      { text: '로그아웃', style: 'destructive', onPress: signOut },
+      { 
+        text: '로그아웃', 
+        style: 'destructive', 
+        onPress: async () => {
+          // signOut 내부에서 goalStore/teamStore 초기화 처리됨
+          await signOut();
+        } 
+      },
     ]);
   };
 
@@ -205,6 +212,17 @@ export default function MyPageScreen() {
     const teamGoalIds = new Set(teamGoals.map((g) => g.id));
     return myGoals.filter((ug) => teamGoalIds.has(ug.goal_id));
   }, [teamGoals, myGoals]);
+
+  // ── 마이페이지 목표설정에 보여줄 목표 (본인 것만) ──
+  // teamGoals에는 팀 전체 목표가 포함되므로, GoalSetting에는
+  // 본인이 만든 목표 + 본인이 이미 선택한 목표만 보여줌
+  const myVisibleGoals = React.useMemo(() => {
+    if (!teamGoals || !user) return [];
+    const selectedGoalIds = new Set((myGoals ?? []).map((ug) => ug.goal_id));
+    return teamGoals.filter(
+      (g) => g.owner_id === user.id || selectedGoalIds.has(g.id),
+    );
+  }, [teamGoals, myGoals, user]);
 
   // ── 월간 통계 계산 ──
   const monthlyStats = React.useMemo(() => {
@@ -446,7 +464,7 @@ export default function MyPageScreen() {
 
         {/* ── 한달 목표 설정 ── */}
         <GoalSetting
-          teamGoals={teamGoals || []}
+          teamGoals={myVisibleGoals}
           myGoals={currentTeamUserGoals}
           onToggle={handleToggleGoal}
           onAdd={handleAddGoal}

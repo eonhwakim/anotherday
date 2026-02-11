@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabaseClient';
 import type { User } from '../types/domain';
+import { useGoalStore } from './goalStore';
+import { useTeamStore } from './teamStore';
 
 interface AuthState {
   user: User | null;
@@ -95,6 +97,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       set({ isLoading: true, error: null });
 
+      // 이전 유저 데이터 초기화 (로그인 전 스토어 리셋)
+      useGoalStore.getState().reset();
+      useTeamStore.getState().reset();
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -128,6 +134,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUp: async (email, password, nickname) => {
     try {
       set({ isLoading: true, error: null });
+
+      // 이전 유저 데이터 초기화
+      useGoalStore.getState().reset();
+      useTeamStore.getState().reset();
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -172,12 +182,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
-    // 모든 스토어 초기화 (이전 유저 데이터 잔류 방지)
-    const { useTeamStore } = require('./teamStore');
-    const { useGoalStore } = require('./goalStore');
-    useTeamStore.getState().reset();
+    // 모든 스토어 초기화 (이전 사용자 데이터 제거)
     useGoalStore.getState().reset();
+    useTeamStore.getState().reset();
+    await supabase.auth.signOut();
     set({ user: null, error: null });
   },
 
