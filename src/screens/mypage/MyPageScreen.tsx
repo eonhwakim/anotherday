@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import {
   View,
@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  ActivityIndicator,
   TouchableOpacity,
   Modal,
   KeyboardAvoidingView,
@@ -37,7 +36,6 @@ export default function MyPageScreen() {
   const {
     teamGoals,
     myGoals,
-    todayCheckins,
     monthlyCheckins,
     fetchTeamGoals,
     fetchMyGoals,
@@ -46,7 +44,6 @@ export default function MyPageScreen() {
     toggleUserGoal,
     addGoal,
     removeTeamGoal,
-    isLoading,
   } = useGoalStore();
 
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
@@ -470,7 +467,7 @@ export default function MyPageScreen() {
           onAdd={handleAddGoal}
           onRemove={handleRemoveGoal}
         />
-
+        <Text style={{ color: '#ff9a9e', fontSize: 12, fontWeight: 'bold', textAlign: 'center', margin: 10 }}>오늘 날짜를 클릭하여 인증을 하세요</Text>
         {/* ── 이번 달 달성 현황 (캘린더) ── */}
         {currentTeamUserGoals.length > 0 && (
           <MonthlyGoalCalendar
