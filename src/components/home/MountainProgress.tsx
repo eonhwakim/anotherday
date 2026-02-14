@@ -745,6 +745,9 @@ function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatar
         </View>
       </View>
       <View style={[styles.shadow, { backgroundColor: avatarColor + '15' }]} />
+      <View style={styles.nicknameBadge}>
+        <Text style={styles.nicknameText} numberOfLines={1}>{member.nickname ?? ''}</Text>
+      </View>
     </Animated.View>
   );
 }
@@ -775,4 +778,18 @@ const styles = StyleSheet.create({
   avatarImage: { width: 32, height: 32, borderRadius: 16 },
   avatarText: { fontWeight: '800', fontSize: 14 },
   shadow: { width: 28, height: 6, borderRadius: 14, marginTop: -3, zIndex: 1 },
+  nicknameBadge: { 
+    backgroundColor: 'rgba(5,5,16,0.70)', 
+    paddingHorizontal: 6, 
+    paddingVertical: 1, 
+    borderRadius: 4, 
+    marginTop: 1,
+    maxWidth: 60,
+  },
+  nicknameText: { 
+    fontSize: 8, 
+    fontWeight: '700', 
+    color: 'rgba(255,255,255,0.80)', 
+    textAlign: 'center',
+  },
 });
