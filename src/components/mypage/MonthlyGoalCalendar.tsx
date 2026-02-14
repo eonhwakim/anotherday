@@ -92,7 +92,9 @@ export default function MonthlyGoalCalendar({
       c.memo?.startsWith('[패스]'),
     );
 
-    return { completed, total, allDone: total > 0 && completed >= total, hasPass, activeIds };
+    const missed = dateStr < today ? total - completed : 0;
+
+    return { completed, total, allDone: total > 0 && completed >= total, hasPass, activeIds, missed };
   };
 
   return (
@@ -145,7 +147,7 @@ export default function MonthlyGoalCalendar({
             const dateStr = `${yearMonth}-${String(day).padStart(2, '0')}`;
             const isToday = dateStr === today;
             const isFuture = dayjs(dateStr).isAfter(dayjs(), 'day');
-            const { completed, total, allDone, hasPass, activeIds } =
+            const { completed, total, allDone, hasPass, activeIds, missed } =
               getDayStatus(dateStr);
             const someDone = completed > 0;
             const hasGoals = total > 0; // 해당 날짜에 유효 목표가 있는지
@@ -214,10 +216,15 @@ export default function MonthlyGoalCalendar({
                     ) : someDone ? (
                       <View style={styles.partialDot} />
                     ) : (
-                      dateStr <= today && (
+                      dateStr === today && (
                         <View style={styles.pendingDot} />
                       )
                     )}
+                    
+                    {missed > 0 && (
+                      <View style={styles.missedDot} />
+                    )}
+
                     {hasPass && (
                       <Text style={styles.passIndicator}>P</Text>
                     )}
@@ -248,6 +255,10 @@ export default function MonthlyGoalCalendar({
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
           <Text style={styles.legendText}>패스</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: COLORS.error }]} />
+          <Text style={styles.legendText}>미달</Text>
         </View>
       </View>
     </View>
@@ -391,6 +402,12 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 2.5,
     backgroundColor: COLORS.textMuted,
+  },
+  missedDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: COLORS.error,
   },
   passIndicator: {
     fontSize: 8,

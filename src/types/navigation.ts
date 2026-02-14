@@ -3,6 +3,7 @@ export type RootStackParamList = {
   App: undefined;
   ProfileEdit: undefined;
   TeamDetail: { teamId: string };
+  MemberStats: { userId: string; teamId?: string; nickname: string };
 };
 
 export type AuthStackParamList = {

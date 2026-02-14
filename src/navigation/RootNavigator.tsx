@@ -8,6 +8,7 @@ import { RootStackParamList } from '../types/navigation';
 import AuthStack from './AuthStack';
 import AppTabs from './AppTabs';
 import TeamDetailScreen from '../screens/team/TeamDetailScreen';
+import MemberStatsScreen from '../screens/team/MemberStatsScreen';
 import ProfileEditScreen from '../screens/mypage/ProfileEditScreen';
 import { COLORS } from '../constants/defaults';
 
@@ -58,6 +59,7 @@ export default function RootNavigator() {
             <Stack.Screen name="App" component={AppTabs} />
             <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
             <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
+            <Stack.Screen name="MemberStats" component={MemberStatsScreen} />
           </>
         )}
       </Stack.Navigator>

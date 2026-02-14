@@ -332,7 +332,15 @@ export default function TeamDetailScreen() {
                 const goals = memberGoals[member.user_id] || [];
 
                 return (
-                  <View key={member.id} style={styles.memberCard}>
+                  <TouchableOpacity 
+                    key={member.id} 
+                    style={styles.memberCard}
+                    onPress={() => navigation.navigate('MemberStats', {
+                      userId: member.user_id,
+                      teamId: teamId,
+                      nickname: member.user.nickname,
+                    })}
+                  >
                     <View style={styles.memberHeader}>
                       <View style={styles.memberProfile}>
                         {member.user.profile_image_url ? (
@@ -366,7 +374,8 @@ export default function TeamDetailScreen() {
                           {/* Resolution Display */}
                           <TouchableOpacity 
                             disabled={!isMe}
-                            onPress={() => {
+                            onPress={(e) => {
+                              e.stopPropagation();
                               setEditResText(resolution || '');
                               setEditResModalVisible(true);
                             }}
@@ -408,7 +417,8 @@ export default function TeamDetailScreen() {
                         <Text style={styles.retroLabel}>월간 회고</Text>
                         <TouchableOpacity 
                           disabled={!isMe}
-                          onPress={() => {
+                          onPress={(e) => {
+                            e.stopPropagation();
                             setEditRetroText(retrospective || '');
                             setEditRetroModalVisible(true);
                           }}
@@ -424,7 +434,7 @@ export default function TeamDetailScreen() {
                         </TouchableOpacity>
                       </View>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
