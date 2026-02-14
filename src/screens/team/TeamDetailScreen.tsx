@@ -32,6 +32,7 @@ interface MemberStats {
   totalGoals: number;
   doneCount: number;
   passCount: number;
+  missedCount: number;
   completionRate: number;
 }
 
@@ -40,7 +41,8 @@ interface MemberGoalStatus {
   name: string;
   done: number;
   pass: number;
-  total: number; // days in month * frequency... simplified to just count for now
+  fail: number;
+  total: number;
 }
 
 export default function TeamDetailScreen() {
@@ -190,29 +192,41 @@ export default function TeamDetailScreen() {
         // Let's use a simple completion rate based on days passed? 
         // Or just show "Done: X, Pass: Y"
         
-        // Let's try to calculate per goal
+        // Calculate per goal with missed days
+        const todayStr = dayjs().format('YYYY-MM-DD');
         const myGoalStatuses: MemberGoalStatus[] = myGoals.map(ug => {
           const gCheckins = relevantCheckins.filter(c => c.goal_id === ug.goal_id);
           const gDone = gCheckins.filter(c => c.status === 'done').length;
           const gPass = gCheckins.filter(c => c.status === 'pass').length;
+
+          // 미달 계산: 활성 일수 - 완료 - 패스 (오늘까지만)
+          const goalStart = ug.start_date && ug.start_date > startOfMonth ? ug.start_date : startOfMonth;
+          const countEnd = todayStr < endOfMonth ? todayStr : endOfMonth;
+          // goalStart부터 countEnd까지의 일수 (오늘은 아직 진행중이므로 제외)
+          const activeDays = goalStart <= countEnd
+            ? dayjs(countEnd).diff(dayjs(goalStart), 'day') // 오늘 제외
+            : 0;
+          const gFail = Math.max(0, activeDays - gDone - gPass);
+
           return {
             goalId: ug.goal_id,
             name: teamGoalsMap.get(ug.goal_id) || 'Unknown',
             done: gDone,
             pass: gPass,
-            total: 0 // Not used for now
+            fail: gFail,
+            total: activeDays,
           };
         });
         
         goalsStatus[uid] = myGoalStatuses;
         
-        // Overall Rate: (Done) / (Days * Goals)? 
-        // Let's just sum up done counts for now as "Score"
+        const totalMissed = myGoalStatuses.reduce((sum, g) => sum + g.fail, 0);
         stats[uid] = {
           totalGoals: myGoals.length,
           doneCount,
           passCount,
-          completionRate: 0 // Placeholder
+          missedCount: totalMissed,
+          completionRate: 0,
         };
       });
       
@@ -345,7 +359,7 @@ export default function TeamDetailScreen() {
                           {/* Stats Summary */}
                           <View style={styles.statsRow}>
                             <Text style={styles.statsText}>
-                              완료 {stats?.doneCount ?? 0} · 패스 {stats?.passCount ?? 0}
+                              완료 {stats?.doneCount ?? 0} · 패스 {stats?.passCount ?? 0}{(stats?.missedCount ?? 0) > 0 ? ` · 미달 ${stats.missedCount}` : ''}
                             </Text>
                           </View>
 
@@ -379,6 +393,7 @@ export default function TeamDetailScreen() {
                             <View style={styles.goalStats}>
                               <Text style={styles.goalDone}>{g.done}완료</Text>
                               {g.pass > 0 && <Text style={styles.goalPass}>{g.pass}패스</Text>}
+                              {g.fail > 0 && <Text style={styles.goalFail}>{g.fail}미달</Text>}
                             </View>
                           </View>
                         ))
@@ -641,6 +656,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+  },
+  goalFail: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EF4444',
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
   emptyGoalsText: {
     fontSize: 12,

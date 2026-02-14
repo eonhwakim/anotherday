@@ -162,7 +162,7 @@ export default function HomeScreen() {
 
           {/* 산 */}
           <View style={styles.mountainSection}>
-            <MountainProgress members={memberProgress} startAnimation={isStampFinished} isNight={timePeriod === 'NIGHT'} timePeriod={timePeriod} />
+            <MountainProgress members={memberProgress} currentUserId={user?.id} startAnimation={isStampFinished} isNight={timePeriod === 'NIGHT'} timePeriod={timePeriod} />
           </View>
 
           {/* 목표 — 항상 다크 배경 */}

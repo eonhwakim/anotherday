@@ -24,8 +24,8 @@ const TRAIL_POINTS = [
 const TRAIL_INPUT_RANGE = TRAIL_POINTS.map((_, i) => i / (TRAIL_POINTS.length - 1));
 
 const AVATAR_COLORS = [
-  COLORS.holoCyan, COLORS.holoMint, COLORS.holoPink, COLORS.warning,
-  COLORS.holoLavender, COLORS.success, COLORS.accent, COLORS.accentYellow,
+  COLORS.holoCyan, COLORS.holoMint, COLORS.holoPink, COLORS.holoLavender,
+  COLORS.success, COLORS.accent, '#B0B8C8', '#8890A0',
 ];
 
 type Theme = (typeof SEASON_THEMES)[keyof typeof SEASON_THEMES];
@@ -51,7 +51,9 @@ function buildSmoothTrailPath(): string {
   return d;
 }
 
-export default function MountainProgress({ members, startAnimation, isNight, timePeriod = 'NIGHT' }: { members: MemberProgress[]; startAnimation?: boolean; isNight?: boolean; timePeriod?: 'DAY' | 'SUNSET' | 'NIGHT' }) {
+const MY_HIGHLIGHT_COLOR = '#FFD93D';
+
+export default function MountainProgress({ members, currentUserId, startAnimation, isNight, timePeriod = 'NIGHT' }: { members: MemberProgress[]; currentUserId?: string; startAnimation?: boolean; isNight?: boolean; timePeriod?: 'DAY' | 'SUNSET' | 'NIGHT' }) {
   const theme = getSeasonTheme();
   const [containerWidth, setContainerWidth] = useState(CONTAINER_WIDTH);
 
@@ -65,17 +67,21 @@ export default function MountainProgress({ members, startAnimation, isNight, tim
         {[...Array(10)].map((_, i) => (
           <GeometricParticle key={`p-${i}`} emoji={theme.particle} index={i} />
         ))}
-        {members.map((member, idx) => (
-          <ClimbingCharacter
-            key={member.userId}
-            member={member}
-            index={idx}
-            totalMembers={members.length}
-            containerWidth={containerWidth}
-            avatarColor={AVATAR_COLORS[idx % AVATAR_COLORS.length]}
-            startAnimation={startAnimation}
-          />
-        ))}
+        {members.map((member, idx) => {
+          const isMe = currentUserId != null && member.userId === currentUserId;
+          const color = isMe ? MY_HIGHLIGHT_COLOR : AVATAR_COLORS[idx % AVATAR_COLORS.length];
+          return (
+            <ClimbingCharacter
+              key={member.userId}
+              member={member}
+              index={idx}
+              totalMembers={members.length}
+              containerWidth={containerWidth}
+              avatarColor={color}
+              startAnimation={startAnimation}
+            />
+          );
+        })}
       </View>
     </View>
   );
@@ -657,11 +663,11 @@ function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatar
     if (startAnimation && !hasStarted.current) {
       hasStarted.current = true;
       // 멤버별로 약간의 딜레이를 줘서 순차적으로 올라가는 느낌
-      const delay = index * 200;
+      const delay = index * 100;
       setTimeout(() => {
         Animated.timing(progressAnim, {
           toValue: progress,
-          duration: 1200 + progress * 800, // 높이 올라갈수록 더 오래 걸림
+          duration: 1200 + progress * 1500, // 높이 올라갈수록 더 오래 걸림
           easing: Easing.out(Easing.cubic),
           useNativeDriver: false,
         }).start();
