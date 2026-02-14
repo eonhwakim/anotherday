@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
@@ -25,12 +27,39 @@ export default function LoginScreen() {
   const { signIn, isLoading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberEmail, setRememberEmail] = useState(false);
+
+  useEffect(() => {
+    const loadSavedEmail = async () => {
+      try {
+        const savedEmail = await AsyncStorage.getItem('savedEmail');
+        if (savedEmail) {
+          setEmail(savedEmail);
+          setRememberEmail(true);
+        }
+      } catch (e) {
+        console.error('Failed to load saved email', e);
+      }
+    };
+    loadSavedEmail();
+  }, []);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('알림', '이메일과 비밀번호를 입력해주세요.');
       return;
     }
+
+    try {
+      if (rememberEmail) {
+        await AsyncStorage.setItem('savedEmail', email.trim());
+      } else {
+        await AsyncStorage.removeItem('savedEmail');
+      }
+    } catch (e) {
+      console.error('Failed to save email preference', e);
+    }
+
     const success = await signIn(email.trim(), password);
     if (!success) {
       const currentError = useAuthStore.getState().error;
@@ -74,6 +103,22 @@ export default function LoginScreen() {
           <View style={styles.form}>
             <Input label="이메일" placeholder="email@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
             <Input label="비밀번호" placeholder="비밀번호 입력" value={password} onChangeText={setPassword} secureTextEntry />
+            
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => setRememberEmail(!rememberEmail)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={rememberEmail ? 'checkbox' : 'square-outline'}
+                size={20}
+                color={rememberEmail ? COLORS.text : COLORS.textMuted}
+              />
+              <Text style={[styles.checkboxText, rememberEmail && styles.checkboxTextActive]}>
+                이메일 기억하기
+              </Text>
+            </TouchableOpacity>
+
             <Button title="로그인" onPress={handleLogin} loading={isLoading} style={{ marginTop: 8 }} />
           </View>
 
@@ -100,4 +145,18 @@ const styles = StyleSheet.create({
   registerLink: { alignItems: 'center' },
   registerText: { fontSize: 14, color: COLORS.textSecondary },
   registerBold: { color: COLORS.secondary, fontWeight: '600' },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  checkboxText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: COLORS.textMuted,
+  },
+  checkboxTextActive: {
+    color: COLORS.text,
+  },
 });
