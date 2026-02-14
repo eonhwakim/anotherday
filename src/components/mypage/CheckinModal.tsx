@@ -55,6 +55,7 @@ export default function CheckinModal({
   }, [visible]);
 
   const isFuture = dayjs(date).isAfter(dayjs(), 'day');
+  const isPast = dayjs(date).isBefore(dayjs(), 'day');
   const formattedDate = dayjs(date).format('M월 D일 (ddd)');
 
   const isGoalDone = (goalId: string) =>
@@ -216,6 +217,7 @@ export default function CheckinModal({
                     (c) => c.goal_id === goal.id,
                   );
                   const isPass = checkin?.memo?.startsWith('[패스]');
+                  const isMissed = isPast && !done;
 
                   return (
                     <View
@@ -223,6 +225,7 @@ export default function CheckinModal({
                       style={[
                         styles.goalRow,
                         done && styles.goalRowDone,
+                        isMissed && styles.goalRowMissed,
                       ]}
                     >
                       <View style={styles.goalInfo}>
@@ -232,7 +235,9 @@ export default function CheckinModal({
                               ? isPass
                                 ? 'remove-circle'
                                 : 'checkmark-circle'
-                              : 'ellipse-outline'
+                              : isMissed
+                                ? 'close-circle'
+                                : 'ellipse-outline'
                           }
                           size={22}
                           color={
@@ -240,13 +245,16 @@ export default function CheckinModal({
                               ? isPass
                                 ? COLORS.warning
                                 : COLORS.success
-                              : COLORS.textSecondary
+                              : isMissed
+                                ? '#EF4444'
+                                : COLORS.textSecondary
                           }
                         />
                         <Text
                           style={[
                             styles.goalName,
                             done && styles.goalNameDone,
+                            isMissed && styles.goalNameMissed,
                           ]}
                         >
                           {goal.name}
@@ -263,6 +271,12 @@ export default function CheckinModal({
                           ]}
                         >
                           {isPass ? '패스' : '성공'}
+                        </Text>
+                      ) : isMissed ? (
+                        <Text
+                          style={[styles.statusBadge, styles.badgeMissed]}
+                        >
+                          미달
                         </Text>
                       ) : (
                         <View style={styles.actionRow}>
@@ -446,6 +460,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,181,71,0.10)',
     color: COLORS.warning,
     borderColor: 'rgba(255,181,71,0.18)',
+  },
+  badgeMissed: {
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    color: '#EF4444',
+    borderColor: 'rgba(239,68,68,0.18)',
+  },
+  goalRowMissed: {
+    backgroundColor: 'rgba(239,68,68,0.04)',
+    borderColor: 'rgba(239,68,68,0.12)',
+  },
+  goalNameMissed: {
+    color: 'rgba(255,255,255,0.40)',
   },
   actionRow: {
     flexDirection: 'row',
