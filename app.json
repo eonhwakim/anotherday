@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anotherday.app",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "NSCameraUsageDescription": "목표 인증을 위해 카메라 접근 권한이 필요합니다.",
         "NSPhotoLibraryUsageDescription": "인증 사진을 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.",
