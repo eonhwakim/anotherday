@@ -1,0 +1,47 @@
+{
+  "cli": {
+    "version": ">= 18.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zxfchtdvbgvjucxbvdyw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_6Gq9UXlKdEmYYbqNJHRhqA_VrqTG0VT"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zxfchtdvbgvjucxbvdyw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_6Gq9UXlKdEmYYbqNJHRhqA_VrqTG0VT"
+      }
+    },
+    "production": {
+      "ios": {
+        "autoIncrement": true
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zxfchtdvbgvjucxbvdyw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_6Gq9UXlKdEmYYbqNJHRhqA_VrqTG0VT"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "eonaa@icloud.com",
+        "ascAppId": "6759189268",
+        "appleTeamId": "5X96UK9DB3"
+      }
+    }
+  }
+}

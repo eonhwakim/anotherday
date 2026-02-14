@@ -3,6 +3,9 @@
     "name": "anotherday",
     "slug": "anotherday",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/anotherday-icon.png",
     "userInterfaceStyle": "light",
@@ -15,9 +18,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anotherday.app",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "목표 인증을 위해 카메라 접근 권한이 필요합니다.",
-        "NSPhotoLibraryUsageDescription": "인증 사진을 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다."
+        "NSPhotoLibraryUsageDescription": "인증 사진을 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.",
+        "CFBundleAllowMixedLocalizations": true,
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -27,7 +33,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/anotherday-icon.png"
@@ -40,6 +49,12 @@
           "photosPermission": "인증 사진을 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c16b46a9-0655-4c45-b569-c8d329d506a1"
+      }
+    },
+    "owner": "eona"
   }
 }
