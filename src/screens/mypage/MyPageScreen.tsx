@@ -33,7 +33,7 @@ import MonthlyStatsCard from '../../components/common/MonthlyStatsCard';
 
 export default function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, deleteAccount } = useAuthStore();
   const { teams, currentTeam, fetchTeams, createTeam, selectTeam } = useTeamStore();
   const {
     teamGoals,
@@ -190,11 +190,43 @@ export default function MyPageScreen() {
         text: '로그아웃', 
         style: 'destructive', 
         onPress: async () => {
-          // signOut 내부에서 goalStore/teamStore 초기화 처리됨
           await signOut();
         } 
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '계정 삭제',
+      '계정을 삭제하면 모든 데이터(목표, 인증 기록, 팀 정보 등)가 영구적으로 삭제되며 복구할 수 없습니다.\n\n정말 삭제하시겠어요?',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제하기',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              '최종 확인',
+              '이 작업은 되돌릴 수 없습니다. 계정을 삭제할까요?',
+              [
+                { text: '취소', style: 'cancel' },
+                {
+                  text: '영구 삭제',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const success = await deleteAccount();
+                    if (!success) {
+                      Alert.alert('오류', '계정 삭제에 실패했습니다. 다시 시도해주세요.');
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
   };
 
   const currentMonthLabel = dayjs(`${yearMonth}-01`).format('YYYY년 M월');
@@ -521,6 +553,14 @@ export default function MyPageScreen() {
           />
         </View>
 
+        {/* ── 계정 삭제 ── */}
+        <TouchableOpacity
+          style={styles.deleteAccountBtn}
+          onPress={handleDeleteAccount}
+        >
+          <Text style={styles.deleteAccountText}>계정 삭제</Text>
+        </TouchableOpacity>
+
         <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -730,6 +770,16 @@ const styles = StyleSheet.create({
   logoutSection: {
     paddingHorizontal: 16,
     marginTop: 8,
+  },
+  deleteAccountBtn: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginTop: 4,
+  },
+  deleteAccountText: {
+    fontSize: 13,
+    color: 'rgba(255,100,100,0.6)',
+    textDecorationLine: 'underline',
   },
   
   // Modal Styles

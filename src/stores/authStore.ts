@@ -15,6 +15,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (email: string, password: string, nickname: string) => Promise<boolean>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -186,6 +187,38 @@ export const useAuthStore = create<AuthState>((set) => ({
     useTeamStore.getState().reset();
     await supabase.auth.signOut();
     set({ user: null, error: null });
+  },
+
+  deleteAccount: async () => {
+    try {
+      set({ isLoading: true, error: null });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        set({ error: '로그인 세션이 없습니다.', isLoading: false });
+        return false;
+      }
+
+      const { error } = await supabase.rpc('delete_user_account', {
+        user_id: session.user.id,
+      });
+
+      if (error) {
+        console.error('[Auth] deleteAccount RPC error:', error.message);
+        set({ error: '계정 삭제에 실패했습니다.', isLoading: false });
+        return false;
+      }
+
+      useGoalStore.getState().reset();
+      useTeamStore.getState().reset();
+      await supabase.auth.signOut();
+      set({ user: null, error: null, isLoading: false });
+      return true;
+    } catch (e: any) {
+      console.error('[Auth] deleteAccount error:', e);
+      set({ error: e.message, isLoading: false });
+      return false;
+    }
   },
 
   clearError: () => set({ error: null }),
