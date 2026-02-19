@@ -544,22 +544,32 @@ export default function MyPageScreen() {
           />
         </TouchableOpacity>
 
-        {/* ── 로그아웃 ── */}
-        <View style={styles.logoutSection}>
-          <Button
-            title="로그아웃"
-            variant="outline"
-            onPress={handleLogout}
-          />
+        {/* ── 계정 관리 ── */}
+        <View style={styles.accountSection}>
+          <Text style={styles.accountSectionTitle}>계정 관리</Text>
+
+          <TouchableOpacity style={styles.accountRow} onPress={handleLogout}>
+            <View style={styles.accountRowLeft}>
+              <Ionicons name="log-out-outline" size={20} color={COLORS.textSecondary} />
+              <Text style={styles.accountRowText}>로그아웃</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.accountDivider} />
+
+          <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
+            <View style={styles.accountRowLeft}>
+              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+              <Text style={[styles.accountRowText, { color: '#FF6B6B' }]}>계정 삭제</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,107,107,0.4)" />
+          </TouchableOpacity>
         </View>
 
-        {/* ── 계정 삭제 ── */}
-        <TouchableOpacity
-          style={styles.deleteAccountBtn}
-          onPress={handleDeleteAccount}
-        >
-          <Text style={styles.deleteAccountText}>계정 삭제</Text>
-        </TouchableOpacity>
+        <Text style={styles.accountDeleteHint}>
+          계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
+        </Text>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -700,6 +710,11 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
   },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -767,19 +782,51 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  logoutSection: {
-    paddingHorizontal: 16,
+  accountSection: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    marginHorizontal: 16,
     marginTop: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
   },
-  deleteAccountBtn: {
+  accountSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  accountRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    marginTop: 4,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  deleteAccountText: {
-    fontSize: 13,
-    color: 'rgba(255,100,100,0.6)',
-    textDecorationLine: 'underline',
+  accountRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  accountRowText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  accountDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginHorizontal: 16,
+  },
+  accountDeleteHint: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 16,
   },
   
   // Modal Styles
