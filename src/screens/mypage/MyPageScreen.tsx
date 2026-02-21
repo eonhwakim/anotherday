@@ -496,6 +496,7 @@ export default function MyPageScreen() {
         {/* ── 한달 목표 설정 ── */}
         <GoalSetting
           teamGoals={myVisibleGoals}
+          allTeamGoals={teamGoals || []} // 전체 팀 목표 전달 (추천용)
           myGoals={currentTeamUserGoals}
           onToggle={handleToggleGoal}
           onAdd={handleAddGoal}
@@ -561,7 +562,7 @@ export default function MyPageScreen() {
           <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
             <View style={styles.accountRowLeft}>
               <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-              <Text style={[styles.accountRowText, { color: '#FF6B6B' }]}>계정 삭제</Text>
+              <Text style={[styles.accountRowText, { color: '#FF6B6B' }]}>계정 삭제 (Delete Account)</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="rgba(255,107,107,0.4)" />
           </TouchableOpacity>

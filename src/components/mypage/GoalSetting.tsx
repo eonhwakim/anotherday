@@ -14,6 +14,7 @@ import { COLORS } from '../../constants/defaults';
 
 interface GoalSettingProps {
   teamGoals: Goal[];
+  allTeamGoals?: Goal[]; // 전체 팀 목표 (추천/자동완성용)
   myGoals: UserGoal[];
   onToggle: (goalId: string) => void;
   onAdd: (name: string, frequency: GoalFrequency, targetCount: number | null) => Promise<boolean>;
@@ -29,6 +30,7 @@ function freqLabel(ug: UserGoal): string {
 
 export default function GoalSetting({
   teamGoals = [],
+  allTeamGoals = [],
   myGoals = [],
   onToggle,
   onAdd,
@@ -38,6 +40,30 @@ export default function GoalSetting({
   const [isAdding, setIsAdding] = useState(false);
   const [frequency, setFrequency] = useState<GoalFrequency>('daily');
   const [targetCount, setTargetCount] = useState(3); // 주 N회 기본값
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // ── 추천 태그 (내가 아직 선택하지 않은 팀 목표 중 랜덤 5개) ──
+  const recommendedGoals = React.useMemo(() => {
+    const myGoalIds = new Set((myGoals || []).map(ug => ug.goal_id));
+    const candidates = (allTeamGoals || []).filter(g => !myGoalIds.has(g.id));
+    // 셔플 후 5개
+    return candidates.sort(() => 0.5 - Math.random()).slice(0, 5);
+  }, [allTeamGoals, myGoals]);
+
+  // ── 자동완성 목록 (입력값에 포함되는 목표) ──
+  const suggestions = React.useMemo(() => {
+    if (!newGoal.trim()) return [];
+    const lowerInput = newGoal.trim().toLowerCase();
+    // 이미 내 목록에 있는 건 제외하고 추천
+    const myGoalIds = new Set((myGoals || []).map(ug => ug.goal_id));
+    
+    return (allTeamGoals || [])
+      .filter(g => 
+        g.name.toLowerCase().includes(lowerInput) && 
+        !myGoalIds.has(g.id)
+      )
+      .slice(0, 3); // 최대 3개만
+  }, [newGoal, allTeamGoals, myGoals]);
 
   const isSelected = (goalId: string) =>
     (myGoals || []).some((ug) => ug.goal_id === goalId);
@@ -59,11 +85,18 @@ export default function GoalSetting({
 
     if (success) {
       setNewGoal('');
+      setShowSuggestions(false);
       setFrequency('daily');
       setTargetCount(3);
     } else {
       Alert.alert('등록 실패', '목표를 저장하지 못했습니다.\n잠시 후 다시 시도해주세요.');
     }
+  };
+
+  const handleSelectSuggestion = (goalName: string) => {
+    setNewGoal(goalName);
+    setShowSuggestions(false);
+    // 바로 추가하지 않고 입력창에 채워줌 (주기 설정 등을 위해)
   };
 
   const handleLongPress = (goal: Goal) => {
@@ -90,30 +123,75 @@ export default function GoalSetting({
         목표를 추가하면 오늘부터 이번 달 말까지 적용됩니다
       </Text>
 
-      {/* ── 새 목표 입력 ── */}
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="새 목표 (예: 운동 30분)"
-          placeholderTextColor={COLORS.textMuted}
-          value={newGoal}
-          onChangeText={setNewGoal}
-          returnKeyType="done"
-          onSubmitEditing={handleAdd}
-          maxLength={30}
-        />
-        {isAdding ? (
-          <View style={styles.addBtn}>
-            <ActivityIndicator size="small" color="#fff" />
+      {/* ── 2. 인기 태그 (추천 목표) ── */}
+      {recommendedGoals.length > 0 && (
+        <View style={styles.recommendSection}>
+          <Text style={styles.recommendTitle}>🔥 팀원들이 도전 중인 목표</Text>
+          <View style={styles.recommendChips}>
+            {recommendedGoals.map((g) => (
+              <TouchableOpacity
+                key={g.id}
+                style={styles.recommendChip}
+                onPress={() => handleSelectSuggestion(g.name)}
+              >
+                <Text style={styles.recommendChipText}>#{g.name}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        ) : (
-          <TouchableOpacity
-            style={[styles.addBtn, !newGoal.trim() && styles.addBtnDisabled]}
-            onPress={handleAdd}
-            disabled={!newGoal.trim()}
-          >
-            <Ionicons name="add" size={22} color="#fff" />
-          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── 새 목표 입력 & 1. 자동완성 ── */}
+      <View style={{ zIndex: 10 }}>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="새 목표 (예: 운동 30분)"
+            placeholderTextColor={COLORS.textMuted}
+            value={newGoal}
+            onChangeText={(text) => {
+              setNewGoal(text);
+              setShowSuggestions(true);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => {
+              // 클릭 이벤트 처리를 위해 약간의 딜레이
+              setTimeout(() => setShowSuggestions(false), 200);
+            }}
+            returnKeyType="done"
+            onSubmitEditing={handleAdd}
+            maxLength={30}
+          />
+          {isAdding ? (
+            <View style={styles.addBtn}>
+              <ActivityIndicator size="small" color="#fff" />
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.addBtn, !newGoal.trim() && styles.addBtnDisabled]}
+              onPress={handleAdd}
+              disabled={!newGoal.trim()}
+            >
+              <Ionicons name="add" size={22} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* 자동완성 드롭다운 */}
+        {showSuggestions && suggestions.length > 0 && (
+          <View style={styles.suggestionsBox}>
+            {suggestions.map((g) => (
+              <TouchableOpacity
+                key={g.id}
+                style={styles.suggestionItem}
+                onPress={() => handleSelectSuggestion(g.name)}
+              >
+                <Ionicons name="search-outline" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.suggestionText}>{g.name}</Text>
+                <Text style={styles.suggestionSub}>기존 목표</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
       </View>
 
@@ -282,4 +360,31 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#FFFFFF' },
   chipSchedule: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.40)', marginTop: 2 },
   selectionInfo: { fontSize: 13, color: 'rgba(255,255,255,0.50)', fontWeight: '700', marginTop: 14, textAlign: 'right' },
+
+  // ── 추천 태그 ──
+  recommendSection: { marginBottom: 16 },
+  recommendTitle: { fontSize: 12, color: '#FFB547', fontWeight: '600', marginBottom: 8 },
+  recommendChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  recommendChip: {
+    backgroundColor: 'rgba(255, 181, 71, 0.1)',
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
+    borderWidth: 1, borderColor: 'rgba(255, 181, 71, 0.2)',
+  },
+  recommendChipText: { fontSize: 12, color: '#fffbd5', fontWeight: '500' },
+
+  // ── 자동완성 ──
+  suggestionsBox: {
+    position: 'absolute', top: 56, left: 0, right: 0,
+    backgroundColor: '#1A1A1A', borderRadius: 8,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
+    elevation: 5, overflow: 'hidden',
+  },
+  suggestionItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  suggestionText: { fontSize: 14, color: COLORS.text, flex: 1 },
+  suggestionSub: { fontSize: 11, color: COLORS.textSecondary },
 });

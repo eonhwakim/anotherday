@@ -21,7 +21,7 @@ import Input from '../../components/common/Input';
 
 export default function ProfileEditScreen() {
   const navigation = useNavigation();
-  const { user, refreshProfile, setUser } = useAuthStore();
+  const { user, refreshProfile, setUser, deleteAccount } = useAuthStore();
 
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [name, setName] = useState(user?.name || '');
@@ -92,6 +92,39 @@ export default function ProfileEditScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '계정 삭제',
+      '계정을 삭제하면 모든 데이터(목표, 인증 기록, 팀 정보 등)가 영구적으로 삭제되며 복구할 수 없습니다.\n\n정말 삭제하시겠어요?',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제하기',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              '최종 확인',
+              '이 작업은 되돌릴 수 없습니다. 계정을 삭제할까요?',
+              [
+                { text: '취소', style: 'cancel' },
+                {
+                  text: '영구 삭제',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const success = await deleteAccount();
+                    if (!success) {
+                      Alert.alert('오류', '계정 삭제에 실패했습니다. 다시 시도해주세요.');
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -274,6 +307,20 @@ const styles = StyleSheet.create({
   genderTextActive: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginVertical: 24,
+  },
+  deleteAccountBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  deleteAccountText: {
+    color: '#FF6B6B',
+    fontSize: 13,
+    textDecorationLine: 'underline',
   },
   footer: {
     padding: 16,
