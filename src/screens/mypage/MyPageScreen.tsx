@@ -33,7 +33,7 @@ import MonthlyStatsCard from '../../components/common/MonthlyStatsCard';
 
 export default function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user, signOut, deleteAccount } = useAuthStore();
+  const { user, signOut } = useAuthStore();
   const { teams, currentTeam, fetchTeams, createTeam, selectTeam } = useTeamStore();
   const {
     teamGoals,
@@ -557,20 +557,7 @@ export default function MyPageScreen() {
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
 
-          <View style={styles.accountDivider} />
-
-          <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
-            <View style={styles.accountRowLeft}>
-              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-              <Text style={[styles.accountRowText, { color: '#FF6B6B' }]}>계정 삭제 (Delete Account)</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,107,107,0.4)" />
-          </TouchableOpacity>
         </View>
-
-        <Text style={styles.accountDeleteHint}>
-          계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.
-        </Text>
 
         <View style={{ height: 40 }} />
       </ScrollView>

@@ -198,6 +198,15 @@ export default function ProfileEditScreen() {
               placeholder="나이를 입력하세요"
               keyboardType="number-pad"
             />
+
+            <View style={styles.divider} />
+            
+            <TouchableOpacity 
+              style={styles.deleteAccountBtn} 
+              onPress={handleDeleteAccount}
+            >
+              <Text style={styles.deleteAccountText}>계정 삭제 (Delete Account)</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
 
