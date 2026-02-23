@@ -33,7 +33,17 @@
 | *팀원들의 현재 위치 시각화* | *성공/실패/부분달성 분석* | *주 N회 / 매일 목표 설정* |
 
 
+<img src="https://github.com/user-attachments/assets/d764eede-65e9-4a74-a4b1-d3f007b8fe42" width="350" height="750" />&nbsp;&nbsp;
+<img src="https://github.com/user-attachments/assets/2ce33b12-1f8a-465a-beb9-15dbdf859da4" width="350" height="750" />&nbsp;&nbsp;
+<img src="https://github.com/user-attachments/assets/153b1b4e-5973-4bd4-b3f8-3c4c5eeeb185" width="350" height="750" />&nbsp;&nbsp;
+<img src="https://github.com/user-attachments/assets/c8e0d52f-03d9-4404-9c37-927445eeb9e0" width="350" height="750" />&nbsp;&nbsp;
+<img src="https://github.com/user-attachments/assets/2eda47f3-a664-4690-a32f-7ce1f5f06df4" width="350" height="750" />
+
+
+
+
 <br/>
+
 
 ## 💡 Key Features & Technical Challenges
 
