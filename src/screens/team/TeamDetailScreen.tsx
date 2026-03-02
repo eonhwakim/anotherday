@@ -487,25 +487,27 @@ export default function TeamDetailScreen() {
                 );
               })}
             </View>
+
+            {/* 팀 삭제 / 탈퇴 */}
+            {myRole && (
+              <View style={styles.dangerZone}>
+                <View style={styles.dangerDivider} />
+                {myRole === 'leader' ? (
+                  <TouchableOpacity style={styles.dangerBtn} onPress={handleDeleteTeam}>
+                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    <Text style={styles.dangerBtnText}>팀 삭제</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.dangerBtn} onPress={handleLeaveTeam}>
+                    <Ionicons name="exit-outline" size={16} color="#EF4444" />
+                    <Text style={styles.dangerBtnText}>팀 탈퇴</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </>
         )}
-        {/* 팀 삭제 / 탈퇴 */}
-        {myRole && (
-          <View style={styles.dangerZone}>
-            <View style={styles.dangerDivider} />
-            {myRole === 'leader' ? (
-              <TouchableOpacity style={styles.dangerBtn} onPress={handleDeleteTeam}>
-                <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                <Text style={styles.dangerBtnText}>팀 삭제</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.dangerBtn} onPress={handleLeaveTeam}>
-                <Ionicons name="exit-outline" size={16} color="#EF4444" />
-                <Text style={styles.dangerBtnText}>팀 탈퇴</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+
 
         <View style={{ height: 40 }} />
       </ScrollView>
