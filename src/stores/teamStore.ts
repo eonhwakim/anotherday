@@ -23,6 +23,10 @@ interface TeamState {
   selectTeam: (team: Team) => void;
   /** 팀 생성 (회원가입 시 기본 팀 생성 등) */
   createTeam: (name: string, userId: string) => Promise<Team | null>;
+  /** 팀 삭제 (LEADER 전용) */
+  deleteTeam: (teamId: string, userId: string) => Promise<boolean>;
+  /** 팀 탈퇴 (MEMBER 전용) */
+  leaveTeam: (teamId: string, userId: string) => Promise<boolean>;
   /** 스토어 초기화 (로그아웃 시) */
   reset: () => void;
 }
@@ -110,6 +114,50 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     }));
 
     return team;
+  },
+
+  deleteTeam: async (teamId, userId) => {
+    const { error } = await supabase.rpc('delete_team', {
+      p_team_id: teamId,
+      p_user_id: userId,
+    });
+
+    if (error) {
+      console.error('[TeamStore] deleteTeam error:', error.message);
+      return false;
+    }
+
+    set((state) => {
+      const newTeams = state.teams.filter((t) => t.id !== teamId);
+      const newCurrent = state.currentTeam?.id === teamId
+        ? (newTeams[0] ?? null)
+        : state.currentTeam;
+      return { teams: newTeams, currentTeam: newCurrent, members: [] };
+    });
+
+    return true;
+  },
+
+  leaveTeam: async (teamId, userId) => {
+    const { error } = await supabase.rpc('leave_team', {
+      p_team_id: teamId,
+      p_user_id: userId,
+    });
+
+    if (error) {
+      console.error('[TeamStore] leaveTeam error:', error.message);
+      return false;
+    }
+
+    set((state) => {
+      const newTeams = state.teams.filter((t) => t.id !== teamId);
+      const newCurrent = state.currentTeam?.id === teamId
+        ? (newTeams[0] ?? null)
+        : state.currentTeam;
+      return { teams: newTeams, currentTeam: newCurrent, members: [] };
+    });
+
+    return true;
   },
 
   reset: () => {

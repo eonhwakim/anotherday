@@ -33,14 +33,17 @@ import MonthlyStatsCard from '../../components/common/MonthlyStatsCard';
 
 export default function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, deleteAccount } = useAuthStore();
   const { teams, currentTeam, fetchTeams, createTeam, selectTeam } = useTeamStore();
   const {
     teamGoals,
     myGoals,
+    lastMonthGoals,
     monthlyCheckins,
     fetchTeamGoals,
     fetchMyGoals,
+    fetchLastMonthGoals,
+    copyGoalsFromLastMonth,
     fetchTodayCheckins,
     fetchMonthlyCheckins,
     toggleUserGoal,
@@ -73,6 +76,36 @@ export default function MyPageScreen() {
       loadData();
     }, [loadData]),
   );
+
+  // ── 월초 목표 이월 확인 ──
+  React.useEffect(() => {
+    // 이번 달 목표가 없고(myGoals.length === 0), 지난 달 만료된 목표가 있다면(lastMonthGoals.length > 0)
+    if (lastMonthGoals.length > 0 && myGoals.length === 0) {
+      Alert.alert(
+        '새로운 달이 시작되었습니다! 🌙',
+        '지난 달 목표를 이번 달에도 그대로 진행하시겠습니까?',
+        [
+          {
+            text: '아니오, 새로 정할래요',
+            style: 'cancel',
+            onPress: () => {
+              // 다시 묻지 않도록 상태 비움 (새로고침 전까지 안 물어봄)
+              useGoalStore.setState({ lastMonthGoals: [] });
+            },
+          },
+          {
+            text: '네, 이어할래요',
+            onPress: async () => {
+              if (user) {
+                await copyGoalsFromLastMonth(user.id);
+                Alert.alert('목표가 연장되었습니다', '이번 달도 화이팅하세요! 🔥');
+              }
+            },
+          },
+        ],
+      );
+    }
+  }, [lastMonthGoals, myGoals, user]);
 
   const goToPrevMonth = () => {
     setYearMonth((prev) =>

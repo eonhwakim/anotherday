@@ -50,7 +50,7 @@ export default function TeamDetailScreen() {
   const route = useRoute<TeamDetailScreenRouteProp>();
   const { teamId } = route.params;
   const { user } = useAuthStore();
-  const { teams } = useTeamStore();
+  const { teams, deleteTeam, leaveTeam, fetchTeams } = useTeamStore();
 
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
   const [members, setMembers] = useState<TeamMemberWithUser[]>([]);
@@ -71,6 +71,7 @@ export default function TeamDetailScreen() {
   const [editRetroText, setEditRetroText] = useState('');
 
   const currentTeamInfo = teams.find(t => t.id === teamId);
+  const myRole = currentTeamInfo?.role;
 
   useEffect(() => {
     if (currentTeamInfo) {
@@ -296,6 +297,54 @@ export default function TeamDetailScreen() {
     setYearMonth((prev) => dayjs(`${prev}-01`).add(1, 'month').format('YYYY-MM'));
   };
 
+  const handleDeleteTeam = () => {
+    Alert.alert(
+      '팀 삭제',
+      `"${teamName}" 팀을 삭제하면 팀원 모두의 목표와 기록이 사라집니다.\n정말 삭제하시겠어요?`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            if (!user) return;
+            const ok = await deleteTeam(teamId, user.id);
+            if (ok) {
+              await fetchTeams(user.id);
+              navigation.goBack();
+            } else {
+              Alert.alert('오류', '팀 삭제에 실패했습니다. 다시 시도해주세요.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleLeaveTeam = () => {
+    Alert.alert(
+      '팀 탈퇴',
+      `"${teamName}" 팀에서 탈퇴하시겠어요?\n탈퇴 후에는 팀의 목표와 기록을 볼 수 없습니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '탈퇴',
+          style: 'destructive',
+          onPress: async () => {
+            if (!user) return;
+            const ok = await leaveTeam(teamId, user.id);
+            if (ok) {
+              await fetchTeams(user.id);
+              navigation.goBack();
+            } else {
+              Alert.alert('오류', '팀 탈퇴에 실패했습니다. 다시 시도해주세요.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
@@ -440,6 +489,24 @@ export default function TeamDetailScreen() {
             </View>
           </>
         )}
+        {/* 팀 삭제 / 탈퇴 */}
+        {myRole && (
+          <View style={styles.dangerZone}>
+            <View style={styles.dangerDivider} />
+            {myRole === 'leader' ? (
+              <TouchableOpacity style={styles.dangerBtn} onPress={handleDeleteTeam}>
+                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                <Text style={styles.dangerBtnText}>팀 삭제</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.dangerBtn} onPress={handleLeaveTeam}>
+                <Ionicons name="exit-outline" size={16} color="#EF4444" />
+                <Text style={styles.dangerBtnText}>팀 탈퇴</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -710,6 +777,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
+  // 위험 구역
+  dangerZone: {
+    marginTop: 8,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  dangerDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    marginBottom: 16,
+  },
+  dangerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+    backgroundColor: 'rgba(239,68,68,0.06)',
+  },
+  dangerBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+
   // Modal
   modalOverlay: {
     flex: 1,

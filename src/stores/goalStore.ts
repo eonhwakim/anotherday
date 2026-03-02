@@ -34,8 +34,9 @@ function getWeekMonday(dateStr: string): string {
 
 /** 해당 날짜에 이 목표가 유효한지 판별 */
 function isGoalActiveOnDate(ug: any, dateStr: string): boolean {
-  if (!ug.start_date) return true; // start_date가 없으면 항상 유효
-  return dateStr >= ug.start_date;
+  if (ug.start_date && dateStr < ug.start_date) return false;
+  if (ug.end_date && dateStr > ug.end_date) return false;
+  return true;
 }
 
 /** 주 N회 목표가 연습 주인지 (생성 주와 같은 주) */
@@ -79,10 +80,13 @@ interface GoalState {
   selectedDateCheckins: CheckinWithGoal[];
   monthlyCheckins: Checkin[];
   memberDateCheckins: MemberCheckinSummary[];
+  lastMonthGoals: UserGoal[];
   isLoading: boolean;
 
   fetchTeamGoals: (teamId: string, userId?: string) => Promise<void>;
   fetchMyGoals: (userId: string) => Promise<void>;
+  fetchLastMonthGoals: (userId: string) => Promise<void>;
+  copyGoalsFromLastMonth: (userId: string) => Promise<void>;
   fetchTodayCheckins: (userId: string) => Promise<void>;
   createCheckin: (params: {
     userId: string;
@@ -122,7 +126,52 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   selectedDateCheckins: [],
   monthlyCheckins: [],
   memberDateCheckins: [],
+  lastMonthGoals: [],
   isLoading: false,
+
+  // ── 지난 달 목표 로드 (Carry Over용) ──
+  fetchLastMonthGoals: async (userId) => {
+    const today = dayjs().format('YYYY-MM-DD');
+    const lastMonthStart = dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
+
+    // 최근 한 달 내에 만료된 목표 조회
+    const { data } = await supabase
+      .from('user_goals')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .lt('end_date', today)
+      .gte('end_date', lastMonthStart);
+
+    set({ lastMonthGoals: data ?? [] });
+  },
+
+  // ── 지난 달 목표 그대로 가져오기 ──
+  copyGoalsFromLastMonth: async (userId) => {
+    const goals = get().lastMonthGoals;
+    if (goals.length === 0) return;
+
+    const today = dayjs().format('YYYY-MM-DD');
+    const endOfMonth = dayjs().endOf('month').format('YYYY-MM-DD');
+
+    // 기존 목표의 기간을 이번 달로 연장 (업데이트)
+    const updates = goals.map((g) => ({
+      id: g.id,
+      user_id: userId,
+      goal_id: g.goal_id,
+      start_date: today,
+      end_date: endOfMonth,
+      is_active: true,
+      frequency: g.frequency,
+      target_count: g.target_count,
+    }));
+
+    const { error } = await supabase.from('user_goals').upsert(updates);
+    if (error) console.error('copyGoals error:', error);
+
+    await get().fetchMyGoals(userId);
+    set({ lastMonthGoals: [] });
+  },
 
   // ── 팀 목표 로드 ──
   fetchTeamGoals: async (teamId, userId) => {
@@ -153,11 +202,13 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   // ── 내 목표 로드 ──
   fetchMyGoals: async (userId) => {
+    const today = dayjs().format('YYYY-MM-DD');
     const { data } = await supabase
       .from('user_goals')
       .select('*')
       .eq('user_id', userId)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .or(`end_date.is.null,end_date.gte.${today}`);
     set({ myGoals: data ?? [] });
   },
 
@@ -216,6 +267,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
           goal_id: goalId,
           is_active: true,
           start_date: today,
+          end_date: dayjs().endOf('month').format('YYYY-MM-DD'),
         },
         { onConflict: 'user_id, goal_id' },
       );
@@ -244,7 +296,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         if (myGoal.is_active) return false;
         await supabase
           .from('user_goals')
-          .update({ is_active: true, frequency, target_count: targetCount, start_date: today })
+          .update({ is_active: true, frequency, target_count: targetCount, start_date: today, end_date: dayjs().endOf('month').format('YYYY-MM-DD') })
           .eq('id', myGoal.id);
       } else {
         await supabase.from('user_goals').insert({
@@ -284,6 +336,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       frequency,
       target_count: targetCount,
       start_date: today,
+      end_date: dayjs().endOf('month').format('YYYY-MM-DD'),
     });
 
     await get().fetchMyGoals(userId);
