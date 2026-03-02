@@ -15,6 +15,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "updates": {
+      "url": "https://u.expo.dev/c16b46a9-0655-4c45-b569-c8d329d506a1"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anotherday.app",
