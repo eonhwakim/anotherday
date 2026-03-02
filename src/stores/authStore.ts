@@ -4,6 +4,8 @@ import type { User } from '../types/domain';
 import { useGoalStore } from './goalStore';
 import { useTeamStore } from './teamStore';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 interface AuthState {
   user: User | null;
   isLoading: boolean;
@@ -185,6 +187,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     // 모든 스토어 초기화 (이전 사용자 데이터 제거)
     useGoalStore.getState().reset();
     useTeamStore.getState().reset();
+    
+    // 테스트용: 로그아웃 시 안내 모달 기록 초기화 (개발 편의성 및 신규 유저 시뮬레이션)
+    // 실제 배포 시에는 주석 처리하거나 제거할 수 있음
+    await AsyncStorage.removeItem('hasSeenGuide_v4');
+    
     await supabase.auth.signOut();
     set({ user: null, error: null });
   },

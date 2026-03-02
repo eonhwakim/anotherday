@@ -58,6 +58,7 @@ export interface UserGoal {
   frequency: GoalFrequency; // 'daily' | 'weekly_count'
   target_count: number | null; // weekly_count일 때 주 N회
   start_date: string | null; // 목표 시작일 (YYYY-MM-DD), 이 날짜부터 유효
+  end_date: string | null; // 목표 종료일 (YYYY-MM-DD), 이 날짜까지 유효
   week_days: number[] | null; // deprecated, 호환용
   created_at: string;
 }
