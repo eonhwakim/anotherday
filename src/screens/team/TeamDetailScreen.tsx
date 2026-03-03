@@ -39,6 +39,8 @@ interface MemberStats {
 interface MemberGoalStatus {
   goalId: string;
   name: string;
+  frequency: 'daily' | 'weekly_count';
+  targetCount: number | null;
   done: number;
   pass: number;
   fail: number;
@@ -212,6 +214,8 @@ export default function TeamDetailScreen() {
           return {
             goalId: ug.goal_id,
             name: teamGoalsMap.get(ug.goal_id) || 'Unknown',
+            frequency: ug.frequency || 'daily',
+            targetCount: ug.target_count,
             done: gDone,
             pass: gPass,
             fail: gFail,
@@ -440,14 +444,25 @@ export default function TeamDetailScreen() {
                           </TouchableOpacity>
                         </View>
                       </View>
+                      <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
                     </View>
 
                     {/* Goals List (Always Visible) */}
                     <View style={styles.goalsList}>
+                      <Text style={styles.goalsLabel}>목표</Text>
                       {goals.length > 0 ? (
                         goals.map((g) => (
                           <View key={g.goalId} style={styles.goalItem}>
-                            <Text style={styles.goalName}>{g.name}</Text>
+                            <View style={styles.goalNameRow}>
+                              <View style={styles.freqBadge}>
+                                <Text style={styles.freqBadgeText}>
+                                  {g.frequency === 'weekly_count' && g.targetCount
+                                    ? `주${g.targetCount}회`
+                                    : '매일'}
+                                </Text>
+                              </View>
+                              <Text style={styles.goalName}>{g.name}</Text>
+                            </View>
                             <View style={styles.goalStats}>
                               <Text style={styles.goalDone}>{g.done}완료</Text>
                               {g.pass > 0 && <Text style={styles.goalPass}>{g.pass}패스</Text>}
@@ -706,15 +721,41 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.06)',
     gap: 8,
   },
+  goalsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginBottom: 2,
+  },
   goalItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  goalNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    marginRight: 8,
+  },
   goalName: {
     fontSize: 13,
     color: COLORS.text,
-    flex: 1,
+    flexShrink: 1,
+  },
+  freqBadge: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  freqBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   goalStats: {
     flexDirection: 'row',

@@ -6,6 +6,8 @@ import { COLORS } from '../../constants/defaults';
 interface GoalStat {
   goalId: string;
   name: string;
+  frequency?: 'daily' | 'weekly_count';
+  targetCount?: number | null;
   done: number;
   pass: number;
   fail: number;
@@ -62,7 +64,18 @@ export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArr
           <Text style={styles.goalStatsTitle}>목표별 현황</Text>
           {stats.goalStats.map((gs) => (
             <View key={gs.goalId} style={styles.goalStatRow}>
-              <Text style={styles.goalStatName} numberOfLines={1}>{gs.name}</Text>
+              <View style={styles.goalStatNameRow}>
+                {gs.frequency && (
+                  <View style={styles.freqBadge}>
+                    <Text style={styles.freqBadgeText}>
+                      {gs.frequency === 'weekly_count' && gs.targetCount
+                        ? `주${gs.targetCount}회`
+                        : '매일'}
+                    </Text>
+                  </View>
+                )}
+                <Text style={styles.goalStatName} numberOfLines={1}>{gs.name}</Text>
+              </View>
               <View style={styles.goalStatBadges}>
                 <Text style={styles.goalStatDone}>{gs.done}완료</Text>
                 {gs.pass > 0 && <Text style={styles.goalStatPass}>{gs.pass}패스</Text>}
@@ -188,12 +201,31 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.03)',
   },
+  goalStatNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    marginRight: 8,
+  },
   goalStatName: {
     fontSize: 14,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.80)',
-    flex: 1,
-    marginRight: 8,
+    flexShrink: 1,
+  },
+  freqBadge: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  freqBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.50)',
   },
   goalStatBadges: {
     flexDirection: 'row',

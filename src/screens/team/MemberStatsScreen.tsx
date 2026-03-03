@@ -218,6 +218,8 @@ export default function MemberStatsScreen() {
       return {
         goalId: ug.goal_id,
         name,
+        frequency: ug.frequency,
+        targetCount: ug.target_count,
         done: goalDoneMap[ug.goal_id] || 0,
         pass: goalPassMap[ug.goal_id] || 0,
         fail: goalFailMap[ug.goal_id] || 0,

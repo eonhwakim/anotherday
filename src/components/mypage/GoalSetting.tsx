@@ -217,7 +217,7 @@ export default function GoalSetting({
       {frequency === 'weekly_count' && (
         <View style={styles.countRow}>
           <Text style={styles.countLabel}>주</Text>
-          {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+          {[1, 2, 3, 4, 5, 6].map((n) => (
             <TouchableOpacity
               key={n}
               style={[styles.countBtn, targetCount === n && styles.countBtnActive]}
@@ -325,9 +325,9 @@ const styles = StyleSheet.create({
 
   // ── 주 N회 선택 ──
   countRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 20, justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', gap:6, marginBottom: 20, justifyContent: 'center',
   },
-  countLabel: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.50)', marginHorizontal: 4 },
+  countLabel: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.50)', marginHorizontal: 6 },
   countBtn: {
     width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',

@@ -2,7 +2,9 @@ import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Alert, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { AppTabParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
@@ -34,6 +36,23 @@ export default function CalendarScreen() {
     fetchMyGoals,
     toggleReaction,
   } = useGoalStore();
+
+  const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
+  const scrollRef = useRef<ScrollView>(null);
+  const lastTapRef = useRef(0);
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', () => {
+      if (navigation.isFocused()) {
+        const now = Date.now();
+        if (now - lastTapRef.current < 300) {
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }
+        lastTapRef.current = now;
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
@@ -143,7 +162,7 @@ export default function CalendarScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView style={styles.scroll}>
+      <ScrollView ref={scrollRef} style={styles.scroll}>
         <Text style={styles.screenTitle}>캘린더</Text>
 
         <Calendar
