@@ -6,6 +6,7 @@ import type {
   Checkin,
   CheckinWithGoal,
   MemberProgress,
+  MemberGoalDetail,
   MemberCheckinSummary,
   MountainPosition,
   CalendarDayMarking,
@@ -253,24 +254,27 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   // ── 목표 토글 ──
   toggleUserGoal: async (userId, goalId) => {
-    const existing = get().myGoals.find(
-      (ug) => ug.goal_id === goalId && ug.user_id === userId,
-    );
+    const { data: existing } = await supabase
+      .from('user_goals')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('goal_id', goalId)
+      .maybeSingle();
 
     if (existing) {
-      await supabase.from('user_goals').update({ is_active: false }).eq('id', existing.id);
+      await supabase
+        .from('user_goals')
+        .update({ is_active: !existing.is_active })
+        .eq('id', existing.id);
     } else {
       const today = dayjs().format('YYYY-MM-DD');
-      await supabase.from('user_goals').upsert(
-        {
-          user_id: userId,
-          goal_id: goalId,
-          is_active: true,
-          start_date: today,
-          end_date: dayjs().endOf('month').format('YYYY-MM-DD'),
-        },
-        { onConflict: 'user_id, goal_id' },
-      );
+      await supabase.from('user_goals').insert({
+        user_id: userId,
+        goal_id: goalId,
+        is_active: true,
+        start_date: today,
+        end_date: dayjs().endOf('month').format('YYYY-MM-DD'),
+      });
     }
 
     await get().fetchMyGoals(userId);
@@ -282,21 +286,31 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     if (!trimmed) return false;
 
     const today = dayjs().format('YYYY-MM-DD');
+    const endOfMonth = dayjs().endOf('month').format('YYYY-MM-DD');
 
     const existing = get().teamGoals.find(
       (g) => g.name.toLowerCase() === trimmed.toLowerCase(),
     );
 
     if (existing) {
-      const myGoal = get().myGoals.find(
-        (ug) => ug.goal_id === existing.id && ug.user_id === userId,
-      );
+      const { data: myGoal } = await supabase
+        .from('user_goals')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('goal_id', existing.id)
+        .maybeSingle();
 
       if (myGoal) {
         if (myGoal.is_active) return false;
         await supabase
           .from('user_goals')
-          .update({ is_active: true, frequency, target_count: targetCount, start_date: today, end_date: dayjs().endOf('month').format('YYYY-MM-DD') })
+          .update({
+            is_active: true,
+            frequency,
+            target_count: targetCount,
+            start_date: today,
+            end_date: endOfMonth,
+          })
           .eq('id', myGoal.id);
       } else {
         await supabase.from('user_goals').insert({
@@ -306,6 +320,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
           frequency,
           target_count: targetCount,
           start_date: today,
+          end_date: endOfMonth,
         });
       }
 
@@ -313,7 +328,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       return true;
     }
 
-    // goals 테이블에 추가
     const payload: any = { name: trimmed, is_active: true, owner_id: userId };
     if (teamId) payload.team_id = teamId;
 
@@ -328,7 +342,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       return false;
     }
 
-    // user_goals에 자동 선택
     await supabase.from('user_goals').insert({
       user_id: userId,
       goal_id: newGoal.id,
@@ -336,7 +349,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       frequency,
       target_count: targetCount,
       start_date: today,
-      end_date: dayjs().endOf('month').format('YYYY-MM-DD'),
+      end_date: endOfMonth,
     });
 
     await get().fetchMyGoals(userId);
@@ -387,12 +400,21 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       const user = member.user as any;
       const uid = member.user_id || user.id;
 
-      // 활성 목표
-      const { data: userGoals } = await supabase
+      // 활성 목표 (현재 팀 + 본인이 만든 목표만)
+      const ugQuery = supabase
         .from('user_goals')
-        .select('goal_id, frequency, target_count, start_date')
+        .select('goal_id, frequency, target_count, start_date, goal:goals!inner(team_id, owner_id)')
         .eq('user_id', uid)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('goal.owner_id', uid);
+      if (teamId) ugQuery.eq('goal.team_id', teamId);
+      const { data: userGoalsRaw } = await ugQuery;
+      const userGoals = (userGoalsRaw ?? []).map((ug: any) => ({
+        goal_id: ug.goal_id,
+        frequency: ug.frequency,
+        target_count: ug.target_count,
+        start_date: ug.start_date,
+      }));
 
       // 오늘 해당되는 목표 필터링
       const todayGoalIds: string[] = [];
@@ -418,25 +440,42 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
       const total = todayGoalIds.length;
 
+      // 목표 이름 조회
+      const { data: goalRows } = total > 0
+        ? await supabase.from('goals').select('id, name').in('id', todayGoalIds)
+        : { data: [] as { id: string; name: string }[] };
+      const goalNameMap = new Map((goalRows ?? []).map((g: any) => [g.id, g.name as string]));
+
       // 오늘 체크인
       const { data: todayCheckins } = await supabase
         .from('checkins')
-        .select('goal_id, status')
+        .select('goal_id, status, memo')
         .eq('user_id', uid)
         .eq('date', today)
         .in('goal_id', total > 0 ? todayGoalIds : ['__none__']);
 
-      const doneCount = (todayCheckins ?? []).filter((c: any) => c.status === 'done' && !(c.memo && c.memo.startsWith('[패스]'))).length;
+      const doneGoalIds = new Set(
+        (todayCheckins ?? [])
+          .filter((c: any) => c.status === 'done' && !(c.memo && c.memo.startsWith('[패스]')))
+          .map((c: any) => c.goal_id),
+      );
       const passCount = (todayCheckins ?? []).filter((c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]'))).length;
       const effectiveTotal = total - passCount;
+
+      const goalDetails: MemberGoalDetail[] = todayGoalIds.map((gid) => ({
+        goalId: gid,
+        goalName: goalNameMap.get(gid) ?? '목표',
+        isDone: doneGoalIds.has(gid),
+      }));
 
       progress.push({
         userId: uid,
         nickname: user?.nickname ?? '알 수 없음',
         profileImageUrl: user?.profile_image_url ?? null,
         totalGoals: effectiveTotal > 0 ? effectiveTotal : total,
-        completedGoals: doneCount,
-        position: getPosition(doneCount, effectiveTotal > 0 ? effectiveTotal : total),
+        completedGoals: doneGoalIds.size,
+        position: getPosition(doneGoalIds.size, effectiveTotal > 0 ? effectiveTotal : total),
+        goalDetails,
       });
     }
 

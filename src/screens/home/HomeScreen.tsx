@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
@@ -32,6 +35,23 @@ export default function HomeScreen() {
     myGoals, teamGoals, todayCheckins, memberProgress,
     fetchTeamGoals, fetchTodayCheckins, fetchMemberProgress, fetchMyGoals,
   } = useGoalStore();
+
+  const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
+  const scrollRef = useRef<ScrollView>(null);
+  const lastTapRef = useRef(0);
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', () => {
+      if (navigation.isFocused()) {
+        const now = Date.now();
+        if (now - lastTapRef.current < 300) {
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }
+        lastTapRef.current = now;
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [isStampFinished, setIsStampFinished] = React.useState(false);
@@ -230,6 +250,7 @@ export default function HomeScreen() {
 
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
+          ref={scrollRef}
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
@@ -275,8 +296,8 @@ export default function HomeScreen() {
           <View style={styles.goalDarkBg}>
             <View style={styles.goalSection}>
               <TodayGoalList
-                goals={myActiveGoals}
-                checkins={todayCheckins}
+                members={memberProgress}
+                currentUserId={user?.id}
                 onAnimationFinish={() => setIsStampFinished(true)}
               />
             </View>

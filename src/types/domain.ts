@@ -141,6 +141,13 @@ export type CheckinInsert = Omit<Checkin, 'id' | 'created_at'>;
 /** 산 위치 구간 (입구 / 중간 / 정상) */
 export type MountainPosition = 'base' | 'middle' | 'summit';
 
+/** 멤버별 개별 목표 상태 */
+export interface MemberGoalDetail {
+  goalId: string;
+  goalName: string;
+  isDone: boolean;
+}
+
 /** 멤버 진행 상황 (HomeScreen 산 UI 용) */
 export interface MemberProgress {
   userId: string;
@@ -149,6 +156,7 @@ export interface MemberProgress {
   totalGoals: number;
   completedGoals: number;
   position: MountainPosition;
+  goalDetails: MemberGoalDetail[];
 }
 
 /** 캘린더 날짜별 상태 마킹 */
