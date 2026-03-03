@@ -179,7 +179,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     let query = supabase
       .from('goals')
       .select('*')
-      .eq('is_active', true)
       .order('created_at');
 
     if (userId) {
@@ -254,28 +253,24 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   // ── 목표 토글 ──
   toggleUserGoal: async (userId, goalId) => {
-    const { data: existing } = await supabase
+    const { data: current, error: selectErr } = await supabase
       .from('user_goals')
-      .select('*')
+      .select('is_active')
       .eq('user_id', userId)
       .eq('goal_id', goalId)
-      .maybeSingle();
+      .single();
 
-    if (existing) {
-      await supabase
-        .from('user_goals')
-        .update({ is_active: !existing.is_active })
-        .eq('id', existing.id);
-    } else {
-      const today = dayjs().format('YYYY-MM-DD');
-      await supabase.from('user_goals').insert({
-        user_id: userId,
-        goal_id: goalId,
-        is_active: true,
-        start_date: today,
-        end_date: dayjs().endOf('month').format('YYYY-MM-DD'),
-      });
+    if (selectErr) {
+      console.error('toggleUserGoal user_goals select error:', selectErr);
+      return;
     }
+
+    const { error: updateErr } = await supabase
+      .from('user_goals')
+      .update({ is_active: !current.is_active })
+      .eq('user_id', userId)
+      .eq('goal_id', goalId);
+    if (updateErr) console.error('toggleUserGoal user_goals update error:', updateErr);
 
     await get().fetchMyGoals(userId);
   },
@@ -288,16 +283,16 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     const today = dayjs().format('YYYY-MM-DD');
     const endOfMonth = dayjs().endOf('month').format('YYYY-MM-DD');
 
-    const existing = get().teamGoals.find(
-      (g) => g.name.toLowerCase() === trimmed.toLowerCase(),
+    const myExisting = get().teamGoals.find(
+      (g) => g.name.toLowerCase() === trimmed.toLowerCase() && g.owner_id === userId,
     );
 
-    if (existing) {
+    if (myExisting) {
       const { data: myGoal } = await supabase
         .from('user_goals')
         .select('*')
         .eq('user_id', userId)
-        .eq('goal_id', existing.id)
+        .eq('goal_id', myExisting.id)
         .maybeSingle();
 
       if (myGoal) {
@@ -315,7 +310,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       } else {
         await supabase.from('user_goals').insert({
           user_id: userId,
-          goal_id: existing.id,
+          goal_id: myExisting.id,
           is_active: true,
           frequency,
           target_count: targetCount,
@@ -328,7 +323,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       return true;
     }
 
-    const payload: any = { name: trimmed, is_active: true, owner_id: userId };
+    const payload: any = { name: trimmed, owner_id: userId };
     if (teamId) payload.team_id = teamId;
 
     const { data: newGoal, error } = await supabase
@@ -357,16 +352,25 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     return true;
   },
 
-  // ── 목표 삭제 ──
+  // ── 목표 삭제 (DB에서 완전 삭제) ──
   removeTeamGoal: async (teamId, userId, goalId) => {
-    await supabase.from('goals').update({ is_active: false }).eq('id', goalId);
-    await supabase
+    const { error: ugErr } = await supabase
       .from('user_goals')
-      .update({ is_active: false })
+      .delete()
       .eq('user_id', userId)
       .eq('goal_id', goalId);
+    if (ugErr) console.error('removeTeamGoal user_goals delete error:', ugErr);
 
-    await Promise.all([get().fetchTeamGoals(teamId), get().fetchMyGoals(userId)]);
+    const { error: goalErr } = await supabase
+      .from('goals')
+      .delete()
+      .eq('id', goalId);
+    if (goalErr) console.error('removeTeamGoal goals delete error:', goalErr);
+
+    await Promise.all([
+      get().fetchTeamGoals(teamId, userId),
+      get().fetchMyGoals(userId),
+    ]);
   },
 
   // ── 멤버 진행상황 (산 애니메이션) ──
