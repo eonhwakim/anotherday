@@ -420,6 +420,20 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         start_date: ug.start_date,
       }));
 
+      // 비활성 목표도 조회 (회색 표시용)
+      const inactiveQuery = supabase
+        .from('user_goals')
+        .select('goal_id, goal:goals!inner(team_id, owner_id, name)')
+        .eq('user_id', uid)
+        .eq('is_active', false)
+        .eq('goal.owner_id', uid);
+      if (teamId) inactiveQuery.eq('goal.team_id', teamId);
+      const { data: inactiveGoalsRaw } = await inactiveQuery;
+      const inactiveGoals = (inactiveGoalsRaw ?? []).map((ig: any) => ({
+        goal_id: ig.goal_id,
+        goalName: (ig.goal as any)?.name ?? '목표',
+      }));
+
       // 오늘 해당되는 목표 필터링
       const todayGoalIds: string[] = [];
       for (const ug of userGoals ?? []) {
@@ -463,22 +477,37 @@ export const useGoalStore = create<GoalState>((set, get) => ({
           .filter((c: any) => c.status === 'done' && !(c.memo && c.memo.startsWith('[패스]')))
           .map((c: any) => c.goal_id),
       );
-      const passCount = (todayCheckins ?? []).filter((c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]'))).length;
-      const effectiveTotal = total - passCount;
+      const passGoalIds = new Set(
+        (todayCheckins ?? [])
+          .filter((c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]')))
+          .map((c: any) => c.goal_id),
+      );
+      const completedCount = doneGoalIds.size + passGoalIds.size;
 
-      const goalDetails: MemberGoalDetail[] = todayGoalIds.map((gid) => ({
-        goalId: gid,
-        goalName: goalNameMap.get(gid) ?? '목표',
-        isDone: doneGoalIds.has(gid),
-      }));
+      const goalDetails: MemberGoalDetail[] = [
+        ...todayGoalIds.map((gid) => ({
+          goalId: gid,
+          goalName: goalNameMap.get(gid) ?? '목표',
+          isDone: doneGoalIds.has(gid),
+          isPass: passGoalIds.has(gid),
+          isActive: true,
+        })),
+        ...inactiveGoals.map((ig) => ({
+          goalId: ig.goal_id,
+          goalName: ig.goalName,
+          isDone: false,
+          isPass: false,
+          isActive: false,
+        })),
+      ];
 
       progress.push({
         userId: uid,
         nickname: user?.nickname ?? '알 수 없음',
         profileImageUrl: user?.profile_image_url ?? null,
-        totalGoals: effectiveTotal > 0 ? effectiveTotal : total,
-        completedGoals: doneGoalIds.size,
-        position: getPosition(doneGoalIds.size, effectiveTotal > 0 ? effectiveTotal : total),
+        totalGoals: total,
+        completedGoals: completedCount,
+        position: getPosition(completedCount, total),
         goalDetails,
       });
     }

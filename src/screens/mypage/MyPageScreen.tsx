@@ -345,7 +345,6 @@ export default function MyPageScreen() {
     const doneTotal = checkins.filter(isDone).length;
     const passTotal = checkins.filter(isPass).length;
 
-    const dailyPercents: number[] = [];
     const goalDoneMap: Record<string, number> = {};
     const goalPassMap: Record<string, number> = {};
     const goalFailMap: Record<string, number> = {};
@@ -367,11 +366,6 @@ export default function MyPageScreen() {
       if (totalForDay === 0) continue;
 
       const dayCheckins = checkins.filter((c) => c.date === dateStr);
-      const done = dayCheckins.filter(c => todayDailyGoals.some(ug => ug.goal_id === c.goal_id) && isDone(c)).length;
-      const pass = dayCheckins.filter(c => todayDailyGoals.some(ug => ug.goal_id === c.goal_id) && isPass(c)).length;
-      const effectiveTotal = totalForDay - pass;
-      const pct = effectiveTotal > 0 ? (done / effectiveTotal) * 100 : (done > 0 ? 100 : 0);
-      dailyPercents.push(pct);
 
       todayDailyGoals.forEach((ug) => {
         const gid = ug.goal_id;
@@ -446,10 +440,6 @@ export default function MyPageScreen() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
 
-    const avg = dailyPercents.length > 0
-      ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
-      : 0;
-
     const goalStats = goals.map((ug) => {
       const goal = allGoals.find((g) => g.id === ug.goal_id);
       return {
@@ -464,6 +454,10 @@ export default function MyPageScreen() {
     });
 
     const failTotal = goalStats.reduce((sum, gs) => sum + gs.fail, 0);
+
+    const totalDoneCount = goalStats.reduce((sum, gs) => sum + gs.done, 0);
+    const avgDenominator = totalDoneCount + failTotal;
+    const avg = avgDenominator > 0 ? Math.round((totalDoneCount / avgDenominator) * 100) : 0;
 
     let bestGoal: { name: string; rate: number; doneCount: number } | null = null;
     let worstGoal: { name: string; rate: number; failCount: number } | null = null;

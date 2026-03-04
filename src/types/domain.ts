@@ -146,6 +146,8 @@ export interface MemberGoalDetail {
   goalId: string;
   goalName: string;
   isDone: boolean;
+  isPass?: boolean;
+  isActive?: boolean;
 }
 
 /** 멤버 진행 상황 (HomeScreen 산 UI 용) */

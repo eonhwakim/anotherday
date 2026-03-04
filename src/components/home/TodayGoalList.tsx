@@ -19,7 +19,7 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   const completedAll = members.reduce((s, m) => s + m.completedGoals, 0);
   const progress = totalAll > 0 ? completedAll / totalAll : 0;
 
-  const getEncouragement = () => {
+  const getEncouragement = (): string => {
     if (totalAll === 0) return '목표를\n 추가해봐!';
     if (progress === 0) return '오늘도\n 화이팅!';
     if (progress === 1) return '완벽한\n 하루!';
@@ -37,53 +37,68 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   const badgeOpacityAnim = useRef(new Animated.Value(1)).current;
 
   const memberAnims = useRef(members.map(() => new Animated.Value(0))).current;
+  const hasBadgeAnimatedRef = useRef(false);
+  const prevFocusedRef = useRef(false);
 
   useEffect(() => {
     if (members.length !== memberAnims.length) {
+      const wasEmpty = memberAnims.length === 0;
       memberAnims.length = 0;
-      members.forEach(() => memberAnims.push(new Animated.Value(0)));
+      members.forEach(() => memberAnims.push(new Animated.Value(wasEmpty ? 0 : 1)));
     }
   }, [members.length]);
 
   useEffect(() => {
-    if (isFocused) {
-      scaleAnim.setValue(0);
-      translateYAnim.setValue(0);
-      rotateAnim.setValue(0);
-      badgeOpacityAnim.setValue(1);
-      memberAnims.forEach((a) => a.setValue(0));
+    const justFocused = isFocused && !prevFocusedRef.current;
+    prevFocusedRef.current = isFocused;
 
-      setTimeout(() => {
-        Animated.sequence([
-          Animated.parallel([
-            Animated.timing(scaleAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.elastic(1.5)), useNativeDriver: true }),
-            Animated.timing(translateYAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.exp), useNativeDriver: true }),
-            Animated.timing(rotateAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-          ]),
-          Animated.delay(800),
-          Animated.parallel([
-            Animated.timing(scaleAnim, { toValue: 0, duration: 600, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-            Animated.timing(translateYAnim, { toValue: 2, duration: 700, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-            Animated.timing(rotateAnim, { toValue: 0, duration: 600, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-            Animated.timing(badgeOpacityAnim, { toValue: 0, duration: 700, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          ]),
-        ]).start(({ finished }) => {
-          if (finished && onAnimationFinish) onAnimationFinish();
-        });
-
-        Animated.stagger(
-          150,
-          memberAnims.map((anim) =>
-            Animated.timing(anim, {
-              toValue: 1,
-              duration: 350,
-              easing: Easing.out(Easing.back(1.1)),
-              useNativeDriver: true,
-            }),
-          ),
-        ).start();
-      }, 200);
+    if (!isFocused) {
+      hasBadgeAnimatedRef.current = false;
+      return;
     }
+
+    if (hasBadgeAnimatedRef.current) {
+      memberAnims.forEach((a) => a.setValue(1));
+      return;
+    }
+    hasBadgeAnimatedRef.current = true;
+
+    scaleAnim.setValue(0);
+    translateYAnim.setValue(0);
+    rotateAnim.setValue(0);
+    badgeOpacityAnim.setValue(1);
+    memberAnims.forEach((a) => a.setValue(0));
+
+    setTimeout(() => {
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(scaleAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.elastic(1.5)), useNativeDriver: true }),
+          Animated.timing(translateYAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.exp), useNativeDriver: true }),
+          Animated.timing(rotateAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ]),
+        Animated.delay(800),
+        Animated.parallel([
+          Animated.timing(scaleAnim, { toValue: 0, duration: 600, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(translateYAnim, { toValue: 2, duration: 700, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(rotateAnim, { toValue: 0, duration: 600, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(badgeOpacityAnim, { toValue: 0, duration: 700, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        ]),
+      ]).start(({ finished }) => {
+        if (finished && onAnimationFinish) onAnimationFinish();
+      });
+
+      Animated.stagger(
+        150,
+        memberAnims.map((anim) =>
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.out(Easing.back(1.1)),
+            useNativeDriver: true,
+          }),
+        ),
+      ).start();
+    }, 200);
   }, [isFocused, progress, totalAll]);
 
   const scale = scaleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.9] });
@@ -175,22 +190,34 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
 
                     {member.goalDetails.length > 0 ? (
                       <View style={styles.goalChips}>
-                        {member.goalDetails.map((g) => (
-                          <View
-                            key={g.goalId}
-                            style={[styles.goalChip, g.isDone && styles.goalChipDone]}
-                          >
-                            {g.isDone && (
-                              <Ionicons name="checkmark" size={10} color="#ffffff" style={{ marginRight: 3 }} />
-                            )}
-                            <Text
-                              style={[styles.goalChipText, g.isDone && styles.goalChipTextDone]}
-                              numberOfLines={1}
-                            >
-                              {g.goalName}
-                            </Text>
-                          </View>
-                        ))}
+                        {member.goalDetails.map((g) => {
+                          const inactive = g.isActive === false && !g.isDone && !g.isPass;
+                          const chipStyle = [
+                            styles.goalChip,
+                            inactive && styles.goalChipInactive,
+                            g.isPass && styles.goalChipPass,
+                            g.isDone && styles.goalChipDone,
+                          ];
+                          const textStyle = [
+                            styles.goalChipText,
+                            inactive && styles.goalChipTextInactive,
+                            g.isPass && styles.goalChipTextPass,
+                            g.isDone && styles.goalChipTextDone,
+                          ];
+                          return (
+                            <View key={g.goalId} style={chipStyle}>
+                              {g.isDone && (
+                                <Ionicons name="checkmark" size={10} color="#ffffff" style={{ marginRight: 3 }} />
+                              )}
+                              {g.isPass && (
+                                <Ionicons name="pause" size={9} color="#ffffff" style={{ marginRight: 3 }} />
+                              )}
+                              <Text style={textStyle} numberOfLines={1}>
+                                {g.goalName}
+                              </Text>
+                            </View>
+                          );
+                        })}
                       </View>
                     ) : (
                       <Text style={styles.noGoalText}>오늘 목표 없음</Text>
@@ -442,6 +469,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff7e5f',
     borderColor: '#ffaf7b',
   },
+  goalChipPass: {
+    backgroundColor: '#FFB547',
+    borderColor: '#F0AB2A',
+  },
+  goalChipInactive: {
+    backgroundColor: 'rgba(26,26,26,0.06)',
+    borderColor: 'rgba(26,26,26,0.12)',
+  },
   goalChipText: {
     fontSize: 11,
     fontWeight: '600',
@@ -450,6 +485,12 @@ const styles = StyleSheet.create({
   },
   goalChipTextDone: {
     color: '#FFFFFF',
+  },
+  goalChipTextPass: {
+    color: '#FFFFFF',
+  },
+  goalChipTextInactive: {
+    color: 'rgba(26,26,26,0.30)',
   },
   noGoalText: {
     fontSize: 11,
