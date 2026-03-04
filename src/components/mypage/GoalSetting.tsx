@@ -16,6 +16,7 @@ interface GoalSettingProps {
   teamGoals: Goal[];
   allTeamGoals?: Goal[]; // 전체 팀 목표 (추천/자동완성용)
   myGoals: UserGoal[];
+  todayCheckedGoalIds?: Set<string>;
   onToggle: (goalId: string) => void;
   onAdd: (name: string, frequency: GoalFrequency, targetCount: number | null) => Promise<boolean>;
   onRemove: (goalId: string) => void;
@@ -32,6 +33,7 @@ export default function GoalSetting({
   teamGoals = [],
   allTeamGoals = [],
   myGoals = [],
+  todayCheckedGoalIds = new Set(),
   onToggle,
   onAdd,
   onRemove,
@@ -256,6 +258,10 @@ export default function GoalSetting({
                   onPress={() => {
                     if (active && ug?.frequency === 'daily') {
                       Alert.alert('해제 불가', '매일 반복 목표는 해제할 수 없습니다.');
+                      return;
+                    }
+                    if (active && todayCheckedGoalIds.has(goal.id)) {
+                      Alert.alert('해제 불가', '이미 오늘 인증을 완료한 목표는 해제할 수 없습니다.');
                       return;
                     }
                     onToggle(goal.id);

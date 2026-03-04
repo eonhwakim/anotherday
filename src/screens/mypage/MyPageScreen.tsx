@@ -207,10 +207,12 @@ export default function MyPageScreen() {
 
   const handleCheckinDone = async () => {
     if (!user) return;
-    await fetchMonthlyCheckins(user.id, yearMonth);
-    await fetchTodayCheckins(user.id);
     const activeTeam = useTeamStore.getState().currentTeam;
-    await useGoalStore.getState().fetchMemberProgress(activeTeam?.id, user.id);
+    await Promise.all([
+      fetchMonthlyCheckins(user.id, yearMonth),
+      fetchTodayCheckins(user.id),
+      useGoalStore.getState().fetchMemberProgress(activeTeam?.id, user.id),
+    ]);
   };
 
   const handleCreateTeam = async () => {
@@ -496,6 +498,16 @@ export default function MyPageScreen() {
     return { doneTotal, passTotal, failTotal, avg, bestGoal, worstGoal, goalStats, topReasons };
   }, [monthlyCheckins, myGoals, teamGoals, yearMonth]);
 
+  // ── 오늘 이미 인증한 목표 ID 집합 ──
+  const todayCheckedGoalIds = React.useMemo(() => {
+    const todayStr = dayjs().format('YYYY-MM-DD');
+    return new Set(
+      (monthlyCheckins || [])
+        .filter(c => c.date === todayStr)
+        .map(c => c.goal_id),
+    );
+  }, [monthlyCheckins]);
+
   // ── 나의 목표에 해당하는 Goal 객체만 (캘린더·체크인 모달용) ──
   const myGoalObjects = React.useMemo(() => {
     const myGoalIds = new Set(currentTeamUserGoals.map(ug => ug.goal_id));
@@ -637,6 +649,7 @@ export default function MyPageScreen() {
           teamGoals={myVisibleGoals}
           allTeamGoals={teamGoals || []}
           myGoals={currentTeamUserGoals}
+          todayCheckedGoalIds={todayCheckedGoalIds}
           onToggle={handleToggleGoal}
           onAdd={handleAddGoal}
           onRemove={handleRemoveGoal}

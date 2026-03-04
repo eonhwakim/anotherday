@@ -19,13 +19,19 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   const completedAll = members.reduce((s, m) => s + m.completedGoals, 0);
   const progress = totalAll > 0 ? completedAll / totalAll : 0;
 
+  const myMember = members.find(m => m.userId === currentUserId);
+  const myTotal = myMember?.totalGoals ?? 0;
+  const myCompleted = myMember?.completedGoals ?? 0;
+  const myProgress = myTotal > 0 ? myCompleted / myTotal : 0;
+
   const getEncouragement = (): string => {
-    const pct = Math.floor(progress * 100);
+    const pct = Math.floor(myProgress * 100);
     if (pct === 100) return '완벽한\n 하루!';
     if (pct >= 80) return '거의\n 다 왔어!';
     if (pct >= 60) return '절반\n 넘었다!';
     if (pct >= 40) return '좋은\n 페이스!';
     if (pct >= 20) return '좋아\n 계속!';
+    if (myTotal > 0) return '시작해\n 보자!';
     return '목표를\n 추가해봐!';
   };
 
