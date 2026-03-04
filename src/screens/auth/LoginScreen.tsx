@@ -27,6 +27,7 @@ export default function LoginScreen() {
   const { signIn, isLoading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberEmail, setRememberEmail] = useState(false);
 
   useEffect(() => {
@@ -83,7 +84,25 @@ export default function LoginScreen() {
 
           <View style={styles.form}>
             <Input label="이메일" placeholder="email@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
-            <Input label="비밀번호" placeholder="비밀번호 입력" value={password} onChangeText={setPassword} secureTextEntry />
+            <Input
+              label="비밀번호"
+              placeholder="비밀번호 입력"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              rightElement={
+                <TouchableOpacity
+                  onPress={() => setShowPassword(prev => !prev)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off' : 'eye'}
+                    size={18}
+                    color={COLORS.textSecondary}
+                  />
+                </TouchableOpacity>
+              }
+            />
             
             <TouchableOpacity
               style={styles.checkboxContainer}
