@@ -349,9 +349,30 @@ export default function MyPageScreen() {
     const goalPassMap: Record<string, number> = {};
     const goalFailMap: Record<string, number> = {};
     const passReasons: string[] = [];
+    const dailyPercents: number[] = [];
 
     const dailyGoals = goals.filter(ug => ug.frequency === 'daily');
     const weeklyGoals = goals.filter(ug => ug.frequency === 'weekly_count');
+
+    // ── 일별 달성률 계산 (모든 목표 대상) ──
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = dayjs(startDate).date(d).format('YYYY-MM-DD');
+      if (dateStr > today) break;
+
+      const todayAllGoals = goals.filter((ug) => {
+        if (ug.start_date && dateStr < ug.start_date) return false;
+        return true;
+      });
+      const totalForDay = todayAllGoals.length;
+      if (totalForDay === 0) continue;
+
+      const dayCheckins = checkins.filter((c) => c.date === dateStr);
+      const done = dayCheckins.filter(isDone).length;
+      const pass = dayCheckins.filter(isPass).length;
+      const effectiveTotal = totalForDay - pass;
+      const pct = effectiveTotal > 0 ? (done / effectiveTotal) * 100 : (done > 0 ? 100 : 0);
+      dailyPercents.push(pct);
+    }
 
     // ── daily 목표: 매일 카운팅 (비활성 날도 미달) ──
     for (let d = 1; d <= daysInMonth; d++) {
@@ -455,9 +476,9 @@ export default function MyPageScreen() {
 
     const failTotal = goalStats.reduce((sum, gs) => sum + gs.fail, 0);
 
-    const totalDoneCount = goalStats.reduce((sum, gs) => sum + gs.done, 0);
-    const avgDenominator = totalDoneCount + failTotal;
-    const avg = avgDenominator > 0 ? Math.round((totalDoneCount / avgDenominator) * 100) : 0;
+    const avg = dailyPercents.length > 0
+      ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
+      : 0;
 
     let bestGoal: { name: string; rate: number; doneCount: number } | null = null;
     let worstGoal: { name: string; rate: number; failCount: number } | null = null;
