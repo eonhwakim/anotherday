@@ -14,14 +14,19 @@ export default function AppTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: COLORS.secondary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
+        tabBarActiveTintColor: '#FF6B3D',
+        tabBarInactiveTintColor: 'rgba(26,26,26,0.35)',
         tabBarStyle: {
-          backgroundColor: COLORS.background,
-          borderTopColor: COLORS.border,
+          backgroundColor: '#FFFFFF',
+          borderTopColor: 'rgba(255, 107, 61, 0.15)',
           borderTopWidth: 1,
           paddingTop: 6,
           height: 88,
+          shadowColor: '#FF6B3D',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,

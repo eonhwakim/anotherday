@@ -71,25 +71,6 @@ export default function LoginScreen() {
   return (
     <View style={styles.wrapper}>
       <View style={StyleSheet.absoluteFill}>
-        <Svg width="100%" height="100%">
-          <Defs>
-            <LinearGradient id="bgGrad" x1="0" y1="0" x2="0.5" y2="1">
-              <Stop offset="0%" stopColor="#050510" />
-              <Stop offset="100%" stopColor="#080820" />
-            </LinearGradient>
-            <RadialGradient id="orbA" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
-              <Stop offset="0%" stopColor={COLORS.holoCyan} stopOpacity="0.12" />
-              <Stop offset="100%" stopColor={COLORS.holoCyan} stopOpacity="0" />
-            </RadialGradient>
-            <RadialGradient id="orbB" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
-              <Stop offset="0%" stopColor={COLORS.holoPink} stopOpacity="0.10" />
-              <Stop offset="100%" stopColor={COLORS.holoPink} stopOpacity="0" />
-            </RadialGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#bgGrad)" />
-          <Circle cx="75%" cy="18%" r="200" fill="url(#orbA)" />
-          <Circle cx="20%" cy="72%" r="160" fill="url(#orbB)" />
-        </Svg>
       </View>
 
       <SafeAreaView style={{ flex: 1 }}>
@@ -138,9 +119,9 @@ const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: COLORS.background },
   container: { flex: 1, paddingHorizontal: 24, justifyContent: 'center' },
   header: { alignItems: 'center', marginBottom: 48 },
-  title: { fontSize: 36, fontWeight: '800', color: COLORS.text, marginBottom: 12, letterSpacing: 2 },
-  subtitle: { fontSize: 16, color: COLORS.textSecondary, fontWeight: '500' },
-  subtitle2: { fontSize: 14, color: COLORS.textMuted, marginTop: 4 },
+  title: { fontSize: 36, fontWeight: '800', color: COLORS.primary, marginBottom: 12, letterSpacing: 2 },
+  subtitle: { fontSize: 16, color: COLORS.text, fontWeight: '500' },
+  subtitle2: { fontSize: 14, color: COLORS.textSecondary, marginTop: 4 },
   form: { marginBottom: 32 },
   registerLink: { alignItems: 'center' },
   registerText: { fontSize: 14, color: COLORS.textSecondary },

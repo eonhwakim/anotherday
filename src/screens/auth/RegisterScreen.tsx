@@ -112,25 +112,6 @@ export default function RegisterScreen() {
   return (
     <View style={styles.wrapper}>
       <View style={StyleSheet.absoluteFill}>
-        <Svg width="100%" height="100%">
-          <Defs>
-            <LinearGradient id="bgGrad" x1="0" y1="0" x2="0.5" y2="1">
-              <Stop offset="0%" stopColor="#050510" />
-              <Stop offset="100%" stopColor="#080820" />
-            </LinearGradient>
-            <RadialGradient id="orbC" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
-              <Stop offset="0%" stopColor={COLORS.holoMint} stopOpacity="0.10" />
-              <Stop offset="100%" stopColor={COLORS.holoMint} stopOpacity="0" />
-            </RadialGradient>
-            <RadialGradient id="orbD" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
-              <Stop offset="0%" stopColor={COLORS.holoLavender} stopOpacity="0.10" />
-              <Stop offset="100%" stopColor={COLORS.holoLavender} stopOpacity="0" />
-            </RadialGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#bgGrad)" />
-          <Circle cx="18%" cy="25%" r="160" fill="url(#orbC)" />
-          <Circle cx="82%" cy="78%" r="180" fill="url(#orbD)" />
-        </Svg>
       </View>
 
       <SafeAreaView style={{ flex: 1 }}>

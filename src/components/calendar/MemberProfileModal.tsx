@@ -8,7 +8,6 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/defaults';
@@ -145,21 +144,36 @@ export default function MemberProfileModal({
     const avg = dailyPercents.length > 0
       ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
       : 0;
-    const max = dailyPercents.length > 0 ? Math.round(Math.max(...dailyPercents)) : 0;
-    const min = dailyPercents.length > 0 ? Math.round(Math.min(...dailyPercents)) : 0;
 
     const goalStats = goals.map((ug) => {
       const goal = allGoals.find((g) => g.id === ug.goal_id);
       return {
         goalId: ug.goal_id,
         name: goal?.name ?? '알 수 없음',
+        frequency: ug.frequency as 'daily' | 'weekly_count' | undefined,
+        targetCount: ug.target_count as number | null | undefined,
         done: goalDoneMap[ug.goal_id] || 0,
         pass: goalPassMap[ug.goal_id] || 0,
         fail: goalFailMap[ug.goal_id] || 0,
       };
     });
 
-    return { doneTotal, passTotal, avg, max, min, goalStats };
+    const failTotal = goalStats.reduce((sum, gs) => sum + gs.fail, 0);
+
+    let bestGoal: { name: string; rate: number; doneCount: number } | null = null;
+    let worstGoal: { name: string; rate: number; failCount: number } | null = null;
+    if (goalStats.length > 0) {
+      const withRate = goalStats.map(gs => {
+        const total = gs.done + gs.fail;
+        return { ...gs, rate: total > 0 ? Math.round((gs.done / total) * 100) : (gs.done > 0 ? 100 : 0) };
+      });
+      const best = withRate.reduce((a, b) => a.rate >= b.rate ? a : b);
+      bestGoal = { name: best.name, rate: best.rate, doneCount: best.done };
+      const worstWithRate = withRate.reduce((a, b) => a.fail >= b.fail ? a : b);
+      if (worstWithRate.fail > 0) worstGoal = { name: worstWithRate.name, rate: worstWithRate.rate, failCount: worstWithRate.fail };
+    }
+
+    return { doneTotal, passTotal, failTotal, avg, bestGoal, worstGoal, goalStats };
   }, [monthlyCheckins, myGoals, teamGoals, yearMonth]);
 
   const currentMonthLabel = dayjs(`${yearMonth}-01`).format('YYYY년 M월');
@@ -211,21 +225,58 @@ export default function MemberProfileModal({
               <View style={styles.statsCard}>
                 <Text style={styles.cardTitle}>{currentMonthLabel} 통계</Text>
 
-                {/* Achievement rates */}
-                <View style={styles.statsRow}>
-                  <StatItem label="평균 달성률" value={`${monthlyStats.avg}%`} icon="analytics" color="#fff" />
-                  <StatItem label="최고" value={`${monthlyStats.max}%`} icon="arrow-up" color="#4ADE80" />
-                  <StatItem label="최저" value={`${monthlyStats.min}%`} icon="arrow-down" color="#EF4444" />
+                {/* 평균 달성률 */}
+                <View style={styles.avgSection}>
+                  <Text style={styles.avgLabel}>평균 달성률</Text>
+                  <Text style={styles.avgValue}>{monthlyStats.avg}%</Text>
                 </View>
 
-                {/* Done / Pass counts */}
-                <View style={[styles.statsRow, { marginTop: 16 }]}>
-                  <StatItem 
-                    label="체크인" 
-                    value={`${monthlyStats.passTotal} 패스 ${monthlyStats.doneTotal} 완료`} 
-                    icon="checkmark-circle" 
-                    color="#fff" 
-                  />
+                {/* 최고 / 최저 목표 */}
+                <View style={styles.bestWorstRow}>
+                  {monthlyStats.bestGoal && (
+                    <View style={styles.bestCard}>
+                      <View style={styles.bestWorstHeader}>
+                        <Ionicons name="trophy" size={14} color="#4ADE80" />
+                        <Text style={styles.bestWorstLabel}>최고</Text>
+                      </View>
+                      <Text style={styles.bestWorstGoalName} numberOfLines={1}>{monthlyStats.bestGoal.name}</Text>
+                      <View style={styles.bestWorstValues}>
+                        <Text style={styles.bestRate}>{monthlyStats.bestGoal.rate}%</Text>
+                        <Text style={styles.bestSub}>{monthlyStats.bestGoal.doneCount}완료</Text>
+                      </View>
+                    </View>
+                  )}
+                  {monthlyStats.worstGoal && monthlyStats.worstGoal.failCount > 0 && (
+                    <View style={styles.worstCard}>
+                      <View style={styles.bestWorstHeader}>
+                        <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                        <Text style={styles.bestWorstLabel}>최저</Text>
+                      </View>
+                      <Text style={styles.bestWorstGoalName} numberOfLines={1}>{monthlyStats.worstGoal.name}</Text>
+                      <View style={styles.bestWorstValues}>
+                        <Text style={styles.worstRate}>{monthlyStats.worstGoal.rate}%</Text>
+                        <Text style={styles.worstSub}>{monthlyStats.worstGoal.failCount}미달</Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                {/* 체크인 요약 (한 줄) */}
+                <View style={styles.checkinSummary}>
+                  <View style={styles.checkinItem}>
+                    <View style={[styles.checkinDot, { backgroundColor: '#4ADE80' }]} />
+                    <Text style={styles.checkinText}>완료 <Text style={styles.checkinCount}>{monthlyStats.doneTotal}</Text></Text>
+                  </View>
+                  <View style={styles.checkinDivider} />
+                  <View style={styles.checkinItem}>
+                    <View style={[styles.checkinDot, { backgroundColor: '#E8960A' }]} />
+                    <Text style={styles.checkinText}>패스 <Text style={styles.checkinCount}>{monthlyStats.passTotal}</Text></Text>
+                  </View>
+                  <View style={styles.checkinDivider} />
+                  <View style={styles.checkinItem}>
+                    <View style={[styles.checkinDot, { backgroundColor: '#EF4444' }]} />
+                    <Text style={styles.checkinText}>미달 <Text style={styles.checkinCount}>{monthlyStats.failTotal}</Text></Text>
+                  </View>
                 </View>
 
                 {/* Goal-specific stats */}
@@ -234,10 +285,21 @@ export default function MemberProfileModal({
                     <Text style={styles.goalStatsTitle}>목표별 현황</Text>
                     {monthlyStats.goalStats.map((gs) => (
                       <View key={gs.goalId} style={styles.goalStatRow}>
-                        <Text style={styles.goalStatName} numberOfLines={1}>{gs.name}</Text>
+                        <View style={styles.goalStatNameRow}>
+                          {gs.frequency && (
+                            <View style={styles.freqBadge}>
+                              <Text style={styles.freqBadgeText}>
+                                {gs.frequency === 'weekly_count' && gs.targetCount
+                                  ? `주${gs.targetCount}회`
+                                  : '매일'}
+                              </Text>
+                            </View>
+                          )}
+                          <Text style={styles.goalStatName} numberOfLines={1}>{gs.name}</Text>
+                        </View>
                         <View style={styles.goalStatBadges}>
-                          {gs.pass > 0 && <Text style={styles.goalStatPass}>{gs.pass}패스</Text>}
                           <Text style={styles.goalStatDone}>{gs.done}완료</Text>
+                          {gs.pass > 0 && <Text style={styles.goalStatPass}>{gs.pass}패스</Text>}
                           {gs.fail > 0 && <Text style={styles.goalStatFail}>{gs.fail}미달</Text>}
                         </View>
                       </View>
@@ -253,42 +315,26 @@ export default function MemberProfileModal({
   );
 }
 
-function StatItem({
-  label,
-  value,
-  icon,
-  color,
-}: {
-  label: string;
-  value: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-}) {
-  return (
-    <View style={styles.statItem}>
-      <View style={[styles.statIconWrap, { backgroundColor: color + '15' }]}>
-        <Ionicons name={icon} size={20} color={color} />
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.50)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FFFAF7',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
-    minHeight: '60%', // 초기 높이 확보 (데이터 로딩 중 깜빡임 방지)
+    minHeight: '60%',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 20,
+    elevation: 8,
   },
   header: {
     flexDirection: 'row',
@@ -297,7 +343,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomColor: 'rgba(255, 107, 61, 0.10)',
   },
   profileRow: {
     flexDirection: 'row',
@@ -308,12 +354,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 107, 61, 0.18)',
   },
   avatarImage: {
     width: 44,
@@ -323,11 +369,11 @@ const styles = StyleSheet.create({
   nickname: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   memberInfo: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(26,26,26,0.50)',
     marginTop: 2,
   },
   closeButton: {
@@ -336,11 +382,10 @@ const styles = StyleSheet.create({
   loadingContainer: {
     padding: 40,
     alignItems: 'center',
-    flex: 1, // 전체 공간 차지
-    justifyContent: 'center', // 중앙 정렬
+    flex: 1,
+    justifyContent: 'center',
   },
   scrollContent: {
-    // flex: 1 removed to prevent collapse in auto-height container
   },
   statsCard: {
     padding: 20,
@@ -348,49 +393,140 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
     marginBottom: 16,
     letterSpacing: 0.3,
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
+  avgSection: {
     alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 107, 61, 0.04)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 61, 0.10)',
+  },
+  avgLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.45)',
+    marginBottom: 4,
+  },
+  avgValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FF6B3D',
+  },
+  bestWorstRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  bestCard: {
+    flex: 1,
+    backgroundColor: 'rgba(74, 222, 128, 0.06)',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.15)',
+  },
+  worstCard: {
+    flex: 1,
+    backgroundColor: 'rgba(239, 68, 68, 0.04)',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.12)',
+  },
+  bestWorstHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  bestWorstLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.45)',
+  },
+  bestWorstGoalName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  bestWorstValues: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
     gap: 6,
   },
-  statIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+  bestRate: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#22C55E',
+  },
+  bestSub: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4ADE80',
+  },
+  worstRate: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#EF4444',
+  },
+  worstSub: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(239,68,68,0.60)',
+  },
+  checkinSummary: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFAF7',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255, 107, 61, 0.08)',
+    marginBottom: 2,
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    textAlign: 'center',
+  checkinItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  statLabel: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    letterSpacing: 0.3,
+  checkinDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  checkinText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(26,26,26,0.50)',
+  },
+  checkinCount: {
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  checkinDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: 'rgba(26,26,26,0.10)',
+    marginHorizontal: 10,
   },
   goalStatsSection: {
     marginTop: 16,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.04)',
+    borderTopColor: 'rgba(255, 107, 61, 0.08)',
   },
   goalStatsTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(26,26,26,0.45)',
     marginBottom: 10,
     letterSpacing: 0.3,
   },
@@ -400,14 +536,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.03)',
+    borderBottomColor: 'rgba(255, 107, 61, 0.06)',
+  },
+  goalStatNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    marginRight: 8,
   },
   goalStatName: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.80)',
-    flex: 1,
-    marginRight: 8,
+    color: 'rgba(26,26,26,0.80)',
+    flexShrink: 1,
+  },
+  freqBadge: {
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 107, 61, 0.18)',
+  },
+  freqBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.50)',
   },
   goalStatBadges: {
     flexDirection: 'row',
@@ -416,8 +571,8 @@ const styles = StyleSheet.create({
   goalStatDone: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    color: '#45a247',
+    backgroundColor: 'rgba(74, 222, 128, 0.10)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -426,7 +581,7 @@ const styles = StyleSheet.create({
   goalStatPass: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFB547',
+    color: '#E8960A',
     backgroundColor: 'rgba(255,181,71,0.10)',
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -437,7 +592,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#EF4444',
-    backgroundColor: 'rgba(239,68,68,0.10)',
+    backgroundColor: 'rgba(239,68,68,0.08)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,

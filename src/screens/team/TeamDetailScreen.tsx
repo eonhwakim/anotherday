@@ -586,7 +586,7 @@ export default function TeamDetailScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FFFAF7',
   },
   header: {
     flexDirection: 'row',
@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomColor: 'rgba(255, 107, 61, 0.10)',
   },
   backBtn: {
     padding: 4,
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   monthSelector: {
     flexDirection: 'row',
@@ -611,12 +611,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 20,
     paddingVertical: 16,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: '#FFFAF7',
   },
   monthText: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   content: {
     flex: 1,
@@ -628,16 +628,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
     marginBottom: 12,
   },
   memberCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   memberHeader: {
     flexDirection: 'row',
@@ -653,7 +658,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
   },
   avatarPlaceholder: {
     alignItems: 'center',
@@ -662,31 +667,32 @@ const styles = StyleSheet.create({
   nickname: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   leaderBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'red',
+    borderColor: '#FF6B3D',
+    backgroundColor: 'rgba(255, 107, 61, 0.10)',
   },
   leaderText: {
     fontSize: 10,
     fontWeight: '800',
-    color: 'red',
+    color: '#FF6B3D',
   },
   memberBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'green',
+    borderColor: 'rgba(26,26,26,0.25)',
   },
   memberText: {
     fontSize: 10,
     fontWeight: '800',
-    color: 'green',
+    color: 'rgba(26,26,26,0.45)',
   },
   statsRow: {
     marginTop: 2,
@@ -694,7 +700,7 @@ const styles = StyleSheet.create({
   },
   statsText: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
     fontWeight: '500',
   },
   resolutionBox: {
@@ -705,11 +711,11 @@ const styles = StyleSheet.create({
   },
   resolutionText: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
     fontStyle: 'italic',
   },
   placeholderText: {
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.30)',
   },
   expandBtn: {
     padding: 4,
@@ -718,13 +724,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: 'rgba(255, 107, 61, 0.08)',
     gap: 8,
   },
   goalsLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.35)',
     marginBottom: 2,
   },
   goalItem: {
@@ -741,21 +747,21 @@ const styles = StyleSheet.create({
   },
   goalName: {
     fontSize: 13,
-    color: COLORS.text,
+    color: '#1A1A1A',
     flexShrink: 1,
   },
   freqBadge: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 107, 61, 0.18)',
   },
   freqBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
   },
   goalStats: {
     flexDirection: 'row',
@@ -763,16 +769,16 @@ const styles = StyleSheet.create({
   },
   goalDone: {
     fontSize: 11,
-    color: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    color: '#4ADE80',
+    backgroundColor: 'rgba(74, 222, 128, 0.10)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   goalPass: {
     fontSize: 11,
-    color: '#FFB547',
-    backgroundColor: 'rgba(255,181,71,0.1)',
+    color: '#E8960A',
+    backgroundColor: 'rgba(255,181,71,0.10)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -781,7 +787,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#EF4444',
-    backgroundColor: 'rgba(239,68,68,0.1)',
+    backgroundColor: 'rgba(239,68,68,0.08)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -789,7 +795,7 @@ const styles = StyleSheet.create({
   },
   emptyGoalsText: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.30)',
     textAlign: 'center',
     paddingVertical: 8,
   },
@@ -797,30 +803,31 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: 'rgba(255, 107, 61, 0.08)',
   },
   retroLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.35)',
     marginBottom: 4,
   },
   retroBox: {
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: '#FFFAF7',
     padding: 10,
     borderRadius: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 61, 0.10)',
   },
   retroText: {
     fontSize: 13,
-    color: COLORS.text,
+    color: '#1A1A1A',
     lineHeight: 18,
     flex: 1,
   },
   
-  // 위험 구역
   dangerZone: {
     marginTop: 8,
     marginBottom: 8,
@@ -849,36 +856,42 @@ const styles = StyleSheet.create({
     color: '#EF4444',
   },
 
-  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.50)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modalContent: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
     width: '100%',
     padding: 24,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 6,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
     marginBottom: 16,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#FFFAF7',
     borderRadius: 8,
     padding: 12,
-    color: COLORS.text,
+    color: '#1A1A1A',
     fontSize: 16,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 61, 0.12)',
   },
   modalButtons: {
     flexDirection: 'row',

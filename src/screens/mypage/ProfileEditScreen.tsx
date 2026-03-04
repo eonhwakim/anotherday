@@ -225,7 +225,7 @@ export default function ProfileEditScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FFFAF7',
   },
   scroll: {
     flex: 1,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: 'rgba(255, 107, 61, 0.10)',
   },
   backBtn: {
     padding: 4,
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   profileImageContainer: {
     alignItems: 'center',
@@ -260,24 +260,24 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   placeholderImage: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 107, 61, 0.18)',
   },
   cameraIcon: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#FF6B3D',
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   form: {
     padding: 16,
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
     marginBottom: 8,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
@@ -301,25 +301,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#FFFFFF',
   },
   genderBtnActive: {
-    borderColor: 'rgba(255,255,255,0.20)',
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 107, 61, 0.30)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
   },
   genderText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(26,26,26,0.40)',
   },
   genderTextActive: {
-    color: '#FFFFFF',
+    color: '#FF6B3D',
     fontWeight: '700',
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 107, 61, 0.10)',
     marginVertical: 24,
   },
   deleteAccountBtn: {
@@ -327,14 +327,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   deleteAccountText: {
-    color: '#FF6B6B',
+    color: '#EF4444',
     fontSize: 13,
     textDecorationLine: 'underline',
   },
   footer: {
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.04)',
-    backgroundColor: COLORS.background,
+    borderTopColor: 'rgba(255, 107, 61, 0.08)',
+    backgroundColor: '#FFFAF7',
   },
 });

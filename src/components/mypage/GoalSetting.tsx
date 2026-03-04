@@ -115,7 +115,7 @@ export default function GoalSetting({
       {/* 헤더 */}
       <View style={styles.titleRow}>
         <View style={styles.iconCircle}>
-          <Ionicons name="flag" size={18} color="#fff" />
+          <Ionicons name="flag" size={18} color="#FF6B3D" />
         </View>
         <Text style={styles.title}>목표 설정</Text>
       </View>
@@ -147,7 +147,7 @@ export default function GoalSetting({
           <TextInput
             style={styles.input}
             placeholder="새 목표 (예: 운동 30분)"
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor="rgba(26,26,26,0.30)"
             value={newGoal}
             onChangeText={(text) => {
               setNewGoal(text);
@@ -201,14 +201,14 @@ export default function GoalSetting({
           style={[styles.freqBtn, frequency === 'daily' && styles.freqBtnActive]}
           onPress={() => setFrequency('daily')}
         >
-          <Ionicons name="refresh" size={14} color={frequency === 'daily' ? '#fff' : 'rgba(255,255,255,0.45)'} />
+          <Ionicons name="refresh" size={14} color={frequency === 'daily' ? '#FF6B3D' : 'rgba(26,26,26,0.40)'} />
           <Text style={[styles.freqText, frequency === 'daily' && styles.freqTextActive]}>매일</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.freqBtn, frequency === 'weekly_count' && styles.freqBtnActive]}
           onPress={() => setFrequency('weekly_count')}
         >
-          <Ionicons name="calendar-outline" size={14} color={frequency === 'weekly_count' ? '#fff' : 'rgba(255,255,255,0.45)'} />
+          <Ionicons name="calendar-outline" size={14} color={frequency === 'weekly_count' ? '#FF6B3D' : 'rgba(26,26,26,0.40)'} />
           <Text style={[styles.freqText, frequency === 'weekly_count' && styles.freqTextActive]}>주 N회</Text>
         </TouchableOpacity>
       </View>
@@ -253,7 +253,13 @@ export default function GoalSetting({
                 <TouchableOpacity
                   key={goal.id}
                   style={[styles.chip, active && styles.chipActive]}
-                  onPress={() => onToggle(goal.id)}
+                  onPress={() => {
+                    if (active && ug?.frequency === 'daily') {
+                      Alert.alert('해제 불가', '매일 반복 목표는 해제할 수 없습니다.');
+                      return;
+                    }
+                    onToggle(goal.id);
+                  }}
                   onLongPress={() => handleLongPress(goal)}
                   activeOpacity={0.7}
                   delayLongPress={500}
@@ -261,7 +267,7 @@ export default function GoalSetting({
                   <Ionicons
                     name={active ? 'checkmark-circle' : 'ellipse-outline'}
                     size={18}
-                    color={active ? '#fff' : COLORS.textSecondary}
+                    color={active ? '#FF6B3D' : 'rgba(26,26,26,0.35)'}
                   />
                   <View>
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>
@@ -284,107 +290,101 @@ export default function GoalSetting({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    marginHorizontal: 16, padding: 24, borderRadius: 8, marginBottom: 16,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
-    shadowColor: 'rgba(255,255,255,0.06)', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5, shadowRadius: 12, elevation: 3,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16, padding: 24, borderRadius: 12, marginBottom: 16,
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
+    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 12, elevation: 3,
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   iconCircle: {
     width: 34, height: 34, borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255, 107, 61, 0.08)', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.18)',
     alignItems: 'center', justifyContent: 'center',
   },
-  title: { fontSize: 18, fontWeight: '800', color: COLORS.text },
-  subtitle: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 20, lineHeight: 20, fontWeight: '500' },
+  title: { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
+  subtitle: { fontSize: 13, color: 'rgba(26,26,26,0.50)', marginBottom: 20, lineHeight: 20, fontWeight: '500' },
 
   inputRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   input: {
-    flex: 1, backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 8,
-    paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: COLORS.text, fontWeight: '500',
+    flex: 1, backgroundColor: '#FFFAF7',
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)', borderRadius: 8,
+    paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: '#1A1A1A', fontWeight: '500',
   },
   addBtn: {
     width: 52, height: 52, borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: '#FF6B3D', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.30)',
     alignItems: 'center', justifyContent: 'center',
   },
-  addBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.06)' },
+  addBtnDisabled: { backgroundColor: 'rgba(255, 107, 61, 0.25)', borderColor: 'rgba(255, 107, 61, 0.15)' },
 
-  // ── 반복 주기 ──
   freqRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   freqBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: 10, borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#FFFAF7', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
   },
-  freqBtnActive: { backgroundColor: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.20)' },
-  freqText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.45)' },
-  freqTextActive: { color: '#FFFFFF' },
+  freqBtnActive: { backgroundColor: 'rgba(255, 107, 61, 0.08)', borderColor: 'rgba(255, 107, 61, 0.25)' },
+  freqText: { fontSize: 13, fontWeight: '600', color: 'rgba(26,26,26,0.40)' },
+  freqTextActive: { color: '#FF6B3D' },
 
-  // ── 주 N회 선택 ──
   countRow: {
-    flexDirection: 'row', alignItems: 'center', gap:6, marginBottom: 20, justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20, justifyContent: 'center',
   },
-  countLabel: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.50)', marginHorizontal: 6 },
+  countLabel: { fontSize: 14, fontWeight: '700', color: 'rgba(26,26,26,0.40)', marginHorizontal: 6 },
   countBtn: {
     width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#FFFAF7', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
   },
-  countBtnActive: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.28)' },
-  countBtnText: { fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.35)' },
-  countBtnTextActive: { color: '#FFFFFF' },
+  countBtnActive: { backgroundColor: 'rgba(255, 107, 61, 0.08)', borderColor: 'rgba(255, 107, 61, 0.25)' },
+  countBtnText: { fontSize: 15, fontWeight: '700', color: 'rgba(26,26,26,0.40)' },
+  countBtnTextActive: { color: '#FF6B3D' },
 
-  // ── 빈 상태 ──
   emptyBox: {
     alignItems: 'center', paddingVertical: 32, gap: 12, borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.02)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#FFFAF7', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
     borderStyle: 'dashed',
   },
-  emptyText: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22, fontWeight: '500' },
+  emptyText: { fontSize: 14, color: 'rgba(26,26,26,0.45)', textAlign: 'center', lineHeight: 22, fontWeight: '500' },
 
-  // ── 목표 칩 ──
-  sectionLabel: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 12, fontWeight: '600', letterSpacing: 0.3 },
+  sectionLabel: { fontSize: 12, color: 'rgba(26,26,26,0.45)', marginBottom: 12, fontWeight: '600', letterSpacing: 0.3 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#FFFAF7', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.10)',
   },
   chipActive: {
-    backgroundColor: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.20)',
-    shadowColor: 'rgba(255,255,255,0.10)', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 8,
+    backgroundColor: 'rgba(255, 107, 61, 0.06)', borderColor: 'rgba(255, 107, 61, 0.22)',
+    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8,
   },
-  chipText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.70)' },
-  chipTextActive: { color: '#FFFFFF' },
-  chipSchedule: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.40)', marginTop: 2 },
-  selectionInfo: { fontSize: 13, color: 'rgba(255,255,255,0.50)', fontWeight: '700', marginTop: 14, textAlign: 'right' },
+  chipText: { fontSize: 14, fontWeight: '600', color: 'rgba(26,26,26,0.70)' },
+  chipTextActive: { color: '#282828' },
+  chipSchedule: { fontSize: 11, fontWeight: '600', color: 'rgba(26,26,26,0.40)', marginTop: 2 },
+  selectionInfo: { fontSize: 13, color: 'rgba(26,26,26,0.45)', fontWeight: '700', marginTop: 14, textAlign: 'right' },
 
-  // ── 추천 태그 ──
   recommendSection: { marginBottom: 16 },
-  recommendTitle: { fontSize: 12, color: '#FFB547', fontWeight: '600', marginBottom: 8 },
+  recommendTitle: { fontSize: 12, color: '#E8960A', fontWeight: '600', marginBottom: 8 },
   recommendChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   recommendChip: {
-    backgroundColor: 'rgba(255, 181, 71, 0.1)',
+    backgroundColor: 'rgba(255,181,71,0.10)',
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
-    borderWidth: 1, borderColor: 'rgba(255, 181, 71, 0.2)',
+    borderWidth: 1, borderColor: 'rgba(255,181,71,0.20)',
   },
-  recommendChipText: { fontSize: 12, color: '#fffbd5', fontWeight: '500' },
+  recommendChipText: { fontSize: 12, color: 'rgba(26,26,26,0.70)', fontWeight: '500' },
 
-  // ── 자동완성 ──
   suggestionsBox: {
     position: 'absolute', top: 56, left: 0, right: 0,
-    backgroundColor: '#1A1A1A', borderRadius: 8,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
+    backgroundColor: '#FFFFFF', borderRadius: 8,
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.15)',
+    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.10, shadowRadius: 8,
     elevation: 5, overflow: 'hidden',
   },
   suggestionItem: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255, 107, 61, 0.06)',
   },
-  suggestionText: { fontSize: 14, color: COLORS.text, flex: 1 },
-  suggestionSub: { fontSize: 11, color: COLORS.textSecondary },
+  suggestionText: { fontSize: 14, color: '#1A1A1A', flex: 1 },
+  suggestionSub: { fontSize: 11, color: 'rgba(26,26,26,0.40)' },
 });

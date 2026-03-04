@@ -167,6 +167,7 @@ export default function HomeScreen() {
 
   const isDay = timePeriod === 'DAY';
   const isSunset = timePeriod === 'SUNSET';
+  const isNight = timePeriod === 'NIGHT';
 
   return (
     <View style={styles.container}>
@@ -197,7 +198,7 @@ export default function HomeScreen() {
               <View style={styles.guideWarningBox}>
                 <View style={styles.guideWarningItem}>
                   <Ionicons name="checkmark-circle" size={18} color="#4ADE80" />
-                  <Text style={[styles.guideWarningText, { color: '#86EFAC' }]}>목표 설정 → 직접 수행 → 즉시 카메라 인증</Text>
+                  <Text style={[styles.guideWarningText, { color: '#EF4444' }]}>목표 설정→직접 수행→즉시 카메라 인증</Text>
                 </View>
                 <View style={styles.guideWarningItem}>
                   <Ionicons name="close-circle" size={18} color="#EF4444" />
@@ -279,8 +280,8 @@ export default function HomeScreen() {
             </Text>
             <View style={styles.frameRow}>
               <CyberFrame>
-                <Text style={[styles.dateText, isDay && styles.dateTextDay, isSunset && styles.dateTextSunset]}>{today}</Text>
-                <Text style={[styles.teamName, isDay && styles.teamNameDay, isSunset && styles.teamNameSunset]}>
+                <Text style={[styles.dateText, isNight && styles.dateTextLight]}>{today}</Text>
+                <Text style={[styles.teamName, isNight && styles.teamNameLight]}>
                   {currentTeam?.name ? `${currentTeam?.name}` : '오늘의 목표'}
                 </Text>
               </CyberFrame>
@@ -314,7 +315,7 @@ export default function HomeScreen() {
 const SKY_COLORS = {
   DAY:    { top: '#F0F8FF', mid: '#88C4E0', bot: '#A0D4EC', orb1: '#FFFFFF', orb2: '#C0E0F0', orb3: '#FFFFFF' },
   SUNSET: { top: '#6AB0D8', mid: '#FFB898', bot: '#FFD0B8', orb1: '#FFE0D0', orb2: '#FFB090', orb3: '#FFC0A8' },
-  NIGHT:  { top: '#020208', mid: '#030310', bot: '#050510', orb1: COLORS.holoLavender, orb2: '#3030A0', orb3: '#181850' },
+  NIGHT:  { top: '#020208', mid: '#030310', bot: '#050510', orb1: '#A29BFE', orb2: '#3030A0', orb3: '#181850' },
 } as const;
 
 function SkyBackground({ timePeriod }: { timePeriod: 'DAY' | 'SUNSET' | 'NIGHT' }) {
@@ -634,7 +635,7 @@ function Stars() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#FFFAF7',
   },
   bgLayer: {
     position: 'absolute',
@@ -687,41 +688,35 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 14,
-    color: '#C8CCD4',
+    color: '#FFFFFF',
     fontWeight: '600',
     marginBottom: 2,
   },
   greetingDay: {
-    color: '#fdfcfb',
+    color: '#4F4F4F',
   },
   greetingSunset: {
-    color: '#E3E4E8',
+    color: '#4F4F4F',
   },
   dateText: {
     fontSize: 12,
-    color: '#A0A4B0',
+    color: 'rgba(26,26,26,0.50)',
     fontWeight: '700',
     letterSpacing: 2.5,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
-  dateTextDay: {
-    color: '#5080A0',
+  dateTextLight: {
+    color: '#E0E0E0',
   },
   teamName: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#ECEEF4',
+    color: '#282828',
     letterSpacing: 0.5,
   },
-  teamNameDay: {
-    color: '#ECEEF4',
-  },
-  dateTextSunset: {
-    color: '#808080',
-  },
-  teamNameSunset: {
-    color: '#ECEEF4',
+  teamNameLight: {
+    color: '#FFFAF7',
   },
   mountainSection: {
     alignItems: 'center',
@@ -730,7 +725,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   goalDarkBg: {
-    backgroundColor: '#000000',
+    backgroundColor: '#FFFAF7',
   },
   goalSection: {
     paddingHorizontal: 24,
@@ -740,21 +735,21 @@ const styles = StyleSheet.create({
   // ── 안내 모달 스타일 ──
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   guideModalContent: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
     width: '100%',
     maxHeight: '88%',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    shadowColor: '#000',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
+    shadowColor: '#FF6B3D',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 10,
     overflow: 'hidden',
@@ -771,30 +766,30 @@ const styles = StyleSheet.create({
   guideTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#fff',
+    color: '#1A1A1A',
     marginBottom: 16,
     textAlign: 'center',
   },
   guideText: {
     fontSize: 16,
-    color: '#ccc',
+    color: '#555555',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
   },
   highlight: {
-    color: COLORS.secondary,
+    color: '#FF6B3D',
     fontWeight: '700',
   },
   guideWarningBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
     borderRadius: 12,
     padding: 14,
     width: '100%',
     gap: 12,
-    marginBottom: 22,
+    marginBottom: 18,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
   },
   guideWarningItem: {
     flexDirection: 'row',
@@ -804,15 +799,15 @@ const styles = StyleSheet.create({
   guideWarningText: {
     flex: 1,
     fontSize: 14,
-    color: '#FCA5A5',
+    color: '#555555',
     fontWeight: '600',
     flexWrap: 'wrap',
   },
   guideSubText: {
     fontSize: 14,
-    color: '#888',
+    color: 'rgba(26,26,26,0.50)',
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: 22,
     lineHeight: 20,
   },
   guideCloseBtn: {
@@ -822,7 +817,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,107,61,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -838,32 +833,32 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: '#555',
+    borderColor: 'rgba(26,26,26,0.30)',
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
   guideCheckboxActive: {
-    backgroundColor: '#4F8EF7',
-    borderColor: '#4F8EF7',
+    backgroundColor: '#FF6B3D',
+    borderColor: '#FF6B3D',
   },
   guideCheckLabel: {
     fontSize: 14,
-    color: '#888',
+    color: 'rgba(26,26,26,0.50)',
   },
   guideCheckLabelActive: {
-    color: '#ccc',
+    color: '#1A1A1A',
   },
   guideConfirmBtn: {
-    backgroundColor: '#4F8EF7',
+    backgroundColor: '#FF6B3D',
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#4F8EF7',
+    shadowColor: '#FF6B3D',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
   },
   guideConfirmText: {

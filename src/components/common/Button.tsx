@@ -66,34 +66,32 @@ export default function Button({
 const styles = StyleSheet.create({
   container: {
     height: 52,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
     overflow: 'hidden',
   },
   primary: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    shadowColor: 'rgba(255,255,255,0.08)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    backgroundColor: '#FF6B3D',
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.30,
     shadowRadius: 12,
-    elevation: 3,
+    elevation: 4,
   },
   secondary: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
   },
   outline: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 107, 61, 0.35)',
   },
   disabled: {
-    opacity: 0.3,
+    opacity: 0.4,
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -103,12 +101,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   primaryText: {
-    color: 'rgba(255,255,255,0.85)',
+    color: '#FFFFFF',
   },
   outlineText: {
-    color: 'rgba(255,255,255,0.60)',
+    color: '#FF6B3D',
   },
   secondaryText: {
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(26,26,26,0.55)',
   },
 });

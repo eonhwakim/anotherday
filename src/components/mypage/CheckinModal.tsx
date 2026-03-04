@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   TextInput,
   Alert,
   ActivityIndicator,
@@ -172,6 +173,9 @@ export default function CheckinModal({
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.overlayBg} />
+        </TouchableWithoutFeedback>
         <View style={styles.sheet}>
           {/* 핸들 바 */}
           <View style={styles.handleBar} />
@@ -287,7 +291,7 @@ export default function CheckinModal({
                             <Ionicons
                               name="camera"
                               size={15}
-                              color="black"
+                              color="#FFFFFF"
                             />
                             <Text style={styles.successBtnText}>
                               성공
@@ -349,20 +353,23 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.70)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  overlayBg: {
+    flex: 1,
   },
   sheet: {
-    backgroundColor: 'rgba(8,8,8,0.97)',
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    backgroundColor: '#FFFAF7',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     paddingBottom: 34,
     maxHeight: '75%',
     borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: 'rgba(255,255,255,0.10)',
-    shadowColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
+    shadowColor: '#FF6B3D',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.10,
     shadowRadius: 20,
     elevation: 8,
   },
@@ -370,7 +377,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255, 107, 61, 0.20)',
     alignSelf: 'center',
     marginTop: 12,
     marginBottom: 8,
@@ -382,12 +389,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: 'rgba(255, 107, 61, 0.08)',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   backBtn: { padding: 4 },
   closeBtn: { padding: 4 },
@@ -402,30 +409,29 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
   },
   emptyText: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
     textAlign: 'center',
     paddingVertical: 32,
   },
 
-  // ── 목표 행 ──
   goalRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.10)',
   },
   goalRowDone: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderColor: 'rgba(239,68,68,0.18)',
   },
   goalInfo: {
     flexDirection: 'row',
@@ -436,10 +442,10 @@ const styles = StyleSheet.create({
   goalName: {
     fontSize: 15,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.85)',
+    color: '#1A1A1A',
   },
   goalNameDone: {
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(26,26,26,0.45)',
   },
   statusBadge: {
     fontSize: 12,
@@ -449,20 +455,20 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
   },
   badgeSuccess: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    color: '#FFFFFF',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(239, 122, 68, 0.08)',
+    color: '#FF6B3D',
+    borderColor: 'rgba(239,68,68,0.18)',
   },
   badgePass: {
     backgroundColor: 'rgba(255,181,71,0.10)',
-    color: COLORS.warning,
-    borderColor: 'rgba(255,181,71,0.18)',
+    color: '#E8960A',
+    borderColor: 'rgba(255,181,71,0.20)',
   },
   badgeMissed: {
-    backgroundColor: 'rgba(239,68,68,0.10)',
+    backgroundColor: 'rgba(239,68,68,0.08)',
     color: '#EF4444',
     borderColor: 'rgba(239,68,68,0.18)',
   },
@@ -471,7 +477,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239,68,68,0.12)',
   },
   goalNameMissed: {
-    color: 'rgba(255,255,255,0.40)',
+    color: 'rgba(26,26,26,0.35)',
   },
   actionRow: {
     flexDirection: 'row',
@@ -481,7 +487,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FF6B3D',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
@@ -489,15 +495,15 @@ const styles = StyleSheet.create({
   successBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
   },
   passBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
+    backgroundColor: 'rgba(255, 107, 61, 0.04)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
@@ -505,45 +511,44 @@ const styles = StyleSheet.create({
   passBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.60)',
+    color: 'rgba(26,26,26,0.50)',
   },
 
-  // ── 패스 사유 ──
   passTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
     marginBottom: 4,
   },
   passSubtitle: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
     marginBottom: 16,
   },
   passInput: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
     padding: 14,
     fontSize: 15,
-    color: COLORS.text,
+    color: '#1A1A1A',
     minHeight: 100,
     textAlignVertical: 'top',
     marginBottom: 16,
   },
   submitBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FF6B3D',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
   },
   submitBtnDisabled: {
-    opacity: 0.25,
+    opacity: 0.35,
   },
   submitBtnText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#000',
+    color: '#FFFFFF',
   },
 });

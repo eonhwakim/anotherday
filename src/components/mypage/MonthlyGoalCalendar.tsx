@@ -177,7 +177,7 @@ export default function MonthlyGoalCalendar({
                     isFuture && styles.dayNumberFuture,
                     di === 0 && { color: COLORS.error },
                     di === 6 && { color: COLORS.primaryLight },
-                    allDone && hasGoals && { color: '#fff' },
+                    allDone && hasGoals && { color: '#4ADE80' },
                   ]}
                 >
                   {day}
@@ -191,13 +191,13 @@ export default function MonthlyGoalCalendar({
                   ]}>
                     <Text style={[
                       styles.stickerText,
-                      allDone && { color: 'rgba(255,255,255,0.9)' }
+                      allDone && { color: '#4ADE80' }
                     ]} numberOfLines={1}>
                       {nickname}
                     </Text>
                     <Text style={[
                       styles.stickerGoal,
-                      allDone && { color: 'rgba(255,255,255,0.7)' }
+                      allDone && { color: 'rgba(74, 222, 128, 0.65)' }
                     ]} numberOfLines={1}>
                       {dayPrimaryGoalName}
                     </Text>
@@ -211,7 +211,7 @@ export default function MonthlyGoalCalendar({
                       <Ionicons
                         name="checkmark-circle"
                         size={11}
-                        color="#fff"
+                        color="#4ADE80"
                       />
                     ) : someDone ? (
                       <View style={styles.partialDot} />
@@ -235,7 +235,7 @@ export default function MonthlyGoalCalendar({
                 {!isFuture && activeIds.length > 1 && (
                   <Text style={[
                     styles.moreGoals,
-                    allDone && { color: 'rgba(255,255,255,0.7)' }
+                    allDone && { color: 'rgba(74, 222, 128, 0.65)' }
                   ]}>
                     +{activeIds.length - 1}
                   </Text>
@@ -249,8 +249,8 @@ export default function MonthlyGoalCalendar({
       {/* 범례 */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: COLORS.success }]} />
-          <Text style={styles.legendText}>성공</Text>
+          <View style={[styles.legendDot, { backgroundColor: '#4ADE80' }]} />
+          <Text style={styles.legendText}>완료</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
@@ -269,16 +269,16 @@ const CELL_HEIGHT = 72;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     padding: 20,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    shadowColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
+    shadowColor: '#FF6B3D',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 3,
   },
@@ -290,15 +290,15 @@ const styles = StyleSheet.create({
   },
   arrowBtn: {
     padding: 8,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
   },
   monthTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   dowRow: {
     flexDirection: 'row',
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
     paddingVertical: 6,
     letterSpacing: 0.5,
   },
@@ -324,37 +324,37 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     borderRadius: 4,
     marginHorizontal: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: '#FFFAF7',
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255, 107, 61, 0.08)',
   },
   dayCellToday: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderColor: 'rgba(255, 107, 61, 0.25)',
   },
   dayCellAllDone: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(74, 222, 128, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    shadowColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(74, 222, 128, 0.25)',
+    shadowColor: '#4ADE80',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.10,
     shadowRadius: 6,
     elevation: 2,
   },
   dayCellPartial: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 107, 61, 0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
   },
   dayNumber: {
     fontSize: 13,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.80)',
+    color: 'rgba(26,26,26,0.75)',
   },
   dayNumberToday: {
-    color: '#FFFFFF',
+    color: '#FF6B3D',
     fontWeight: '900',
   },
   dayNumberFuture: {
@@ -362,27 +362,27 @@ const styles = StyleSheet.create({
   },
   sticker: {
     marginTop: 3,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 107, 61, 0.04)',
     borderRadius: 4,
     paddingHorizontal: 4,
     paddingVertical: 2,
     width: '92%',
     alignItems: 'center',
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255, 107, 61, 0.10)',
   },
   stickerDone: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(74, 222, 128, 0.10)',
+    borderColor: 'rgba(74, 222, 128, 0.18)',
   },
   stickerText: {
     fontSize: 8,
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
     fontWeight: '700',
   },
   stickerGoal: {
     fontSize: 7,
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.30)',
     fontWeight: '600',
   },
   indicators: {
@@ -395,13 +395,13 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(74, 222, 128, 0.40)',
   },
   pendingDot: {
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: COLORS.textMuted,
+    backgroundColor: 'rgba(26,26,26,0.25)',
   },
   missedDot: {
     width: 5,
@@ -412,15 +412,15 @@ const styles = StyleSheet.create({
   passIndicator: {
     fontSize: 8,
     fontWeight: '800',
-    color: '#000',
-    backgroundColor: 'rgba(255,255,255,0.60)',
+    color: '#E8960A',
+    backgroundColor: 'rgba(255,181,71,0.15)',
     paddingHorizontal: 3,
     borderRadius: 2,
     overflow: 'hidden',
   },
   moreGoals: {
     fontSize: 8,
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.30)',
     marginTop: 2,
   },
 
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.04)',
+    borderTopColor: 'rgba(255, 107, 61, 0.08)',
   },
   legendItem: {
     flexDirection: 'row',
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 11,
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
     fontWeight: '600',
   },
 });

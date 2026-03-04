@@ -144,13 +144,13 @@ export default function CalendarScreen() {
         marked: true,
         dotColor: m.dotColor,
         selected: date === selectedDate,
-        selectedColor: 'rgba(255,255,255,0.12)',
+        selectedColor: 'rgba(255, 107, 61, 0.18)',
       };
     });
     if (selectedDate && !marks[selectedDate]) {
       marks[selectedDate] = {
         selected: true,
-        selectedColor: 'rgba(255,255,255,0.12)',
+        selectedColor: 'rgba(255, 107, 61, 0.18)',
       };
     }
     return marks;
@@ -167,18 +167,18 @@ export default function CalendarScreen() {
 
         <Calendar
           theme={{
-            calendarBackground: '#0A0A0A',
-            todayTextColor: '#FFFFFF',
-            selectedDayBackgroundColor: 'rgba(255,255,255,0.15)',
-            selectedDayTextColor: '#FFFFFF',
-            arrowColor: 'rgba(255,255,255,0.50)',
-            monthTextColor: '#FFFFFF',
-            dayTextColor: 'rgba(255,255,255,0.80)',
-            textDisabledColor: 'rgba(255,255,255,0.15)',
+            calendarBackground: '#FFFFFF',
+            todayTextColor: '#FF6B3D',
+            selectedDayBackgroundColor: 'rgba(255, 107, 61, 0.18)',
+            selectedDayTextColor: '#FF6B3D',
+            arrowColor: '#FF6B3D',
+            monthTextColor: '#1A1A1A',
+            dayTextColor: 'rgba(26, 26, 26, 0.80)',
+            textDisabledColor: 'rgba(26, 26, 26, 0.20)',
             textDayFontWeight: '500',
             textMonthFontWeight: '700',
             textDayHeaderFontWeight: '500',
-            textSectionTitleColor: 'rgba(255,255,255,0.35)',
+            textSectionTitleColor: 'rgba(26, 26, 26, 0.40)',
           }}
           style={styles.calendar}
           markedDates={calendarMarkedDates}
@@ -377,41 +377,43 @@ export default function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.background },
+  safe: { flex: 1, backgroundColor: '#FFFAF7' },
   scroll: { flex: 1 },
   screenTitle: {
-    fontSize: 24, fontWeight: '800', color: COLORS.text,
+    fontSize: 24, fontWeight: '800', color: '#1A1A1A',
     paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, letterSpacing: -0.5,
   },
   calendar: {
-    marginHorizontal: 12, borderRadius: 8,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 12, borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
     overflow: 'hidden',
-    shadowColor: 'rgba(255,255,255,0.06)', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5, shadowRadius: 12, elevation: 3,
+    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
   },
 
   // ── 날짜 요약 ──
   dateSummary: {
     marginHorizontal: 12, marginTop: 12, padding: 14,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)', borderRadius: 12,
+    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 1,
   },
   dateSummaryTitle: {
-    fontSize: 15, fontWeight: '700', color: COLORS.text, marginBottom: 6,
+    fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 6,
   },
   statusRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
   },
   statusImage: { width: 32, height: 32 },
   statusText: {
-    fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.60)', flex: 1,
+    fontSize: 13, fontWeight: '600', color: 'rgba(26,26,26,0.55)', flex: 1,
   },
   percentText: {
-    fontSize: 15, fontWeight: '800', color: '#FFFFFF',
+    fontSize: 15, fontWeight: '800', color: '#FF6B3D',
   },
   noDataText: {
-    fontSize: 13, color: 'rgba(255,255,255,0.30)', fontWeight: '500',
+    fontSize: 13, color: 'rgba(26,26,26,0.30)', fontWeight: '500',
   },
 
   // ── 팀 멤버 섹션 ──
@@ -419,33 +421,35 @@ const styles = StyleSheet.create({
     marginTop: 16, paddingHorizontal: 12,
   },
   memberSectionTitle: {
-    fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.50)',
+    fontSize: 14, fontWeight: '700', color: 'rgba(26,26,26,0.45)',
     marginBottom: 10, letterSpacing: 0.3,
   },
   memberCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)', borderRadius: 12,
     padding: 12, marginBottom: 10,
+    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 1,
   },
   memberHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8,
-    paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
+    paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 107, 61, 0.08)',
   },
   memberAvatar: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.18)',
   },
   memberAvatarImg: { width: 28, height: 28, borderRadius: 14 },
   memberName: {
-    fontSize: 14, fontWeight: '700', color: COLORS.text, flex: 1,
+    fontSize: 14, fontWeight: '700', color: '#1A1A1A', flex: 1,
   },
   memberStat: {
-    fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.40)',
+    fontSize: 12, fontWeight: '600', color: 'rgba(26,26,26,0.40)',
   },
   memberEmpty: {
-    fontSize: 13, color: 'rgba(255,255,255,0.25)', textAlign: 'center', paddingVertical: 8,
+    fontSize: 13, color: 'rgba(26,26,26,0.25)', textAlign: 'center', paddingVertical: 8,
   },
 
   // ── 체크인 행 ──
@@ -453,7 +457,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 6,
   },
   checkinThumb: {
-    width: 40, height: 40, borderRadius: 6, backgroundColor: COLORS.surfaceLight,
+    width: 40, height: 40, borderRadius: 6, backgroundColor: '#FFF2EC',
   },
   zoomIcon: {
     position: 'absolute', bottom: 2, right: 2,
@@ -462,8 +466,8 @@ const styles = StyleSheet.create({
   },
   checkinIcon: {
     width: 40, height: 40, borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.18)',
     alignItems: 'center', justifyContent: 'center',
   },
   checkinIconPass: {
@@ -472,13 +476,13 @@ const styles = StyleSheet.create({
   },
   checkinInfo: { flex: 1 },
   checkinGoalName: {
-    fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.85)',
+    fontSize: 14, fontWeight: '600', color: '#1A1A1A',
   },
   checkinTime: {
-    fontSize: 11, color: 'rgba(255,255,255,0.40)', marginTop: 1,
+    fontSize: 11, color: 'rgba(26,26,26,0.40)', marginTop: 1,
   },
   checkinMemo: {
-    fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2,
+    fontSize: 11, color: 'rgba(26,26,26,0.35)', marginTop: 2,
   },
 
   // ── 사진 모달 ──
@@ -524,9 +528,9 @@ const styles = StyleSheet.create({
   },
   reactionSticker: {
     width: 22, height: 22, borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#1a1a1a', // 배경색과 맞춰서 겹침 효과
+    borderWidth: 1.5, borderColor: '#FFFAF7',
     overflow: 'hidden',
-    backgroundColor: '#333',
+    backgroundColor: '#FFF2EC',
     alignItems: 'center', justifyContent: 'center',
   },
   reactionAvatar: {

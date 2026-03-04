@@ -16,49 +16,63 @@ export const MOUNTAIN_THRESHOLDS = {
   SUMMIT: 1.0,
 } as const;
 
-/** 앱 색상 팔레트 (Black + Liquid Glass) */
+/** 앱 색상 팔레트 (Orange + White Blur) */
 export const COLORS = {
-  primary: '#FFFFFF',
-  primaryDark: '#E0E0E0',
-  primaryLight: 'rgba(255,255,255,0.70)',
-  secondary: '#FFFFFF',
-  secondaryDark: '#F0F0F0',
+  brand: '#FF6B3D',
+  brandLight: 'rgba(255, 107, 61, 0.12)',
+  brandMid: 'rgba(255, 107, 61, 0.22)',
 
-  background: '#000000',
-  backgroundLight: '#060606',
-  surface: '#0A0A0A',
-  surfaceLight: '#141414',
+  primary: '#FF6B3D',
+  primaryDark: '#E85A2C',
+  primaryLight: 'rgba(255, 107, 61, 0.65)',
+  secondary: '#FF6B3D',
+  secondaryDark: '#E85A2C',
 
-  text: '#FFFFFF',
-  textSecondary: 'rgba(255,255,255,0.45)',
-  textMuted: 'rgba(255,255,255,0.20)',
+  background: '#FFFAF7',
+  surface: '#FFFFFF',
+  surfaceLight: '#FFF2EC',
 
-  border: 'rgba(255,255,255,0.04)',
-  borderLight: 'rgba(255,255,255,0.10)',
+  text: '#1A1A1A',
+  textSecondary: 'rgba(26, 26, 26, 0.50)',
+  textMuted: 'rgba(26, 26, 26, 0.30)',
 
-  success: '#FFFFFF',
+  border: 'rgba(255, 107, 61, 0.10)',
+  borderLight: 'rgba(255, 107, 61, 0.18)',
+
+  success: '#FF6B3D',
   warning: '#FFB547',
-  error: '#FF6B6B',
+  error: '#EF4444',
 
-  accent: '#FFFFFF',
+  accent: '#FF6B3D',
   accentYellow: '#FFD93D',
 
-  // 홀로그래픽 컬러 (호환용)
-  holoCyan: '#FFFFFF',
-  holoMint: '#FFFFFF',
-  holoPink: '#FFFFFF',
-  holoLavender: '#FFFFFF',
+  // 오렌지 글로우 (호환용)
+  holoCyan1: '#FF6B3D',
+  holoMint1: '#FF9A5C',
+  holoPink1: '#FFB380',
+  holoLavender1: '#FFCBA4',
+  holoPink: '#FF6EC7',
+  holoLavender: '#C77DFF',
+  holoCyan: '#6EE7F9',
+  holoMint: '#A8FFDB',
+  holoRed:'#fc5c7d',
 
-  // 리퀴드 글래스
-  glass: 'rgba(255,255,255,0.03)',
-  glassBorder: 'rgba(255,255,255,0.08)',
-  glassLight: 'rgba(255,255,255,0.06)',
+
+  // 글래스 (반투명 오렌지)
+  glass: 'rgba(255, 107, 61, 0.06)',
+  glassBorder: 'rgba(255, 107, 61, 0.15)',
+  glassLight: 'rgba(255, 107, 61, 0.09)',
 
   // 호환용
-  sky: '#000000',
-  grass: '#0A0A0A',
-  wood: '#141414',
-  cloud: 'rgba(255,255,255,0.03)',
+  sky: '#FFFAF7',
+  grass: '#FFFFFF',
+  wood: '#FFF2EC',
+  cloud: 'rgba(255, 107, 61, 0.06)',
+  mountainLight: '#90D4B0',
+  mountain: '#2F7D62',
+  mountainDark: '#235E47',
+  mountainDarker: '#44a08d',
+  ground: '#282828',
 } as const;
 
 /** 계절별 테마 (Holographic Neon) */
@@ -70,7 +84,8 @@ export const SEASON_THEMES = {
     grass: '#0D1E4A',
     accent: '#FF69B4',
     icon: 'flower-outline',
-    particle: '✦',
+    particle: '🌸',
+    particle2: '✦',
   },
   summer: {
     name: '여름',
@@ -80,6 +95,7 @@ export const SEASON_THEMES = {
     accent: '#00F0D4',
     icon: 'sunny-outline',
     particle: '◆',
+    particle2: '✦',
   },
   autumn: {
     name: '가을',
@@ -88,7 +104,8 @@ export const SEASON_THEMES = {
     grass: '#2E1E0D',
     accent: '#FFB547',
     icon: 'leaf-outline',
-    particle: '▲',
+    particle: '🍂',
+    particle2: '✦',
   },
   winter: {
     name: '겨울',
@@ -97,6 +114,7 @@ export const SEASON_THEMES = {
     grass: '#0A0A20',
     accent: '#A29BFE',
     icon: 'snow-outline',
-    particle: '❖',
+    particle: '❄️',
+    particle2: '✦',
   },
 };

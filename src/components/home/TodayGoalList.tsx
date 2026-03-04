@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle as SvgCircle } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle as SvgCircle, Rect } from 'react-native-svg';
 import type { MemberProgress } from '../../types/domain';
 import { COLORS } from '../../constants/defaults';
 import { useIsFocused } from '@react-navigation/native';
@@ -34,6 +34,7 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  const badgeOpacityAnim = useRef(new Animated.Value(1)).current;
 
   const memberAnims = useRef(members.map(() => new Animated.Value(0))).current;
 
@@ -49,6 +50,7 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
       scaleAnim.setValue(0);
       translateYAnim.setValue(0);
       rotateAnim.setValue(0);
+      badgeOpacityAnim.setValue(1);
       memberAnims.forEach((a) => a.setValue(0));
 
       setTimeout(() => {
@@ -60,9 +62,10 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
           ]),
           Animated.delay(800),
           Animated.parallel([
-            Animated.spring(scaleAnim, { toValue: 0, friction: 7, tension: 40, useNativeDriver: true }),
-            Animated.spring(translateYAnim, { toValue: 0, friction: 7, tension: 40, useNativeDriver: true }),
-            Animated.spring(rotateAnim, { toValue: 0, friction: 7, tension: 40, useNativeDriver: true }),
+            Animated.timing(scaleAnim, { toValue: 0, duration: 600, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(translateYAnim, { toValue: 2, duration: 700, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(rotateAnim, { toValue: 0, duration: 600, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(badgeOpacityAnim, { toValue: 0, duration: 700, easing: Easing.in(Easing.quad), useNativeDriver: true }),
           ]),
         ]).start(({ finished }) => {
           if (finished && onAnimationFinish) onAnimationFinish();
@@ -84,8 +87,8 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   }, [isFocused, progress, totalAll]);
 
   const scale = scaleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.9] });
-  const translateY = translateYAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -250] });
-  const translateX = translateYAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -100] });
+  const translateY = translateYAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [0, -250, -420] });
+  const translateX = translateYAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [0, -100, -20] });
   const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-12deg'] });
   const glowOpacity = scaleAnim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 1] });
 
@@ -105,6 +108,7 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
         <Text style={styles.title}>TODAY'S MISSION</Text>
         <Animated.View
           style={[styles.badgeWrapper, {
+            opacity: badgeOpacityAnim,
             transform: [{ translateX }, { translateY }, { scale }, { rotate }],
             zIndex: 100,
           }]}
@@ -119,13 +123,13 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
       <View style={styles.trailContainer}>
         {sortedMembers.length === 0 ? (
           <View style={styles.emptyTrail}>
-            <Ionicons name="flag-outline" size={24} color="rgba(255,255,255,0.15)" />
+            <Ionicons name="flag-outline" size={24} color="rgba(26,26,26,0.18)" />
             <Text style={styles.emptyText}>목표를 추가해보세요</Text>
           </View>
         ) : (
           <>
-            {/* Vertical trail line */}
-            <View style={styles.trailLine} />
+            {/* Rainbow trail line */}
+            {/* <RainbowTrailLine /> */}
 
             {sortedMembers.map((member, idx) => {
               const isMe = member.userId === currentUserId;
@@ -177,7 +181,7 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
                             style={[styles.goalChip, g.isDone && styles.goalChipDone]}
                           >
                             {g.isDone && (
-                              <Ionicons name="checkmark" size={10} color="#000" style={{ marginRight: 3 }} />
+                              <Ionicons name="checkmark" size={10} color="#ffffff" style={{ marginRight: 3 }} />
                             )}
                             <Text
                               style={[styles.goalChipText, g.isDone && styles.goalChipTextDone]}
@@ -225,40 +229,40 @@ function ThumbBadge({ text, isActive }: { text: string; isActive: boolean }) {
       <Svg width={110} height={106} viewBox="0 0 108 106" style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="auroraFill" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#00F5FF" stopOpacity={String(0.25 * k)} />
-            <Stop offset="25%" stopColor="#A855F7" stopOpacity={String(0.20 * k)} />
-            <Stop offset="50%" stopColor="#FF69B4" stopOpacity={String(0.22 * k)} />
-            <Stop offset="75%" stopColor="#00FF88" stopOpacity={String(0.18 * k)} />
-            <Stop offset="100%" stopColor="#3B82F6" stopOpacity={String(0.22 * k)} />
+            <Stop offset="0%" stopColor="#FF6B3D" stopOpacity={String(0.30 * k)} />
+            <Stop offset="25%" stopColor="#FFD93D" stopOpacity={String(0.25 * k)} />
+            <Stop offset="50%" stopColor="#FF9A5C" stopOpacity={String(0.28 * k)} />
+            <Stop offset="75%" stopColor="#FFB380" stopOpacity={String(0.22 * k)} />
+            <Stop offset="100%" stopColor="#FF6B3D" stopOpacity={String(0.30 * k)} />
           </LinearGradient>
           <LinearGradient id="auroraFill2" x1="1" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="#FF69B4" stopOpacity={String(0.12 * k)} />
-            <Stop offset="40%" stopColor="#00FF88" stopOpacity={String(0.10 * k)} />
-            <Stop offset="100%" stopColor="#A855F7" stopOpacity={String(0.14 * k)} />
+            <Stop offset="0%" stopColor="#FFD93D" stopOpacity={String(0.15 * k)} />
+            <Stop offset="40%" stopColor="#FF9A5C" stopOpacity={String(0.12 * k)} />
+            <Stop offset="100%" stopColor="#FF6B3D" stopOpacity={String(0.18 * k)} />
           </LinearGradient>
           <LinearGradient id="borderGlow" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#00F5FF" stopOpacity={String(0.70 * k)} />
-            <Stop offset="20%" stopColor="#FF69B4" stopOpacity={String(0.55 * k)} />
-            <Stop offset="40%" stopColor="#A855F7" stopOpacity={String(0.60 * k)} />
-            <Stop offset="60%" stopColor="#00FF88" stopOpacity={String(0.50 * k)} />
-            <Stop offset="80%" stopColor="#FFD93D" stopOpacity={String(0.45 * k)} />
-            <Stop offset="100%" stopColor="#00F5FF" stopOpacity={String(0.70 * k)} />
+            <Stop offset="0%" stopColor="#FF6B3D" stopOpacity={String(0.80 * k)} />
+            <Stop offset="20%" stopColor="#FFD93D" stopOpacity={String(0.65 * k)} />
+            <Stop offset="40%" stopColor="#FF9A5C" stopOpacity={String(0.70 * k)} />
+            <Stop offset="60%" stopColor="#FFB380" stopOpacity={String(0.60 * k)} />
+            <Stop offset="80%" stopColor="#FFD93D" stopOpacity={String(0.55 * k)} />
+            <Stop offset="100%" stopColor="#FF6B3D" stopOpacity={String(0.80 * k)} />
           </LinearGradient>
           <LinearGradient id="bloomOuter" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#00F5FF" stopOpacity={String(0.15 * k)} />
-            <Stop offset="30%" stopColor="#FF69B4" stopOpacity={String(0.10 * k)} />
-            <Stop offset="60%" stopColor="#A855F7" stopOpacity={String(0.12 * k)} />
-            <Stop offset="100%" stopColor="#00FF88" stopOpacity={String(0.10 * k)} />
+            <Stop offset="0%" stopColor="#FF6B3D" stopOpacity={String(0.20 * k)} />
+            <Stop offset="30%" stopColor="#FFD93D" stopOpacity={String(0.14 * k)} />
+            <Stop offset="60%" stopColor="#FF9A5C" stopOpacity={String(0.16 * k)} />
+            <Stop offset="100%" stopColor="#FFB380" stopOpacity={String(0.14 * k)} />
           </LinearGradient>
           <LinearGradient id="bloomMid" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#00F5FF" stopOpacity={String(0.30 * k)} />
-            <Stop offset="25%" stopColor="#FF69B4" stopOpacity={String(0.22 * k)} />
-            <Stop offset="50%" stopColor="#A855F7" stopOpacity={String(0.25 * k)} />
-            <Stop offset="75%" stopColor="#00FF88" stopOpacity={String(0.20 * k)} />
-            <Stop offset="100%" stopColor="#00F5FF" stopOpacity={String(0.30 * k)} />
+            <Stop offset="0%" stopColor="#FF6B3D" stopOpacity={String(0.35 * k)} />
+            <Stop offset="25%" stopColor="#FFD93D" stopOpacity={String(0.28 * k)} />
+            <Stop offset="50%" stopColor="#FF9A5C" stopOpacity={String(0.32 * k)} />
+            <Stop offset="75%" stopColor="#FFB380" stopOpacity={String(0.25 * k)} />
+            <Stop offset="100%" stopColor="#FF6B3D" stopOpacity={String(0.35 * k)} />
           </LinearGradient>
           <LinearGradient id="highlight" x1="0.2" y1="0" x2="0.8" y2="0.5">
-            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={String(0.18 * k)} />
+            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity={String(0.22 * k)} />
             <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </LinearGradient>
         </Defs>
@@ -283,7 +287,7 @@ const styles = StyleSheet.create({
     height: 30,
   },
   title: {
-    fontSize: 13, fontWeight: '700', color: COLORS.textSecondary,
+    fontSize: 13, fontWeight: '700', color: 'rgba(26,26,26,0.45)',
     letterSpacing: 2,
   },
   badgeWrapper: { position: 'relative' },
@@ -312,7 +316,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 2,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.18)',
   },
   emptyTrail: {
     alignItems: 'center',
@@ -321,7 +325,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   emptyText: {
-    fontSize: 13, color: COLORS.textSecondary, fontStyle: 'italic',
+    fontSize: 13, color: 'rgba(26,26,26,0.40)', fontStyle: 'italic',
   },
 
   // ─── Member row ───
@@ -340,17 +344,17 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.10)',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 107, 61, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     zIndex: 2,
   },
   trailNodeDone: {
-    borderColor: 'rgba(255,255,255,0.5)',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderColor: '#4ADE80',
+    backgroundColor: '#4ADE80',
   },
   avatarImg: {
     width: 26,
@@ -360,10 +364,10 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontSize: 11,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.35)',
+    color: 'rgba(255, 107, 61, 0.65)',
   },
   avatarInitialDone: {
-    color: 'rgba(255,255,255,0.9)',
+    color: '#FFFFFF',
   },
   doneCheckBadge: {
     position: 'absolute',
@@ -372,7 +376,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#4ADE80',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -380,16 +384,21 @@ const styles = StyleSheet.create({
   // ─── Member card ───
   memberCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
   },
   memberCardMe: {
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: '#FF6B3D',
+    backgroundColor: 'rgba(255, 107, 61, 0.05)',
   },
   memberHeader: {
     flexDirection: 'row',
@@ -400,16 +409,16 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(26,26,26,0.55)',
     flex: 1,
   },
   memberNameMe: {
-    color: 'rgba(255,255,255,0.85)',
+    color: '#1A1A1A',
   },
   memberCount: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.3)',
+    color: 'rgba(26,26,26,0.35)',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 
@@ -422,29 +431,29 @@ const styles = StyleSheet.create({
   goalChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.14)',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   goalChipDone: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: '#ff7e5f',
+    borderColor: '#ffaf7b',
   },
   goalChipText: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.4)',
+    color: 'rgba(26,26,26,0.50)',
     maxWidth: 80,
   },
   goalChipTextDone: {
-    color: 'rgba(255,255,255,0.9)',
+    color: '#FFFFFF',
   },
   noGoalText: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.2)',
+    color: 'rgba(26,26,26,0.30)',
     fontStyle: 'italic',
   },
 
@@ -464,7 +473,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FF6B3D',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
@@ -472,7 +481,7 @@ const styles = StyleSheet.create({
   summitText: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.7)',
+    color: '#FF6B3D',
     letterSpacing: 0.3,
   },
 });

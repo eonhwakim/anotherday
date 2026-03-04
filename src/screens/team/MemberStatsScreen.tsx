@@ -209,8 +209,6 @@ export default function MemberStatsScreen() {
     const avg = dailyPercents.length > 0
       ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
       : 0;
-    const max = dailyPercents.length > 0 ? Math.round(Math.max(...dailyPercents)) : 0;
-    const min = dailyPercents.length > 0 ? Math.round(Math.min(...dailyPercents)) : 0;
 
     const goalStats = goals.map((ug) => {
       const goal = allGoals.find((g) => g.id === ug.goal_id);
@@ -226,7 +224,22 @@ export default function MemberStatsScreen() {
       };
     });
 
-    return { doneTotal, passTotal, avg, max, min, goalStats, topReasons };
+    const failTotal = goalStats.reduce((sum, gs) => sum + gs.fail, 0);
+
+    let bestGoal: { name: string; rate: number; doneCount: number } | null = null;
+    let worstGoal: { name: string; rate: number; failCount: number } | null = null;
+    if (goalStats.length > 0) {
+      const withRate = goalStats.map(gs => {
+        const total = gs.done + gs.fail;
+        return { ...gs, rate: total > 0 ? Math.round((gs.done / total) * 100) : (gs.done > 0 ? 100 : 0) };
+      });
+      const best = withRate.reduce((a, b) => a.rate >= b.rate ? a : b);
+      bestGoal = { name: best.name, rate: best.rate, doneCount: best.done };
+      const worstWithRate = withRate.reduce((a, b) => a.fail >= b.fail ? a : b);
+      if (worstWithRate.fail > 0) worstGoal = { name: worstWithRate.name, rate: worstWithRate.rate, failCount: worstWithRate.fail };
+    }
+
+    return { doneTotal, passTotal, failTotal, avg, bestGoal, worstGoal, goalStats, topReasons };
   }, [monthlyCheckins, myGoals, teamGoals, yearMonth, myGoalNames]);
 
   return (
@@ -286,7 +299,7 @@ export default function MemberStatsScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FFFAF7',
   },
   header: {
     flexDirection: 'row',
@@ -295,7 +308,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomColor: 'rgba(255, 107, 61, 0.10)',
   },
   backBtn: {
     padding: 4,
@@ -303,7 +316,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   monthSelector: {
     flexDirection: 'row',
@@ -311,32 +324,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     gap: 20,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: '#FFFAF7',
   },
   arrowBtn: {
     padding: 8,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
   },
   monthTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   scroll: {
     flex: 1,
     marginTop: 16,
   },
   messageCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
     padding: 20,
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   messageSection: {
     gap: 8,
@@ -344,20 +362,20 @@ const styles = StyleSheet.create({
   messageLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.45)',
   },
   messageText: {
     fontSize: 14,
-    color: COLORS.text,
+    color: '#1A1A1A',
     lineHeight: 20,
   },
   placeholderText: {
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.30)',
     fontStyle: 'italic',
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
     marginVertical: 16,
   },
 });

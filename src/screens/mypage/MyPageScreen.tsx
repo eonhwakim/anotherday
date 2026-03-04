@@ -449,8 +449,6 @@ export default function MyPageScreen() {
     const avg = dailyPercents.length > 0
       ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
       : 0;
-    const max = dailyPercents.length > 0 ? Math.round(Math.max(...dailyPercents)) : 0;
-    const min = dailyPercents.length > 0 ? Math.round(Math.min(...dailyPercents)) : 0;
 
     const goalStats = goals.map((ug) => {
       const goal = allGoals.find((g) => g.id === ug.goal_id);
@@ -465,7 +463,22 @@ export default function MyPageScreen() {
       };
     });
 
-    return { doneTotal, passTotal, avg, max, min, goalStats, topReasons };
+    const failTotal = goalStats.reduce((sum, gs) => sum + gs.fail, 0);
+
+    let bestGoal: { name: string; rate: number; doneCount: number } | null = null;
+    let worstGoal: { name: string; rate: number; failCount: number } | null = null;
+    if (goalStats.length > 0) {
+      const withRate = goalStats.map(gs => {
+        const total = gs.done + gs.fail;
+        return { ...gs, rate: total > 0 ? Math.round((gs.done / total) * 100) : (gs.done > 0 ? 100 : 0) };
+      });
+      const best = withRate.reduce((a, b) => a.rate >= b.rate ? a : b);
+      bestGoal = { name: best.name, rate: best.rate, doneCount: best.done };
+      const worstWithRate = withRate.reduce((a, b) => a.fail >= b.fail ? a : b);
+      if (worstWithRate.fail > 0) worstGoal = { name: worstWithRate.name, rate: worstWithRate.rate, failCount: worstWithRate.fail };
+    }
+
+    return { doneTotal, passTotal, failTotal, avg, bestGoal, worstGoal, goalStats, topReasons };
   }, [monthlyCheckins, myGoals, teamGoals, yearMonth]);
 
   // ── 나의 목표에 해당하는 Goal 객체만 (캘린더·체크인 모달용) ──
@@ -614,7 +627,7 @@ export default function MyPageScreen() {
           onRemove={handleRemoveGoal}
         />
         {/* ── 이번 달 달성 현황 (캘린더) ── */}
-        <Text style={{ color: '#ff9a9e', fontSize: 12, fontWeight: 'bold', textAlign: 'center', margin: 10 }}>오늘 날짜를 클릭하여 인증을 하세요</Text>
+        <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: 'bold', textAlign: 'center', margin: 10 }}>오늘 날짜를 클릭하여 인증을 하세요</Text>
         <MonthlyGoalCalendar
           yearMonth={yearMonth}
           nickname={user?.nickname ?? '나'}
@@ -725,7 +738,7 @@ export default function MyPageScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FFFAF7',
   },
   scroll: {
     flex: 1,
@@ -733,7 +746,7 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: COLORS.text,
+    color: '#1A1A1A',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 16,
@@ -742,17 +755,17 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     padding: 20,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
     gap: 16,
     marginBottom: 16,
-    shadowColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#FF6B3D',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 3,
   },
@@ -760,12 +773,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.10)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 107, 61, 0.25)',
   },
   profileInfo: {
     flex: 1,
@@ -773,36 +786,36 @@ const styles = StyleSheet.create({
   nickname: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
     marginBottom: 2,
   },
   detailText: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.50)',
     marginBottom: 2,
   },
   email: {
     fontSize: 13,
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.35)',
   },
   sectionCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     padding: 20,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
     marginBottom: 16,
-    shadowColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#FF6B3D',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 3,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -818,21 +831,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
   },
   teamActionText: {
     fontSize: 12,
-    color: COLORS.primaryLight,
+    color: '#FF6B3D',
     fontWeight: '600',
   },
   emptyText: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.45)',
     textAlign: 'center',
     paddingVertical: 12,
   },
@@ -843,15 +856,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: 'rgba(255, 107, 61, 0.08)',
   },
   activeTeamItem: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
     borderRadius: 8,
     paddingHorizontal: 10,
     borderBottomWidth: 0,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(255, 107, 61, 0.22)',
   },
   teamInfo: {
     flex: 1,
@@ -859,31 +872,36 @@ const styles = StyleSheet.create({
   teamName: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   activeTeamText: {
-    color: COLORS.secondary,
+    color: '#FF6B3D',
     fontWeight: '700',
   },
   inviteCode: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.35)',
     marginTop: 2,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   accountSection: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginTop: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.10)',
     overflow: 'hidden',
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   accountSectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.textSecondary,
+    color: 'rgba(26,26,26,0.45)',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
@@ -903,16 +921,16 @@ const styles = StyleSheet.create({
   accountRowText: {
     fontSize: 15,
     fontWeight: '500',
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   accountDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
     marginHorizontal: 16,
   },
   accountDeleteHint: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: 'rgba(26,26,26,0.35)',
     textAlign: 'center',
     marginTop: 10,
     paddingHorizontal: 16,
@@ -921,28 +939,28 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.50)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modalContent: {
-    backgroundColor: 'rgba(10,10,10,0.96)',
+    backgroundColor: '#FFFFFF',
     width: '100%',
     padding: 24,
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    shadowColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
+    shadowColor: '#FF6B3D',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 6,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -962,23 +980,24 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'red',
+    borderColor: '#FF6B3D',
+    backgroundColor: 'rgba(255, 107, 61, 0.10)',
   },
   leaderText: {
     fontSize: 10,
     fontWeight: '800',
-    color: 'red',
+    color: '#FF6B3D',
   },
   memberBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'green',
+    borderColor: 'rgba(26,26,26,0.25)',
   },
   memberText: {
     fontSize: 10,
     fontWeight: '800',
-    color: 'green',
+    color: 'rgba(26,26,26,0.45)',
   },
 });

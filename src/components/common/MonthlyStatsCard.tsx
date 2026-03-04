@@ -17,10 +17,11 @@ interface MonthlyStatsProps {
   monthLabel: string;
   stats: {
     avg: number;
-    max: number;
-    min: number;
+    bestGoal: { name: string; rate: number; doneCount: number } | null;
+    worstGoal: { name: string; rate: number; failCount: number } | null;
     doneTotal: number;
     passTotal: number;
+    failTotal: number;
     goalStats: GoalStat[];
     topReasons: [string, number][];
   };
@@ -38,23 +39,66 @@ export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArr
         )}
       </View>
 
-      {/* 달성률 요약 */}
-      <View style={styles.statsRow}>
-        <StatItem label="평균 달성률" value={`${stats.avg}%`} icon="analytics" color="#fff" />
-        <StatItem label="최고" value={`${stats.max}%`} icon="arrow-up" color="#4ADE80" />
-        <StatItem label="최저" value={`${stats.min}%`} icon="arrow-down" color="#EF4444" />
+      {/* 평균 달성률 */}
+      <View style={styles.avgSection}>
+        <Text style={styles.avgLabel}>평균 달성률</Text>
+        <Text style={styles.avgValue}>{stats.avg}%</Text>
       </View>
 
-      {/* DONE / PASS 카운트 */}
-      <View style={[styles.statsRow, { marginTop: 16 }]}>
-        <StatItem 
-          label="체크인" 
-          value={`${stats.passTotal} 패스 ${stats.doneTotal} 완료`} 
-          icon="checkmark-circle" 
-          color="#fff" 
-        />
+      {/* 최고 / 최저 목표 */}
+      <View style={styles.bestWorstRow}>
+        {stats.bestGoal && (
+          <View style={styles.bestCard}>
+            <View style={styles.bestWorstHeader}>
+              <Ionicons name="trophy" size={14} color="#4ADE80" />
+              <Text style={styles.bestWorstLabel}>최고</Text>
+            </View>
+            <Text style={styles.bestWorstGoalName} numberOfLines={1}>{stats.bestGoal.name}</Text>
+            <View style={styles.bestWorstValues}>
+              <Text style={styles.bestRate}>{stats.bestGoal.rate}%</Text>
+              <Text style={styles.bestSub}>{stats.bestGoal.doneCount}완료</Text>
+            </View>
+          </View>
+        )}
+        {stats.worstGoal && stats.worstGoal.failCount > 0 && (
+          <View style={styles.worstCard}>
+            <View style={styles.bestWorstHeader}>
+              <Ionicons name="alert-circle" size={14} color="#EF4444" />
+              <Text style={styles.bestWorstLabel}>최저</Text>
+            </View>
+            <Text style={styles.bestWorstGoalName} numberOfLines={1}>{stats.worstGoal.name}</Text>
+            <View style={styles.bestWorstValues}>
+              <Text style={styles.worstRate}>{stats.worstGoal.rate}%</Text>
+              <Text style={styles.worstSub}>{stats.worstGoal.failCount}미달</Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* 체크인 요약 (한 줄) */}
+      <View style={styles.checkinSummary}>
+        <View style={styles.checkinItem}>
+          <View style={[styles.checkinDot, { backgroundColor: '#4ADE80' }]} />
+          <Text style={styles.checkinText}>완료 <Text style={styles.checkinCount}>{stats.doneTotal}</Text></Text>
+        </View>
+        <View style={styles.checkinDivider} />
+        <View style={styles.checkinItem}>
+          <View style={[styles.checkinDot, { backgroundColor: '#E8960A' }]} />
+          <Text style={styles.checkinText}>패스 <Text style={styles.checkinCount}>{stats.passTotal}</Text></Text>
+        </View>
+        <View style={styles.checkinDivider} />
+        <View style={styles.checkinItem}>
+          <View style={[styles.checkinDot, { backgroundColor: '#EF4444' }]} />
+          <Text style={styles.checkinText}>미달 <Text style={styles.checkinCount}>{stats.failTotal}</Text></Text>
+        </View>
         {teamCount !== undefined && (
-          <StatItem label="소속 팀" value={`${teamCount}개`} icon="people" color="rgba(255,255,255,0.60)" />
+          <>
+            <View style={styles.checkinDivider} />
+            <View style={styles.checkinItem}>
+              <View style={[styles.checkinDot, { backgroundColor: 'rgba(26,26,26,0.35)' }]} />
+              <Text style={styles.checkinText}>팀 <Text style={styles.checkinCount}>{teamCount}</Text></Text>
+            </View>
+          </>
         )}
       </View>
 
@@ -77,9 +121,9 @@ export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArr
                 <Text style={styles.goalStatName} numberOfLines={1}>{gs.name}</Text>
               </View>
               <View style={styles.goalStatBadges}>
-                <Text style={styles.goalStatDone}>{gs.done}완료</Text>
-                {gs.pass > 0 && <Text style={styles.goalStatPass}>{gs.pass}패스</Text>}
-                {gs.fail > 0 && <Text style={styles.goalStatFail}>{gs.fail}미달</Text>}
+                <Text style={styles.goalStatDone}>{gs.done} 완료</Text>
+                {gs.pass > 0 && <Text style={styles.goalStatPass}>{gs.pass} 패스</Text>}
+                {gs.fail > 0 && <Text style={styles.goalStatFail}>{gs.fail} 미달</Text>}
               </View>
             </View>
           ))}
@@ -103,40 +147,18 @@ export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArr
   );
 }
 
-function StatItem({
-  label,
-  value,
-  icon,
-  color,
-}: {
-  label: string;
-  value: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-}) {
-  return (
-    <View style={styles.statItem}>
-      <View style={[styles.statIconWrap, { backgroundColor: color + '15' }]}>
-        <Ionicons name={icon} size={20} color={color} />
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   statsCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     padding: 20,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255, 107, 61, 0.12)',
     marginBottom: 16,
-    shadowColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#FF6B3D',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 3,
   },
@@ -149,47 +171,139 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1A1A',
     letterSpacing: 0.3,
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
+  avgSection: {
     alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 107, 61, 0.04)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 61, 0.10)',
+  },
+  avgLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.45)',
+    marginBottom: 4,
+  },
+  avgValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FF6B3D',
+  },
+  bestWorstRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  bestCard: {
+    flex: 1,
+    backgroundColor: 'rgba(74, 222, 128, 0.06)',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.15)',
+  },
+  worstCard: {
+    flex: 1,
+    backgroundColor: 'rgba(239, 68, 68, 0.04)',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.12)',
+  },
+  bestWorstHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  bestWorstLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.45)',
+  },
+  bestWorstGoalName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  bestWorstValues: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
     gap: 6,
   },
-  statIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+  bestRate: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#22C55E',
+  },
+  bestSub: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4ADE80',
+  },
+  worstRate: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#EF4444',
+  },
+  worstSub: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(239,68,68,0.60)',
+  },
+  checkinSummary: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFAF7',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255, 107, 61, 0.08)',
+    marginBottom: 2,
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
+  checkinItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  statLabel: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    letterSpacing: 0.3,
+  checkinDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  checkinText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(26,26,26,0.50)',
+  },
+  checkinCount: {
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  checkinDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: 'rgba(26,26,26,0.10)',
+    marginHorizontal: 10,
   },
   goalStatsSection: {
     marginTop: 16,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.04)',
+    borderTopColor: 'rgba(255, 107, 61, 0.08)',
   },
   goalStatsTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(26,26,26,0.45)',
     marginBottom: 10,
     letterSpacing: 0.3,
   },
@@ -199,7 +313,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.03)',
+    borderBottomColor: 'rgba(255, 107, 61, 0.06)',
   },
   goalStatNameRow: {
     flexDirection: 'row',
@@ -211,21 +325,21 @@ const styles = StyleSheet.create({
   goalStatName: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.80)',
+    color: 'rgba(26,26,26,0.80)',
     flexShrink: 1,
   },
   freqBadge: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 107, 61, 0.18)',
   },
   freqBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.50)',
+    color: 'rgba(26,26,26,0.50)',
   },
   goalStatBadges: {
     flexDirection: 'row',
@@ -234,8 +348,8 @@ const styles = StyleSheet.create({
   goalStatDone: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    color: '#45a247',
+    backgroundColor: 'rgba(74, 222, 128, 0.10)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -244,7 +358,7 @@ const styles = StyleSheet.create({
   goalStatPass: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFB547',
+    color: '#E8960A',
     backgroundColor: 'rgba(255,181,71,0.10)',
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -255,7 +369,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#EF4444',
-    backgroundColor: 'rgba(239,68,68,0.10)',
+    backgroundColor: 'rgba(239,68,68,0.08)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -265,7 +379,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.04)',
+    borderTopColor: 'rgba(255, 107, 61, 0.08)',
   },
   passReasonRow: {
     flexDirection: 'row',
@@ -276,19 +390,19 @@ const styles = StyleSheet.create({
   passReasonRank: {
     fontSize: 12,
     fontWeight: '800',
-    color: 'rgba(255,255,255,0.30)',
+    color: 'rgba(26,26,26,0.30)',
     width: 16,
     textAlign: 'center',
   },
   passReasonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.70)',
+    color: 'rgba(26,26,26,0.65)',
     flex: 1,
   },
   passReasonCount: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFB547',
+    color: '#E8960A',
   },
 });

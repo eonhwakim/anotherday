@@ -87,7 +87,7 @@ export default function MountainProgress({ members, currentUserId, startAnimatio
   );
 }
 
-function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme; isNight?: boolean; timePeriod?: string }) {
+function MountainScene({ theme, timePeriod = 'NIGHT' }: { theme: Theme; isNight?: boolean; timePeriod?: string }) {
   const trailPath = useMemo(() => buildSmoothTrailPath(), []);
   const isDay = timePeriod === 'DAY';
   const isSunset = timePeriod === 'SUNSET';
@@ -116,9 +116,9 @@ function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme;
             </LinearGradient>
             {/* 메인 산 — 선명한 하늘빛 */}
             <LinearGradient id="dayMain" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#5f656aff" stopOpacity="0.60" />
-              <Stop offset="40%" stopColor="#7c8f9dff" stopOpacity="0.50" />
-              <Stop offset="80%" stopColor="#9CC8E8" stopOpacity="0.45" />
+              <Stop offset="0%" stopColor={COLORS.mountainLight} stopOpacity="0.75" />
+              <Stop offset="40%" stopColor={COLORS.mountainDarker} stopOpacity="0.65" />
+              <Stop offset="70%" stopColor={COLORS.mountainDark} stopOpacity="0.55" />
               <Stop offset="100%" stopColor="#B0D8F0" stopOpacity="0.40" />
             </LinearGradient>
             {/* 구름 그라디언트 */}
@@ -152,12 +152,12 @@ function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme;
             {/* 원경 산 — 밤과 같은 색상 */}
             <LinearGradient id="sunsetFar" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0%" stopColor={COLORS.holoLavender} stopOpacity="0.10" />
-              <Stop offset="100%" stopColor={COLORS.primary} stopOpacity="0.03" />
+              <Stop offset="100%" stopColor='#282828' stopOpacity="0.13" />
             </LinearGradient>
             {/* 중경 산 — 밤과 같은 색상 */}
             <LinearGradient id="sunsetMid" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0%" stopColor={COLORS.holoCyan} stopOpacity="0.08" />
-              <Stop offset="100%" stopColor={COLORS.holoCyan} stopOpacity="0.02" />
+              <Stop offset="100%" stopColor='#282828' stopOpacity="0.02" />
             </LinearGradient>
             {/* 근경 언덕 — 밤과 같은 색상 */}
             <LinearGradient id="sunsetNear" x1="0" y1="0" x2="0" y2="1">
@@ -166,9 +166,9 @@ function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme;
             </LinearGradient>
             {/* 메인 산 — 밤과 같은 색상 */}
             <LinearGradient id="sunsetMain" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#5f656aff" stopOpacity="0.60" />
-              <Stop offset="40%" stopColor="#7c8f9dff" stopOpacity="0.50" />
-              <Stop offset="80%" stopColor={COLORS.primary} stopOpacity="0.45" />
+              <Stop offset="0%" stopColor={COLORS.mountainLight} stopOpacity="0.60" />
+              <Stop offset="40%" stopColor={COLORS.mountain} stopOpacity="0.55" />
+              <Stop offset="60%" stopColor={COLORS.mountainDark} stopOpacity="0.55" />
               <Stop offset="100%" stopColor='#FFE0B0' stopOpacity="0.40" />
             </LinearGradient>
             {/* 노을 안개 */}
@@ -195,7 +195,7 @@ function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme;
               <Stop offset="50%" stopColor="#FFD0E8" stopOpacity="0.30" />
               <Stop offset="100%" stopColor="#FFC0E0" stopOpacity="0" />
             </RadialGradient>
-            {/* 태양 그라디언트 — 따뜻한 오렌지 */}
+            {/* 태양 그라디언트 — 따뜻한 오렌지*/}
             <RadialGradient id="sunsetSunCore" cx="0.5" cy="0.5" r="0.5">
               <Stop offset="0%" stopColor="#FFE0B0" stopOpacity="0.90" />
               <Stop offset="40%" stopColor="#FFC890" stopOpacity="0.80" />
@@ -216,7 +216,7 @@ function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme;
               <Stop offset="0%" stopColor="#FFD8B8" stopOpacity="0.35" />
               <Stop offset="30%" stopColor="#FFC8A8" stopOpacity="0.20" />
               <Stop offset="100%" stopColor="#FFB898" stopOpacity="0" />
-            </RadialGradient>
+            </RadialGradient> 
           </>
         )}
         {/* ── 밤 그라디언트 (기존) ── */}
@@ -229,24 +229,26 @@ function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme;
           <Stop offset="100%" stopColor={COLORS.holoCyan} stopOpacity="0.02" />
         </LinearGradient>
         <LinearGradient id="mainMountGrad" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor={theme.accent} stopOpacity="0.20" />
+          {/* <Stop offset="0%" stopColor={theme.accent} stopOpacity="0.20" />
           <Stop offset="50%" stopColor={COLORS.primary} stopOpacity="0.10" />
-          <Stop offset="100%" stopColor={COLORS.surface} stopOpacity="0.20" />
-        </LinearGradient>
+          <Stop offset="100%" stopColor={COLORS.surface} stopOpacity="0.20" /> */}
+          <Stop offset="0%" stopColor={COLORS.mountain} stopOpacity="0.55" />
+          <Stop offset="40%" stopColor={COLORS.mountainDark} stopOpacity="0.55" />
+          <Stop offset="60%" stopColor={COLORS.mountainDarker} stopOpacity="0.55" />
+          <Stop offset="100%" stopColor={COLORS.ground} stopOpacity="0.40" />
+        </LinearGradient> 
         {/* 홀로그래픽 트레일 */}
         <LinearGradient id="trailHolo" x1="0" y1="1" x2="0" y2="0">
-          <Stop offset="0%" stopColor={COLORS.holoCyan} stopOpacity="0.15" />
-          <Stop offset="35%" stopColor={COLORS.holoMint} stopOpacity="0.40" />
-          <Stop offset="65%" stopColor={COLORS.holoPink} stopOpacity="0.35" />
-          <Stop offset="100%" stopColor={COLORS.holoLavender} stopOpacity="0.50" />
+          <Stop offset="0%" stopColor={COLORS.holoLavender} stopOpacity="0.85" />
+          <Stop offset="35%" stopColor={COLORS.holoCyan} stopOpacity="0.60" />
+          <Stop offset="65%" stopColor={COLORS.holoMint1} stopOpacity="0.55" />
+          <Stop offset="100%" stopColor={COLORS.holoPink} stopOpacity="0.55" />
         </LinearGradient>
+      
       </Defs>
 
       {isDay ? (
         <>
-          {/* ── DAY: 밝고 청량한 하늘 느낌의 산 레이어 ── */}
-          
-          {/* 태양과 플레어 효과 */}
           <G transform="translate(280, 95)">
             
             {/* 작은 플레어 점들 */}
@@ -606,10 +608,11 @@ function MountainScene({ theme, isNight, timePeriod = 'NIGHT' }: { theme: Theme;
         </>
       )}
 
-      {/* 홀로그래픽 글로우 트레일 (공통) */}
+      {/* 홀로그래픽 글로우 트레일 가운데 라인(공통) */}
       <Path d={trailPath} stroke="url(#trailHolo)" strokeWidth={12} strokeLinecap="round" fill="none" />
-      <Path d={trailPath} stroke={COLORS.holoCyan} strokeWidth={2} strokeLinecap="round" fill="none" opacity={isDay ? 0.35 : 0.5} />
-      <Path d={trailPath} stroke="#FFF" strokeWidth={0.8} strokeDasharray="3 8" strokeLinecap="round" fill="none" opacity="0.15" />
+      <Path d={trailPath} stroke={COLORS.holoMint} strokeWidth={2} strokeLinecap="round" fill="none" opacity={0.35} />
+      <Path d={trailPath} stroke={COLORS.holoLavender1} strokeWidth={0.8} strokeDasharray="3 8" strokeLinecap="round" fill="none" opacity="0.22" />
+        
 
       {/* 정상 비콘 */}
       <G transform="translate(168, 5) scale(0.4)">
@@ -645,7 +648,7 @@ function GeometricParticle({ emoji, index }: any) {
         { translateX: sway.interpolate({ inputRange: [-1, 1], outputRange: [-15, 15] }) },
       ],
     }}>
-      <Text style={{ fontSize: 14, opacity: 0.3, color: COLORS.holoLavender }}>{emoji}</Text>
+      <Text style={{ fontSize: 10, opacity: 0.3, color: COLORS.holoLavender }}>{emoji}</Text>
     </Animated.View>
   );
 }
@@ -727,18 +730,10 @@ function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatar
   const animatedLeft = progressAnim.interpolate({ inputRange: TRAIL_INPUT_RANGE, outputRange: TRAIL_POINTS.map(pt => (pt.x / SVG_W) * containerWidth + spreadOffset) });
   const animatedTop = progressAnim.interpolate({ inputRange: TRAIL_INPUT_RANGE, outputRange: TRAIL_POINTS.map(pt => (pt.y / SVG_H) * CONTAINER_HEIGHT) });
 
-  // 퍼센트 텍스트를 애니메이션 값으로 표시
-  const AnimatedText = Animated.createAnimatedComponent(Text);
-  const percentText = displayPercent.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['0', '100'],
-    extrapolate: 'clamp',
-  });
-
   return (
     <Animated.View style={[styles.characterWrapper, { left: animatedLeft, top: Animated.add(animatedTop, bounceAnim) }]}>
-      <View style={[styles.bubble, { borderColor: avatarColor + '50' }]}>
-        <PercentLabel value={displayPercent} color={COLORS.text} />
+      <View style={[styles.bubble, { borderColor: COLORS.holoLavender1 }]}>
+        <PercentLabel value={displayPercent} color={COLORS.sky} />
       </View>
       <View style={[styles.bubbleTail, { borderTopColor: avatarColor + '50' }]} />
       <View style={[styles.avatarGlow, { shadowColor: avatarColor }]}>
