@@ -7,11 +7,11 @@
       "policy": "appVersion"
     },
     "orientation": "portrait",
-    "icon": "./assets/anotherday-icon.png",
+    "icon": "./assets/brand-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/anotherday-icon.png",
+      "image": "./assets/brand-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
