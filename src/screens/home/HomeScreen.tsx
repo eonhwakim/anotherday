@@ -6,12 +6,8 @@ import {
   ScrollView,
   RefreshControl,
   Dimensions,
-  TouchableOpacity,
-  Modal,
-  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
@@ -22,6 +18,7 @@ import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
 import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalList';
+import DevGuideModal from '../../components/home/DevGuideModal';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Stop, Rect, Path, Line, G } from 'react-native-svg';
@@ -58,7 +55,6 @@ export default function HomeScreen() {
   const [timePeriod, setTimePeriod] = React.useState<'DAY' | 'SUNSET' | 'NIGHT'>('DAY');
   const [isManualOverride, setIsManualOverride] = React.useState(false);
   const [showGuideModal, setShowGuideModal] = React.useState(false);
-  const [neverShowAgain, setNeverShowAgain] = React.useState(false);
 
   // ── 안내 모달 체크 (유저 정보 로드 완료 시) ──
   React.useEffect(() => {
@@ -66,8 +62,7 @@ export default function HomeScreen() {
 
     const checkGuide = async () => {
       try {
-        // 키 변경 (v4) - 무조건 다시 뜨게 함
-        const key = 'hasSeenGuide_v4';
+        const key = 'hasSeenDevGuide_v1';
         const hasSeen = await AsyncStorage.getItem(key);
         
         if (!hasSeen) {
@@ -87,13 +82,12 @@ export default function HomeScreen() {
   const handleCloseGuide = async (savePreference: boolean) => {
     try {
       if (savePreference) {
-        await AsyncStorage.setItem('hasSeenGuide_v4', 'true');
+        await AsyncStorage.setItem('hasSeenDevGuide_v1', 'true');
       }
     } catch (e) {
       console.error(e);
     } finally {
       setShowGuideModal(false);
-      setNeverShowAgain(false);
     }
   };
 
@@ -171,68 +165,10 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── 안내 모달 ── */}
-      <Modal
+      <DevGuideModal
         visible={showGuideModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {}}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.guideModalContent}>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.guideScrollContent}
-              bounces={false}
-            >
-              <Image
-                source={require('../../../assets/warning-icon.png')}
-                style={styles.guideIconImage}
-                resizeMode="contain"
-              />
-              <Text style={styles.guideTitle}>꼭 읽어주세요</Text>
-              <Text style={styles.guideText}>
-                이 앱은 <Text style={styles.highlight}>목표 수행 직후, 카메라로만</Text> 인증할 수 있어요.{'\n'}
-                앨범 사진은 사용할 수 없습니다.
-              </Text>
-              <View style={styles.guideWarningBox}>
-                <View style={styles.guideWarningItem}>
-                  <Ionicons name="checkmark-circle" size={18} color="#4ADE80" />
-                  <Text style={[styles.guideWarningText, { color: '#EF4444' }]}>목표 설정→직접 수행→즉시 카메라 인증</Text>
-                </View>
-                <View style={styles.guideWarningItem}>
-                  <Ionicons name="close-circle" size={18} color="#EF4444" />
-                  <Text style={styles.guideWarningText}>나중에 몰아서 인증하는 건 불가해요</Text>
-                </View>
-                <View style={styles.guideWarningItem}>
-                  <Ionicons name="close-circle" size={18} color="#EF4444" />
-                  <Text style={styles.guideWarningText}>앨범에서 사진 선택은 지원하지 않아요</Text>
-                </View>
-              </View>
-              <Text style={styles.guideSubText}>
-                진짜 수행한 순간을 함께 기록하기 위해{'\n'}실시간 카메라 인증만 허용하고 있어요.{'\n'}
-                목표를 마치면 바로 찍어주세요 📸
-              </Text>
-
-              {/* 다시 보지 않기 체크박스 */}
-              <TouchableOpacity
-                style={styles.guideCheckRow}
-                onPress={() => setNeverShowAgain((v) => !v)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.guideCheckbox, neverShowAgain && styles.guideCheckboxActive]}>
-                  {neverShowAgain && <Ionicons name="checkmark" size={13} color="#fff" />}
-                </View>
-                <Text style={[styles.guideCheckLabel, neverShowAgain && styles.guideCheckLabelActive]}>다시 보지 않기</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.guideConfirmBtn} onPress={() => handleCloseGuide(neverShowAgain)}>
-                <Text style={styles.guideConfirmText}>이해했어요</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+        onClose={handleCloseGuide}
+      />
 
       {/* ── 배경 ── */}
       <View style={styles.bgLayer}>
@@ -730,140 +666,5 @@ const styles = StyleSheet.create({
   goalSection: {
     paddingHorizontal: 24,
     paddingTop: 20,
-  },
-  
-  // ── 안내 모달 스타일 ──
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  guideModalContent: {
-    backgroundColor: '#FFFFFF',
-    width: '100%',
-    maxHeight: '88%',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.15)',
-    shadowColor: '#FF6B3D',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-    overflow: 'hidden',
-  },
-  guideScrollContent: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  guideIconImage: {
-    width: 80,
-    height: 80,
-    marginBottom: 20,
-  },
-  guideTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  guideText: {
-    fontSize: 16,
-    color: '#555555',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  highlight: {
-    color: '#FF6B3D',
-    fontWeight: '700',
-  },
-  guideWarningBox: {
-    backgroundColor: 'rgba(255, 107, 61, 0.06)',
-    borderRadius: 12,
-    padding: 14,
-    width: '100%',
-    gap: 12,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.15)',
-  },
-  guideWarningItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  guideWarningText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#555555',
-    fontWeight: '600',
-    flexWrap: 'wrap',
-  },
-  guideSubText: {
-    fontSize: 14,
-    color: 'rgba(26,26,26,0.50)',
-    textAlign: 'center',
-    marginBottom: 22,
-    lineHeight: 20,
-  },
-  guideCloseBtn: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,107,61,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  guideCheckRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-    gap: 10,
-  },
-  guideCheckbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: 'rgba(26,26,26,0.30)',
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  guideCheckboxActive: {
-    backgroundColor: '#FF6B3D',
-    borderColor: '#FF6B3D',
-  },
-  guideCheckLabel: {
-    fontSize: 14,
-    color: 'rgba(26,26,26,0.50)',
-  },
-  guideCheckLabelActive: {
-    color: '#1A1A1A',
-  },
-  guideConfirmBtn: {
-    backgroundColor: '#FF6B3D',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    width: '100%',
-    alignItems: 'center',
-    shadowColor: '#FF6B3D',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-  },
-  guideConfirmText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
   },
 });
