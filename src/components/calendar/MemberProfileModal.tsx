@@ -222,63 +222,7 @@ export default function MemberProfileModal({
           ) : (
             <ScrollView style={styles.scrollContent}>
               {/* Monthly Stats */}
-              <View style={styles.statsCard}>
-                <Text style={styles.cardTitle}>{currentMonthLabel} 통계</Text>
-
-                {/* 평균 달성률 */}
-                <View style={styles.avgSection}>
-                  <Text style={styles.avgLabel}>평균 달성률</Text>
-                  <Text style={styles.avgValue}>{monthlyStats.avg}%</Text>
-                </View>
-
-                {/* 최고 / 최저 목표 */}
-                <View style={styles.bestWorstRow}>
-                  {monthlyStats.bestGoal && (
-                    <View style={styles.bestCard}>
-                      <View style={styles.bestWorstHeader}>
-                        <Ionicons name="trophy" size={14} color="#4ADE80" />
-                        <Text style={styles.bestWorstLabel}>최고</Text>
-                      </View>
-                      <Text style={styles.bestWorstGoalName} numberOfLines={1}>{monthlyStats.bestGoal.name}</Text>
-                      <View style={styles.bestWorstValues}>
-                        <Text style={styles.bestRate}>{monthlyStats.bestGoal.rate}%</Text>
-                        <Text style={styles.bestSub}>{monthlyStats.bestGoal.doneCount}완료</Text>
-                      </View>
-                    </View>
-                  )}
-                  {monthlyStats.worstGoal && monthlyStats.worstGoal.failCount > 0 && (
-                    <View style={styles.worstCard}>
-                      <View style={styles.bestWorstHeader}>
-                        <Ionicons name="alert-circle" size={14} color="#EF4444" />
-                        <Text style={styles.bestWorstLabel}>최저</Text>
-                      </View>
-                      <Text style={styles.bestWorstGoalName} numberOfLines={1}>{monthlyStats.worstGoal.name}</Text>
-                      <View style={styles.bestWorstValues}>
-                        <Text style={styles.worstRate}>{monthlyStats.worstGoal.rate}%</Text>
-                        <Text style={styles.worstSub}>{monthlyStats.worstGoal.failCount}미달</Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-
-                {/* 체크인 요약 (한 줄) */}
-                <View style={styles.checkinSummary}>
-                  <View style={styles.checkinItem}>
-                    <View style={[styles.checkinDot, { backgroundColor: '#4ADE80' }]} />
-                    <Text style={styles.checkinText}>완료 <Text style={styles.checkinCount}>{monthlyStats.doneTotal}</Text></Text>
-                  </View>
-                  <View style={styles.checkinDivider} />
-                  <View style={styles.checkinItem}>
-                    <View style={[styles.checkinDot, { backgroundColor: '#E8960A' }]} />
-                    <Text style={styles.checkinText}>패스 <Text style={styles.checkinCount}>{monthlyStats.passTotal}</Text></Text>
-                  </View>
-                  <View style={styles.checkinDivider} />
-                  <View style={styles.checkinItem}>
-                    <View style={[styles.checkinDot, { backgroundColor: '#EF4444' }]} />
-                    <Text style={styles.checkinText}>미달 <Text style={styles.checkinCount}>{monthlyStats.failTotal}</Text></Text>
-                  </View>
-                </View>
-
+              <View style={styles.statsCard}>                
                 {/* Goal-specific stats */}
                 {monthlyStats.goalStats.length > 0 && (
                   <View style={styles.goalStatsSection}>
@@ -327,7 +271,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
-    minHeight: '60%',
+    minHeight: '45%',
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 61, 0.15)',
     shadowColor: '#FF6B3D',
@@ -518,10 +462,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   goalStatsSection: {
-    marginTop: 16,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 107, 61, 0.08)',
+    paddingTop: 8,
   },
   goalStatsTitle: {
     fontSize: 13,

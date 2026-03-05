@@ -234,6 +234,8 @@ export default function CheckinModal({
                               done && styles.goalNameDone,
                               isMissed && styles.goalNameMissed,
                             ]}
+                            numberOfLines={2}
+                            ellipsizeMode="tail"
                           >
                             {goal.name}
                           </Text>
@@ -410,10 +412,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
+    minWidth: 0,
   },
   goalNameRow: {
     flexDirection: 'column',
     gap: 2,
+    flex: 1,
+    minWidth: 0,
   },
   goalName: {
     fontSize: 15,
@@ -466,6 +471,7 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 8,
+    flexShrink: 0,
   },
   successBtn: {
     flexDirection: 'row',

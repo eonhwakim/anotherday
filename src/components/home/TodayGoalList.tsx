@@ -317,9 +317,9 @@ function ThumbBadge({ text, isActive }: { text: string; isActive: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 10 },
+  container: { marginTop: 0 },
   headerRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18,
     height: 30,
   },
   title: {

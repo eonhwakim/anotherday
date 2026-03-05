@@ -38,7 +38,7 @@ export default function AppTabs() {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
           if (route.name === 'HomeTab') iconName = 'home';
           else if (route.name === 'CalendarTab') iconName = 'calendar';
-          else if (route.name === 'StatsTab') iconName = 'stats-chart';
+          else if (route.name === 'StatsTab') iconName = 'bar-chart';
           else if (route.name === 'MyPageTab') iconName = 'person';
           return <Ionicons name={iconName} size={size} color={color} />;
         },

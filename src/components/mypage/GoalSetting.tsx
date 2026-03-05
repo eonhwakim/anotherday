@@ -231,50 +231,53 @@ export default function GoalSetting({
       )}
 
       {/* ── 등록된 목표 목록 ── */}
-      {(teamGoals || []).length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Ionicons name="bulb-outline" size={28} color={COLORS.textSecondary} />
-          <Text style={styles.emptyText}>
-            아직 등록된 목표가 없어요{'\n'}위에서 새 목표를 추가해보세요!
-          </Text>
-        </View>
-      ) : (
-        <>
-          <Text style={styles.sectionLabel}>
-            등록된 목표 (길게 누름: 삭제)
-          </Text>
-          <Text style={styles.hintLabel}>
-            주 N회 목표는 캘린더 → 인증하기에서 패스로 오늘 제외할 수 있어요
-          </Text>
-          <View style={styles.goalList}>
-            {(teamGoals || []).map((goal) => {
-              const active = isSelected(goal.id);
-              const ug = getMyGoal(goal.id);
-              return (
-                <TouchableOpacity
-                  key={goal.id}
-                  style={styles.goalRow}
-                  onLongPress={() => handleLongPress(goal)}
-                  activeOpacity={0.7}
-                  delayLongPress={500}
-                >
-                  <Ionicons
-                    name={active ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={20}
-                    color={active ? '#FF6B3D' : 'rgba(26,26,26,0.35)'}
-                  />
-                  <View style={styles.goalRowContent}>
-                    <Text style={styles.goalRowName}>{goal.name}</Text>
-                    {active && ug && (
-                      <Text style={styles.goalRowFreq}>{freqLabel(ug)}</Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </>
-      )}
+      {(() => {
+        const registeredGoals = teamGoals || [];
+        if (registeredGoals.length === 0) {
+          return (
+            <View style={styles.emptyBox}>
+              <Ionicons name="bulb-outline" size={28} color={COLORS.textSecondary} />
+              <Text style={styles.emptyText}>
+                아직 등록된 목표가 없어요{'\n'}위에서 새 목표를 추가해보세요!
+              </Text>
+            </View>
+          );
+        }
+        return (
+          <>
+            <Text style={styles.sectionLabel}>
+              등록된 목표 (길게 누름: 삭제)
+            </Text>
+            <Text style={styles.hintLabel}>
+              주 N회 목표는 캘린더 → 인증하기에서 패스로 오늘 제외할 수 있어요
+            </Text>
+            <View style={styles.goalList}>
+              {registeredGoals.map((goal, index) => {
+                const ug = getMyGoal(goal.id);
+                return (
+                  <TouchableOpacity
+                    key={goal.id}
+                    style={styles.goalRow}
+                    onLongPress={() => handleLongPress(goal)}
+                    activeOpacity={0.7}
+                    delayLongPress={500}
+                  >
+                    <View style={styles.goalNumIcon}>
+                      <Text style={styles.goalNumText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.goalRowContent}>
+                      <Text style={styles.goalRowName}>{goal.name}</Text>
+                      {ug && (
+                        <Text style={styles.goalRowFreq}>{freqLabel(ug)}</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        );
+      })()}
     </View>
   );
 }
@@ -341,6 +344,21 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 12, color: 'rgba(26,26,26,0.45)', marginBottom: 8, fontWeight: '600', letterSpacing: 0.3 },
   hintLabel: { fontSize: 11, color: 'rgba(26,26,26,0.40)', marginBottom: 12, lineHeight: 16 },
   goalList: { gap: 0 },
+  goalNumIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 14,
+    backgroundColor: '#FF6B3D',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 61, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goalNumText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'white',
+  },
   goalRow: {
     flexDirection: 'row',
     alignItems: 'center',
