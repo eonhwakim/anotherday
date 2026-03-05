@@ -39,6 +39,8 @@ export default function CalendarScreen() {
     fetchMyGoals,
     fetchMonthlyCheckins,
     fetchMemberProgress,
+    fetchMyGoalsForDisplay,
+    myGoalsForDisplay,
     toggleReaction,
   } = useGoalStore();
 
@@ -96,31 +98,51 @@ export default function CalendarScreen() {
     return myGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
   }, [teamGoals, myGoals, user]);
 
-  // ── 나의 목표에 해당하는 Goal 객체만 (체크인 모달용) ──
-  const myGoalObjects = React.useMemo(() => {
-    const myGoalIds = new Set(currentTeamUserGoals.map((ug) => ug.goal_id));
-    return (teamGoals || []).filter((g) => myGoalIds.has(g.id));
-  }, [teamGoals, currentTeamUserGoals]);
-
-  // 선택한 날짜에 유효한 목표만 필터 (start_date 이후만)
-  const selectedDateGoals = React.useMemo(() => {
-    return myGoalObjects.filter((g) =>
-      currentTeamUserGoals.some((ug) => {
-        if (ug.goal_id !== g.id) return false;
+  // ── 인증 모달용: 활성+비활성(오늘 제외) 모두 포함 (패스 토글 가능)
+  const goalsForCheckinModal = React.useMemo(() => {
+    const ugSource = myGoalsForDisplay.length > 0 ? myGoalsForDisplay : currentTeamUserGoals;
+    const myOwnedGoalIds = new Set(
+      (teamGoals || []).filter((g) => g.owner_id === user?.id).map((g) => g.id),
+    );
+    const weekStart = dayjs(selectedDate).startOf('isoWeek').format('YYYY-MM-DD');
+    const weekEnd = dayjs(selectedDate).endOf('isoWeek').format('YYYY-MM-DD');
+    return (teamGoals || [])
+      .filter((g) => myOwnedGoalIds.has(g.id))
+      .filter((g) => {
+        const ug = ugSource.find((u) => u.goal_id === g.id);
+        if (!ug) return false;
         if (ug.start_date && selectedDate < ug.start_date) return false;
         return true;
-      }),
-    );
-  }, [myGoalObjects, currentTeamUserGoals, selectedDate]);
+      })
+      .map((g) => {
+        const ug = ugSource.find((u) => u.goal_id === g.id);
+        const weeklyDoneCount = (monthlyCheckins || []).filter(
+          (c) =>
+            c.goal_id === g.id &&
+            c.date >= weekStart &&
+            c.date <= weekEnd &&
+            c.status === 'done',
+        ).length;
+        return {
+          goal: g,
+          frequency: (ug?.frequency ?? 'daily') as 'daily' | 'weekly_count',
+          isExcluded: ug ? !ug.is_active : false,
+          targetCount: ug?.target_count ?? null,
+          weeklyDoneCount,
+        };
+      });
+  }, [teamGoals, myGoalsForDisplay, currentTeamUserGoals, selectedDate, user, monthlyCheckins]);
 
   const selectedDateCheckins = React.useMemo(
     () =>
       (monthlyCheckins || []).filter(
         (c) =>
           c.date === selectedDate &&
-          currentTeamUserGoals.some((g) => g.goal_id === c.goal_id),
+          (myGoalsForDisplay.length > 0 ? myGoalsForDisplay : currentTeamUserGoals).some(
+            (g) => g.goal_id === c.goal_id,
+          ),
       ),
-    [monthlyCheckins, selectedDate, currentTeamUserGoals],
+    [monthlyCheckins, selectedDate, currentTeamUserGoals, myGoalsForDisplay],
   );
 
   const isTodaySelected = selectedDate === dayjs().format('YYYY-MM-DD');
@@ -131,6 +153,12 @@ export default function CalendarScreen() {
 
   const handleCheckinDone = useCallback(async () => {
     if (!user) return;
+    await fetchMyGoals(user.id);
+    const goals = useGoalStore.getState().teamGoals;
+    const myVisibleGoalIds = goals.filter((g) => g.owner_id === user.id).map((g) => g.id);
+    if (myVisibleGoalIds.length > 0) {
+      await fetchMyGoalsForDisplay(user.id, myVisibleGoalIds);
+    }
     await fetchMonthlyCheckins(user.id, currentMonth);
     await fetchMemberDateCheckins(currentTeam?.id, user.id, selectedDate);
     await fetchCalendarMarkings(user.id, currentMonth);
@@ -147,7 +175,11 @@ export default function CalendarScreen() {
         fetchMyGoals(user.id);
         fetchTeamGoals(currentTeam?.id ?? '', user.id);
         fetchMonthlyCheckins(user.id, currentMonth);
-        // ref를 사용하여 항상 최신 selectedDate를 참조
+        const goals = useGoalStore.getState().teamGoals;
+        const myVisibleGoalIds = goals.filter((g) => g.owner_id === user.id).map((g) => g.id);
+        if (myVisibleGoalIds.length > 0) {
+          fetchMyGoalsForDisplay(user.id, myVisibleGoalIds);
+        }
         fetchMemberDateCheckins(currentTeam?.id, user.id, selectedDateRef.current);
       }
     }, [user, currentMonth, currentTeam]),
@@ -442,7 +474,7 @@ export default function CalendarScreen() {
       <CheckinModal
         visible={checkinModalVisible}
         date={selectedDate}
-        goals={selectedDateGoals}
+        goalsWithFrequency={goalsForCheckinModal}
         checkins={selectedDateCheckins}
         onClose={() => setCheckinModalVisible(false)}
         onCheckinDone={handleCheckinDone}

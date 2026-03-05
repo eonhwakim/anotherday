@@ -372,14 +372,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     });
 
     await get().fetchMyGoals(userId);
-    if (teamId) {
-      await get().fetchTeamGoals(teamId, userId);
-      const teamGoals = get().teamGoals;
-      const myVisibleGoalIds = teamGoals.filter((g) => g.owner_id === userId).map((g) => g.id);
-      if (myVisibleGoalIds.length > 0) {
-        await get().fetchMyGoalsForDisplay(userId, myVisibleGoalIds);
-      }
-    }
+    if (teamId) await get().fetchTeamGoals(teamId, userId);
     return true;
   },
 
@@ -400,11 +393,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     await get().fetchTeamGoals(teamId, userId);
     await get().fetchMyGoals(userId);
-    const teamGoals = get().teamGoals;
-    const myVisibleGoalIds = teamGoals.filter((g) => g.owner_id === userId).map((g) => g.id);
-    if (myVisibleGoalIds.length > 0) {
-      await get().fetchMyGoalsForDisplay(userId, myVisibleGoalIds);
-    }
   },
 
   // ── 멤버 진행상황 (산 애니메이션) ──

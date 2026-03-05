@@ -46,9 +46,6 @@ export default function MyPageScreen() {
     copyGoalsFromLastMonth,
     fetchTodayCheckins,
     fetchMonthlyCheckins,
-    toggleUserGoal,
-    fetchMyGoalsForDisplay,
-    myGoalsForDisplay,
     addGoal,
     removeTeamGoal,
   } = useGoalStore();
@@ -80,15 +77,12 @@ export default function MyPageScreen() {
     await fetchTeams(user.id);
     const team = useTeamStore.getState().currentTeam;
     const teamId = team?.id ?? '';
-    await fetchTeamGoals(teamId, user.id);
-    await fetchMyGoals(user.id);
-    await fetchTodayCheckins(user.id);
-    await fetchMonthlyCheckins(user.id, yearMonth);
-    const goals = useGoalStore.getState().teamGoals;
-    const myVisibleGoalIds = goals.filter((g) => g.owner_id === user.id).map((g) => g.id);
-    if (myVisibleGoalIds.length > 0) {
-      await fetchMyGoalsForDisplay(user.id, myVisibleGoalIds);
-    }
+    await Promise.all([
+      fetchTeamGoals(teamId, user.id),
+      fetchMyGoals(user.id),
+      fetchTodayCheckins(user.id),
+      fetchMonthlyCheckins(user.id, yearMonth),
+    ]);
   }, [user, yearMonth]);
 
   useFocusEffect(
@@ -126,33 +120,6 @@ export default function MyPageScreen() {
       );
     }
   }, [lastMonthGoals, myGoals, user]);
-
-  const handleToggleGoal = async (goalId: string) => {
-    if (!user) return;
-
-    const activeGoal = currentTeamUserGoals.find(ug => ug.goal_id === goalId);
-
-    if (activeGoal && activeGoal.frequency === 'daily') {
-      Alert.alert(
-        '매일 목표 비활성화',
-        '매일 설정된 목표는 비활성화해도 해당 날짜가 미달로 카운팅됩니다.\n하루가 지나기 전에 다시 활성화하여 인증하면 유지할 수 있습니다.\n\n그래도 비활성화하시겠습니까?',
-        [
-          { text: '취소', style: 'cancel' },
-          {
-            text: '확인',
-            onPress: async () => {
-              await toggleUserGoal(user.id, goalId);
-              await fetchMonthlyCheckins(user.id, yearMonth);
-            },
-          },
-        ],
-      );
-      return;
-    }
-
-    await toggleUserGoal(user.id, goalId);
-    await fetchMonthlyCheckins(user.id, yearMonth);
-  };
 
   const handleAddGoal = async (
     name: string,
@@ -473,16 +440,6 @@ export default function MyPageScreen() {
     return { doneTotal, passTotal, failTotal, avg, bestGoal, worstGoal, goalStats, topReasons };
   }, [monthlyCheckins, myGoals, teamGoals, yearMonth]);
 
-  // ── 오늘 이미 인증한 목표 ID 집합 ──
-  const todayCheckedGoalIds = React.useMemo(() => {
-    const todayStr = dayjs().format('YYYY-MM-DD');
-    return new Set(
-      (monthlyCheckins || [])
-        .filter(c => c.date === todayStr)
-        .map(c => c.goal_id),
-    );
-  }, [monthlyCheckins]);
-
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView ref={scrollRef} style={styles.scroll}>
@@ -606,9 +563,6 @@ export default function MyPageScreen() {
           teamGoals={myVisibleGoals}
           allTeamGoals={teamGoals || []}
           myGoals={currentTeamUserGoals}
-          myGoalsForDisplay={myGoalsForDisplay}
-          todayCheckedGoalIds={todayCheckedGoalIds}
-          onToggle={handleToggleGoal}
           onAdd={handleAddGoal}
           onRemove={handleRemoveGoal}
         />

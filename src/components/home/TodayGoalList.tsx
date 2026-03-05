@@ -124,10 +124,10 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <View style={styles.titleWithHint}>
+        <View>
           <Text style={styles.title}>TODAY'S MISSION</Text>
           <Text style={styles.hintText}>
-            오늘 계획이 없는 주 N회 목표를 "오늘 제외"하면 달성률이 올라가요!
+          오늘 계획이 없는 주 N회 목표를 "인증하기"에서 "패스"하면 달성률이 올라가요!
           </Text>
         </View>
         <Animated.View
@@ -222,7 +222,7 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
                                 <Ionicons name="pause" size={9} color="#ffffff" style={{ marginRight: 3 }} />
                               )}
                               <Text style={textStyle} numberOfLines={1}>
-                                {g.goalName}{inactive ? ' (제외)' : ''}
+                                {g.goalName}{inactive ? ' (패스)' : ''}
                               </Text>
                             </View>
                           );

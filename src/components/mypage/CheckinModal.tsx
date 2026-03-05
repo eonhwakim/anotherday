@@ -6,7 +6,6 @@ import {
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  TextInput,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -21,10 +20,18 @@ import { takePhoto, uploadCheckinPhoto } from '../../services/checkinService';
 import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
 
+interface GoalWithFrequency {
+  goal: Goal;
+  frequency: 'daily' | 'weekly_count';
+  isExcluded?: boolean; // 오늘 제외(패스) 상태
+  targetCount?: number | null; // 주 N회일 때 N
+  weeklyDoneCount?: number; // 이번 주 완료 횟수
+}
+
 interface CheckinModalProps {
   visible: boolean;
   date: string;
-  goals: Goal[];
+  goalsWithFrequency: GoalWithFrequency[];
   checkins: Checkin[];
   onClose: () => void;
   onCheckinDone?: () => void;
@@ -33,24 +40,21 @@ interface CheckinModalProps {
 export default function CheckinModal({
   visible,
   date,
-  goals,
+  goalsWithFrequency,
   checkins,
   onClose,
   onCheckinDone,
 }: CheckinModalProps) {
   const user = useAuthStore((s) => s.user);
   const createCheckin = useGoalStore((s) => s.createCheckin);
+  const toggleUserGoal = useGoalStore((s) => s.toggleUserGoal);
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
-  const [mode, setMode] = useState<'list' | 'pass'>('list');
-  const [passReason, setPassReason] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setSelectedGoalId(null);
-      setMode('list');
-      setPassReason('');
       setIsLoading(false);
     }
   }, [visible]);
@@ -61,6 +65,21 @@ export default function CheckinModal({
 
   const isGoalDone = (goalId: string) =>
     checkins.some((c) => c.goal_id === goalId);
+
+  /** 주 N회 목표: 패스 토글 (오늘 제외 ↔ 다시 포함) */
+  const handlePassToggle = async (goalId: string) => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      await toggleUserGoal(user.id, goalId);
+      onCheckinDone?.();
+      // 모달은 유지 (다시 패스 누르면 활성화 가능)
+    } catch (e) {
+      console.error('[Checkin] handlePassToggle error:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSuccess = async (goalId: string) => {
     if (!user) return;
@@ -119,49 +138,6 @@ export default function CheckinModal({
     }
   };
 
-  const enterPassMode = (goalId: string) => {
-    setSelectedGoalId(goalId);
-    setMode('pass');
-    setPassReason('');
-  };
-
-  const handlePassSubmit = async () => {
-    if (!user || !selectedGoalId) return;
-    if (!passReason.trim()) {
-      Alert.alert('사유를 작성해주세요', '패스 사유를 입력해야 합니다.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const success = await createCheckin({
-        userId: user.id,
-        goalId: selectedGoalId,
-        date,
-        memo: `[패스] ${passReason.trim()}`,
-        status: 'pass',
-      });
-
-      if (success) {
-        Alert.alert('패스 완료', '사유가 기록되었어요.');
-        onCheckinDone?.();
-        onClose();
-      } else {
-        Alert.alert('알림', '이미 인증이 완료된 목표입니다.');
-      }
-    } catch {
-      Alert.alert('오류', '처리 중 문제가 발생했어요.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleBack = () => {
-    setMode('list');
-    setSelectedGoalId(null);
-    setPassReason('');
-  };
-
   return (
     <Modal
       visible={visible}
@@ -182,17 +158,7 @@ export default function CheckinModal({
 
           {/* 헤더 */}
           <View style={styles.header}>
-            {mode === 'pass' ? (
-              <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-                <Ionicons
-                  name="chevron-back"
-                  size={22}
-                  color={COLORS.text}
-                />
-              </TouchableOpacity>
-            ) : (
-              <View style={{ width: 28 }} />
-            )}
+            <View style={{ width: 28 }} />
             <Text style={styles.headerTitle}>{formattedDate}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={22} color={COLORS.textSecondary} />
@@ -204,24 +170,31 @@ export default function CheckinModal({
               <ActivityIndicator size="large" color={COLORS.primaryLight} />
               <Text style={styles.loadingText}>처리 중...</Text>
             </View>
-          ) : mode === 'list' ? (
+          ) : (
             <ScrollView style={styles.body} bounces={false}>
               {isFuture ? (
                 <Text style={styles.emptyText}>
                   미래 날짜는 인증할 수 없어요
                 </Text>
-              ) : goals.length === 0 ? (
+              ) : goalsWithFrequency.length === 0 ? (
                 <Text style={styles.emptyText}>
                   설정된 목표가 없어요
                 </Text>
               ) : (
-                goals.map((goal) => {
+                goalsWithFrequency.map(({ goal, frequency, isExcluded, targetCount, weeklyDoneCount = 0 }) => {
                   const done = isGoalDone(goal.id);
                   const checkin = checkins.find(
                     (c) => c.goal_id === goal.id,
                   );
                   const isPass = checkin?.memo?.startsWith('[패스]');
-                  const isMissed = isPast && !done;
+                  const isMissed = isPast && !done && !isExcluded;
+                  const isWeekly = frequency === 'weekly_count';
+                  const freqLabel = isWeekly
+                    ? `주 ${targetCount ?? 0}회`
+                    : '매일';
+                  const weeklyProgress = isWeekly && targetCount != null
+                    ? ` (${weeklyDoneCount} / ${targetCount})`
+                    : '';
 
                   return (
                     <View
@@ -239,7 +212,7 @@ export default function CheckinModal({
                               ? isPass
                                 ? 'remove-circle'
                                 : 'checkmark-circle'
-                              : isMissed
+                              : isExcluded
                                 ? 'close-circle'
                                 : 'ellipse-outline'
                           }
@@ -249,20 +222,25 @@ export default function CheckinModal({
                               ? isPass
                                 ? COLORS.warning
                                 : COLORS.success
-                              : isMissed
+                              : isExcluded
                                 ? '#EF4444'
                                 : COLORS.textSecondary
                           }
                         />
-                        <Text
-                          style={[
-                            styles.goalName,
-                            done && styles.goalNameDone,
-                            isMissed && styles.goalNameMissed,
-                          ]}
-                        >
-                          {goal.name}
-                        </Text>
+                        <View style={styles.goalNameRow}>
+                          <Text
+                            style={[
+                              styles.goalName,
+                              done && styles.goalNameDone,
+                              isMissed && styles.goalNameMissed,
+                            ]}
+                          >
+                            {goal.name}
+                          </Text>
+                          <Text style={styles.freqLabel}>
+                            {freqLabel}{weeklyProgress}
+                          </Text>
+                        </View>
                       </View>
 
                       {done ? (
@@ -282,6 +260,25 @@ export default function CheckinModal({
                         >
                           미달
                         </Text>
+                      ) : isExcluded ? (
+                        <View style={styles.actionRow}>
+                          <Text style={[styles.badgeExcluded]}>
+                            오늘 제외
+                          </Text>
+                          {isWeekly && (
+                            <TouchableOpacity
+                              style={styles.passBtn}
+                              onPress={() => handlePassToggle(goal.id)}
+                            >
+                              <Ionicons
+                                name="refresh"
+                                size={15}
+                                color={COLORS.primaryLight}
+                              />
+                              <Text style={styles.passBtnText}>다시 포함</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       ) : (
                         <View style={styles.actionRow}>
                           <TouchableOpacity
@@ -297,17 +294,19 @@ export default function CheckinModal({
                               성공
                             </Text>
                           </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.passBtn}
-                            onPress={() => enterPassMode(goal.id)}
-                          >
-                            <Ionicons
-                              name="close-circle-outline"
-                              size={15}
-                              color={COLORS.warning}
-                            />
-                            <Text style={styles.passBtnText}>패스</Text>
-                          </TouchableOpacity>
+                          {isWeekly && (
+                            <TouchableOpacity
+                              style={styles.passBtn}
+                              onPress={() => handlePassToggle(goal.id)}
+                            >
+                              <Ionicons
+                                name="close-circle-outline"
+                                size={15}
+                                color={COLORS.warning}
+                              />
+                              <Text style={styles.passBtnText}>패스</Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                       )}
                     </View>
@@ -315,33 +314,6 @@ export default function CheckinModal({
                 })
               )}
             </ScrollView>
-          ) : (
-            <View style={styles.body}>
-              <Text style={styles.passTitle}>패스 사유 작성</Text>
-              <Text style={styles.passSubtitle}>
-                오늘 이 목표를 패스하는 이유를 적어주세요
-              </Text>
-              <TextInput
-                style={styles.passInput}
-                placeholder="예) 몸이 안 좋아서 쉬었어요"
-                placeholderTextColor={COLORS.textMuted}
-                value={passReason}
-                onChangeText={setPassReason}
-                multiline
-                maxLength={200}
-                autoFocus
-              />
-              <TouchableOpacity
-                style={[
-                  styles.submitBtn,
-                  !passReason.trim() && styles.submitBtnDisabled,
-                ]}
-                onPress={handlePassSubmit}
-                disabled={!passReason.trim()}
-              >
-                <Text style={styles.submitBtnText}>패스 제출</Text>
-              </TouchableOpacity>
-            </View>
           )}
         </View>
       </KeyboardAvoidingView>
@@ -439,10 +411,18 @@ const styles = StyleSheet.create({
     gap: 10,
     flex: 1,
   },
+  goalNameRow: {
+    flexDirection: 'column',
+    gap: 2,
+  },
   goalName: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1A1A1A',
+  },
+  freqLabel: {
+    fontSize: 11,
+    color: 'rgba(26,26,26,0.5)',
   },
   goalNameDone: {
     color: 'rgba(26,26,26,0.45)',
@@ -471,6 +451,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239,68,68,0.08)',
     color: '#EF4444',
     borderColor: 'rgba(239,68,68,0.18)',
+  },
+  badgeExcluded: {
+    color: 'rgba(26,26,26,0.50)',
+    alignSelf: 'center',
   },
   goalRowMissed: {
     backgroundColor: 'rgba(239,68,68,0.04)',
@@ -512,43 +496,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: 'rgba(26,26,26,0.50)',
-  },
-
-  passTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  passSubtitle: {
-    fontSize: 13,
-    color: 'rgba(26,26,26,0.50)',
-    marginBottom: 16,
-  },
-  passInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.12)',
-    padding: 14,
-    fontSize: 15,
-    color: '#1A1A1A',
-    minHeight: 100,
-    textAlignVertical: 'top',
-    marginBottom: 16,
-  },
-  submitBtn: {
-    backgroundColor: '#FF6B3D',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  submitBtnDisabled: {
-    opacity: 0.35,
-  },
-  submitBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 });
