@@ -24,8 +24,6 @@ import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { joinTeamByCode } from '../../services/teamService';
 import GoalSetting from '../../components/mypage/GoalSetting';
-import MonthlyGoalCalendar from '../../components/mypage/MonthlyGoalCalendar';
-import CheckinModal from '../../components/mypage/CheckinModal';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import dayjs from '../../lib/dayjs';
@@ -71,8 +69,6 @@ export default function MyPageScreen() {
   }, [tabNavigation]);
 
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState('');
   const [teamModalType, setTeamModalType] = useState<'create' | 'join' | null>(null);
   const [teamInputValue, setTeamInputValue] = useState('');
   const [teamLoading, setTeamLoading] = useState(false);
@@ -125,17 +121,6 @@ export default function MyPageScreen() {
       );
     }
   }, [lastMonthGoals, myGoals, user]);
-
-  const goToPrevMonth = () => {
-    setYearMonth((prev) =>
-      dayjs(`${prev}-01`).subtract(1, 'month').format('YYYY-MM'),
-    );
-  };
-  const goToNextMonth = () => {
-    setYearMonth((prev) =>
-      dayjs(`${prev}-01`).add(1, 'month').format('YYYY-MM'),
-    );
-  };
 
   const handleToggleGoal = async (goalId: string) => {
     if (!user) return;
@@ -198,21 +183,6 @@ export default function MyPageScreen() {
     const activeTeam = useTeamStore.getState().currentTeam;
     await removeTeamGoal(activeTeam?.id ?? '', user.id, goalId);
     await fetchMonthlyCheckins(user.id, yearMonth);
-  };
-
-  const handleDayPress = (date: string) => {
-    setSelectedDate(date);
-    setModalVisible(true);
-  };
-
-  const handleCheckinDone = async () => {
-    if (!user) return;
-    const activeTeam = useTeamStore.getState().currentTeam;
-    await Promise.all([
-      fetchMonthlyCheckins(user.id, yearMonth),
-      fetchTodayCheckins(user.id),
-      useGoalStore.getState().fetchMemberProgress(activeTeam?.id, user.id),
-    ]);
   };
 
   const handleCreateTeam = async () => {
@@ -508,24 +478,6 @@ export default function MyPageScreen() {
     );
   }, [monthlyCheckins]);
 
-  // ── 나의 목표에 해당하는 Goal 객체만 (캘린더·체크인 모달용) ──
-  const myGoalObjects = React.useMemo(() => {
-    const myGoalIds = new Set(currentTeamUserGoals.map(ug => ug.goal_id));
-    return (teamGoals || []).filter(g => myGoalIds.has(g.id));
-  }, [teamGoals, currentTeamUserGoals]);
-
-  // 선택한 날짜에 유효한 목표만 필터 (start_date 이후만)
-  const selectedDateGoals = myGoalObjects.filter((g) =>
-    currentTeamUserGoals.some((ug) => {
-      if (ug.goal_id !== g.id) return false;
-      if (ug.start_date && selectedDate < ug.start_date) return false;
-      return true;
-    }),
-  );
-  const selectedDateCheckins = (monthlyCheckins || []).filter(
-    (c) => c.date === selectedDate && currentTeamUserGoals.some(g => g.goal_id === c.goal_id),
-  );
-
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView ref={scrollRef} style={styles.scroll}>
@@ -654,19 +606,6 @@ export default function MyPageScreen() {
           onAdd={handleAddGoal}
           onRemove={handleRemoveGoal}
         />
-        {/* ── 이번 달 달성 현황 (캘린더) ── */}
-        <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: 'bold', textAlign: 'center', margin: 10 }}>오늘 날짜를 클릭하여 인증을 하세요</Text>
-        <MonthlyGoalCalendar
-          yearMonth={yearMonth}
-          nickname={user?.nickname ?? '나'}
-          teamGoals={myGoalObjects}
-          myGoals={currentTeamUserGoals}
-          checkins={monthlyCheckins || []}
-          onDayPress={handleDayPress}
-          onPrevMonth={goToPrevMonth}
-          onNextMonth={goToNextMonth}
-        />
-
         {/* ── 월간 통계 ── */}
         <TouchableOpacity
           onPress={() => {
@@ -703,16 +642,6 @@ export default function MyPageScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-
-      {/* ── 체크인 모달 ── */}
-      <CheckinModal
-        visible={modalVisible}
-        date={selectedDate}
-        goals={selectedDateGoals}
-        checkins={selectedDateCheckins}
-        onClose={() => setModalVisible(false)}
-        onCheckinDone={handleCheckinDone}
-      />
 
       {/* ── 팀 생성/참가 모달 ── */}
       <Modal

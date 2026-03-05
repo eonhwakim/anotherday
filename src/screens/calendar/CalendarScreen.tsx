@@ -10,6 +10,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useTeamStore } from '../../stores/teamStore';
 import MemberProfileModal from '../../components/calendar/MemberProfileModal';
+import CheckinModal from '../../components/mypage/CheckinModal';
+import Button from '../../components/common/Button';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
 
@@ -27,6 +29,7 @@ export default function CalendarScreen() {
   const {
     teamGoals,
     myGoals,
+    monthlyCheckins,
     calendarMarkings,
     memberDateCheckins,
     fetchCalendarMarkings,
@@ -34,6 +37,8 @@ export default function CalendarScreen() {
     fetchMemberDateCheckins,
     fetchTeamGoals,
     fetchMyGoals,
+    fetchMonthlyCheckins,
+    fetchMemberProgress,
     toggleReaction,
   } = useGoalStore();
 
@@ -56,6 +61,7 @@ export default function CalendarScreen() {
 
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
+  const [checkinModalVisible, setCheckinModalVisible] = useState(false);
   const [photoModal, setPhotoModal] = useState<{ url: string; checkinId: string } | null>(null);
   const [selectedMember, setSelectedMember] = useState<{ userId: string; nickname: string; profileImageUrl: string | null } | null>(null);
   const [lastTap, setLastTap] = useState<number | null>(null);
@@ -80,6 +86,57 @@ export default function CalendarScreen() {
     return currentCheckin.reactions?.some(r => r.user_id === user.id) ?? false;
   }, [currentCheckin, user]);
 
+  // ── 현재 팀에 해당하는 나의 목표만 필터링 (인증 모달용) ──
+  const currentTeamUserGoals = React.useMemo(() => {
+    if (!teamGoals || teamGoals.length === 0) return [];
+    if (!myGoals || !user) return [];
+    const myOwnedGoalIds = new Set(
+      teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
+    );
+    return myGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
+  }, [teamGoals, myGoals, user]);
+
+  // ── 나의 목표에 해당하는 Goal 객체만 (체크인 모달용) ──
+  const myGoalObjects = React.useMemo(() => {
+    const myGoalIds = new Set(currentTeamUserGoals.map((ug) => ug.goal_id));
+    return (teamGoals || []).filter((g) => myGoalIds.has(g.id));
+  }, [teamGoals, currentTeamUserGoals]);
+
+  // 선택한 날짜에 유효한 목표만 필터 (start_date 이후만)
+  const selectedDateGoals = React.useMemo(() => {
+    return myGoalObjects.filter((g) =>
+      currentTeamUserGoals.some((ug) => {
+        if (ug.goal_id !== g.id) return false;
+        if (ug.start_date && selectedDate < ug.start_date) return false;
+        return true;
+      }),
+    );
+  }, [myGoalObjects, currentTeamUserGoals, selectedDate]);
+
+  const selectedDateCheckins = React.useMemo(
+    () =>
+      (monthlyCheckins || []).filter(
+        (c) =>
+          c.date === selectedDate &&
+          currentTeamUserGoals.some((g) => g.goal_id === c.goal_id),
+      ),
+    [monthlyCheckins, selectedDate, currentTeamUserGoals],
+  );
+
+  const isTodaySelected = selectedDate === dayjs().format('YYYY-MM-DD');
+
+  const handleCheckinPress = () => {
+    setCheckinModalVisible(true);
+  };
+
+  const handleCheckinDone = useCallback(async () => {
+    if (!user) return;
+    await fetchMonthlyCheckins(user.id, currentMonth);
+    await fetchMemberDateCheckins(currentTeam?.id, user.id, selectedDate);
+    await fetchCalendarMarkings(user.id, currentMonth);
+    await fetchMemberProgress(currentTeam?.id, user.id);
+  }, [user, currentMonth, selectedDate, currentTeam]);
+
   // 화면 포커스 시 데이터 로드 (selectedDate는 ref로 참조하여 deps에서 제거)
   // → 날짜 클릭 시 handleDayPress에서만 fetchMemberDateCheckins를 호출하도록 하여
   //   useFocusEffect와의 race condition 방지
@@ -89,6 +146,7 @@ export default function CalendarScreen() {
         fetchCalendarMarkings(user.id, currentMonth);
         fetchMyGoals(user.id);
         fetchTeamGoals(currentTeam?.id ?? '', user.id);
+        fetchMonthlyCheckins(user.id, currentMonth);
         // ref를 사용하여 항상 최신 selectedDate를 참조
         fetchMemberDateCheckins(currentTeam?.id, user.id, selectedDateRef.current);
       }
@@ -105,7 +163,10 @@ export default function CalendarScreen() {
   const handleMonthChange = (month: DateData) => {
     const ym = `${month.year}-${String(month.month).padStart(2, '0')}`;
     setCurrentMonth(ym);
-    if (user) fetchCalendarMarkings(user.id, ym);
+    if (user) {
+      fetchCalendarMarkings(user.id, ym);
+      fetchMonthlyCheckins(user.id, ym);
+    }
   };
 
   const handlePhotoPress = async () => {
@@ -185,6 +246,20 @@ export default function CalendarScreen() {
           onDayPress={handleDayPress}
           onMonthChange={handleMonthChange}
         />
+
+        {/* ── 인증하기 버튼 (오늘 날짜 선택 시에만 활성화) ── */}
+        <View style={styles.checkinButtonWrap}>
+          <Button
+            title="인증하기"
+            onPress={handleCheckinPress}
+            disabled={!isTodaySelected}
+          />
+          {!isTodaySelected && (
+            <Text style={styles.checkinButtonHint}>
+              오늘 날짜를 선택하면 인증할 수 있어요
+            </Text>
+          )}
+        </View>
 
         {/* ── 날짜 요약 ── */}
         <View style={styles.dateSummary}>
@@ -362,6 +437,16 @@ export default function CalendarScreen() {
         </View>
       </Modal>
 
+      {/* ── 인증 체크인 모달 ── */}
+      <CheckinModal
+        visible={checkinModalVisible}
+        date={selectedDate}
+        goals={selectedDateGoals}
+        checkins={selectedDateCheckins}
+        onClose={() => setCheckinModalVisible(false)}
+        onCheckinDone={handleCheckinDone}
+      />
+
       {/* ── 멤버 프로필 모달 ── */}
       {selectedMember && (
         <MemberProfileModal
@@ -389,6 +474,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
+  },
+  checkinButtonWrap: {
+    marginHorizontal: 12,
+    marginTop: 12,
+  },
+  checkinButtonHint: {
+    fontSize: 12,
+    color: 'rgba(26,26,26,0.40)',
+    textAlign: 'center',
+    marginTop: 8,
   },
 
   // ── 날짜 요약 ──
