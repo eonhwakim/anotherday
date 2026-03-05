@@ -21,7 +21,8 @@ interface MonthlyGoalCalendarProps {
   onNextMonth: () => void;
 }
 
-const DOW_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+// 주 단위: 월~일 (ISO 8601 기준)
+const DOW_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 
 /**
  * 마이페이지 월간 캘린더 (Neo Glass Style)
@@ -64,7 +65,8 @@ export default function MonthlyGoalCalendar({
   const weeks = useMemo(() => {
     const first = dayjs(`${yearMonth}-01`);
     const daysInMonth = first.daysInMonth();
-    const startDow = first.day();
+    // 월요일=0, 일요일=6 (ISO 8601 기준)
+    const startDow = (first.day() + 6) % 7;
 
     const cells: (number | null)[] = [];
     for (let i = 0; i < startDow; i++) cells.push(null);
@@ -127,8 +129,8 @@ export default function MonthlyGoalCalendar({
             key={label}
             style={[
               styles.dowLabel,
-              i === 0 && { color: COLORS.error },
-              i === 6 && { color: COLORS.primaryLight },
+              i === 5 && { color: COLORS.primaryLight },
+              i === 6 && { color: COLORS.error },
             ]}
           >
             {label}
@@ -171,12 +173,12 @@ export default function MonthlyGoalCalendar({
                 activeOpacity={0.6}
               >
                 <Text
-                  style={[
-                    styles.dayNumber,
-                    isToday && styles.dayNumberToday,
-                    isFuture && styles.dayNumberFuture,
-                    di === 0 && { color: COLORS.error },
-                    di === 6 && { color: COLORS.primaryLight },
+                style={[
+                  styles.dayNumber,
+                  isToday && styles.dayNumberToday,
+                  isFuture && styles.dayNumberFuture,
+                  di === 5 && { color: COLORS.primaryLight },
+                  di === 6 && { color: COLORS.error },
                     allDone && hasGoals && { color: '#4ADE80' },
                   ]}
                 >

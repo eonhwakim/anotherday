@@ -227,6 +227,7 @@ export default function CalendarScreen() {
         <Text style={styles.screenTitle}>캘린더</Text>
 
         <Calendar
+          firstDay={1}
           theme={{
             calendarBackground: '#FFFFFF',
             todayTextColor: '#FF6B3D',

@@ -380,11 +380,11 @@ export default function MyPageScreen() {
       const target = ug.target_count || 1;
       const goalStart = ug.start_date || startDate;
 
-      let weekCursor = dayjs(startDate).startOf('week');
+      let weekCursor = dayjs(startDate).startOf('isoWeek');
       const monthEnd = dayjs(startDate).endOf('month');
 
       while (weekCursor.isBefore(monthEnd) || weekCursor.isSame(monthEnd, 'day')) {
-        const weekEnd = weekCursor.endOf('week');
+        const weekEnd = weekCursor.endOf('isoWeek');
 
         const effStart = weekCursor.format('YYYY-MM-DD') < goalStart
           ? goalStart
