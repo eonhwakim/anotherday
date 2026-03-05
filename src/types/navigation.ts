@@ -3,6 +3,8 @@ export type RootStackParamList = {
   App: undefined;
   ProfileEdit: undefined;
   TeamDetail: { teamId: string };
+  TeamMember: { teamId: string };
+  TeamProfileEdit: { teamId: string };
   MemberStats: { userId: string; teamId?: string; nickname: string };
 };
 
@@ -14,5 +16,6 @@ export type AuthStackParamList = {
 export type AppTabParamList = {
   HomeTab: undefined;
   CalendarTab: undefined;
+  StatsTab: undefined;
   MyPageTab: undefined;
 };

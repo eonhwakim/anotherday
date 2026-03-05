@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppTabParamList } from '../types/navigation';
 import HomeScreen from '../screens/home/HomeScreen';
 import CalendarScreen from '../screens/calendar/CalendarScreen';
+import StatisticsScreen from '../screens/stats/StatisticsScreen';
 import MyPageScreen from '../screens/mypage/MyPageScreen';
 import { COLORS } from '../constants/defaults';
 
@@ -37,6 +38,7 @@ export default function AppTabs() {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
           if (route.name === 'HomeTab') iconName = 'home';
           else if (route.name === 'CalendarTab') iconName = 'calendar';
+          else if (route.name === 'StatsTab') iconName = 'stats-chart';
           else if (route.name === 'MyPageTab') iconName = 'person';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -44,6 +46,7 @@ export default function AppTabs() {
     >
       <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: '오늘' }} />
       <Tab.Screen name="CalendarTab" component={CalendarScreen} options={{ tabBarLabel: '캘린더' }} />
+      <Tab.Screen name="StatsTab" component={StatisticsScreen} options={{ tabBarLabel: '통계' }} />
       <Tab.Screen name="MyPageTab" component={MyPageScreen} options={{ tabBarLabel: '마이' }} />
     </Tab.Navigator>
   );

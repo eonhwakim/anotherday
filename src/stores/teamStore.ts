@@ -50,7 +50,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         const teamIds = memberships.map((m) => m.team_id);
         const { data: teams } = await supabase
           .from('teams')
-          .select('*')
+          .select('id, name, invite_code, profile_image_url, created_at')
           .in('id', teamIds);
 
         const teamList: TeamWithRole[] = (teams ?? []).map(t => ({

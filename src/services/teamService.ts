@@ -74,3 +74,59 @@ export async function joinTeamByCode(
 
   return data as Team;
 }
+
+/** 팀 프로필 수정 (이름, 프로필 이미지) */
+export async function updateTeamProfile(
+  teamId: string,
+  updates: { name?: string; profile_image_url?: string | null }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('teams')
+      .update(updates)
+      .eq('id', teamId);
+
+    if (error) {
+      console.error('updateTeamProfile error:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (e: any) {
+    console.error('updateTeamProfile failed:', e);
+    return { success: false, error: e?.message };
+  }
+}
+
+/** 팀 프로필 이미지 업로드 */
+export async function uploadTeamProfileImage(
+  teamId: string,
+  imageUri: string
+): Promise<string | null> {
+  try {
+    const fileName = `teams/${teamId}/${Date.now()}.jpg`;
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+    const arrayBuffer = await new Response(blob).arrayBuffer();
+
+    const { error } = await supabase.storage
+      .from('checkin-photos')
+      .upload(fileName, arrayBuffer, {
+        contentType: 'image/jpeg',
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('Team profile image upload error:', error);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('checkin-photos')
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
+  } catch (e) {
+    console.error('uploadTeamProfileImage failed:', e);
+    return null;
+  }
+}

@@ -29,8 +29,6 @@ import Input from '../../components/common/Input';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
 
-import MonthlyStatsCard from '../../components/common/MonthlyStatsCard';
-
 export default function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, signOut, deleteAccount } = useAuthStore();
@@ -39,13 +37,11 @@ export default function MyPageScreen() {
     teamGoals,
     myGoals,
     lastMonthGoals,
-    monthlyCheckins,
     fetchTeamGoals,
     fetchMyGoals,
     fetchLastMonthGoals,
     copyGoalsFromLastMonth,
     fetchTodayCheckins,
-    fetchMonthlyCheckins,
     addGoal,
     removeTeamGoal,
   } = useGoalStore();
@@ -67,7 +63,6 @@ export default function MyPageScreen() {
     return unsubscribe;
   }, [tabNavigation]);
 
-  const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
   const [teamModalType, setTeamModalType] = useState<'create' | 'join' | null>(null);
   const [teamInputValue, setTeamInputValue] = useState('');
   const [teamLoading, setTeamLoading] = useState(false);
@@ -81,9 +76,8 @@ export default function MyPageScreen() {
       fetchTeamGoals(teamId, user.id),
       fetchMyGoals(user.id),
       fetchTodayCheckins(user.id),
-      fetchMonthlyCheckins(user.id, yearMonth),
     ]);
-  }, [user, yearMonth]);
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -138,7 +132,6 @@ export default function MyPageScreen() {
     if (ok) {
       await fetchMyGoals(user.id);
       await fetchTeamGoals(activeTeam?.id ?? '', user.id);
-      await fetchMonthlyCheckins(user.id, yearMonth);
 
       if (frequency === 'weekly_count') {
         Alert.alert(
@@ -154,7 +147,6 @@ export default function MyPageScreen() {
     if (!user) return;
     const activeTeam = useTeamStore.getState().currentTeam;
     await removeTeamGoal(activeTeam?.id ?? '', user.id, goalId);
-    await fetchMonthlyCheckins(user.id, yearMonth);
   };
 
   const handleCreateTeam = async () => {
@@ -253,8 +245,6 @@ export default function MyPageScreen() {
     );
   };
 
-  const currentMonthLabel = dayjs(`${yearMonth}-01`).format('YYYY년 M월');
-
   // ── 현재 팀에 해당하는 나의 목표만 필터링 ──
   const currentTeamUserGoals = React.useMemo(() => {
     if (!teamGoals || teamGoals.length === 0) return [];
@@ -271,174 +261,6 @@ export default function MyPageScreen() {
     if (!teamGoals || !user) return [];
     return teamGoals.filter((g) => g.owner_id === user.id);
   }, [teamGoals, user]);
-
-  // ── 월간 통계 계산 ──
-  const monthlyStats = React.useMemo(() => {
-    const goals = currentTeamUserGoals;
-    const allGoals = teamGoals ?? [];
-    const validGoalIds = new Set(goals.map(g => g.goal_id));
-    const checkins = (monthlyCheckins ?? []).filter(c => validGoalIds.has(c.goal_id));
-
-    const startDate = `${yearMonth}-01`;
-    const today = dayjs().format('YYYY-MM-DD');
-    const daysInMonth = dayjs(startDate).daysInMonth();
-
-    const isPass = (c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]'));
-    const isDone = (c: any) => !isPass(c);
-
-    const doneTotal = checkins.filter(isDone).length;
-    const passTotal = checkins.filter(isPass).length;
-
-    const goalDoneMap: Record<string, number> = {};
-    const goalPassMap: Record<string, number> = {};
-    const goalFailMap: Record<string, number> = {};
-    const passReasons: string[] = [];
-    const dailyPercents: number[] = [];
-
-    const dailyGoals = goals.filter(ug => ug.frequency === 'daily');
-    const weeklyGoals = goals.filter(ug => ug.frequency === 'weekly_count');
-
-    // ── 일별 달성률 계산 (모든 목표 대상) ──
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = dayjs(startDate).date(d).format('YYYY-MM-DD');
-      if (dateStr > today) break;
-
-      const todayAllGoals = goals.filter((ug) => {
-        if (ug.start_date && dateStr < ug.start_date) return false;
-        return true;
-      });
-      const totalForDay = todayAllGoals.length;
-      if (totalForDay === 0) continue;
-
-      const dayCheckins = checkins.filter((c) => c.date === dateStr);
-      const done = dayCheckins.filter(isDone).length;
-      const pass = dayCheckins.filter(isPass).length;
-      const effectiveTotal = totalForDay - pass;
-      const pct = effectiveTotal > 0 ? (done / effectiveTotal) * 100 : (done > 0 ? 100 : 0);
-      dailyPercents.push(pct);
-    }
-
-    // ── daily 목표: 매일 카운팅 (비활성 날도 미달) ──
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = dayjs(startDate).date(d).format('YYYY-MM-DD');
-      if (dateStr > today) break;
-
-      const todayDailyGoals = dailyGoals.filter((ug) => {
-        if (ug.start_date && dateStr < ug.start_date) return false;
-        return true;
-      });
-      const totalForDay = todayDailyGoals.length;
-      if (totalForDay === 0) continue;
-
-      const dayCheckins = checkins.filter((c) => c.date === dateStr);
-
-      todayDailyGoals.forEach((ug) => {
-        const gid = ug.goal_id;
-        const c = dayCheckins.find((ci) => ci.goal_id === gid);
-        if (!c) {
-          goalFailMap[gid] = (goalFailMap[gid] || 0) + 1;
-        } else if (isPass(c)) {
-          goalPassMap[gid] = (goalPassMap[gid] || 0) + 1;
-          if (c.memo) passReasons.push(c.memo);
-        } else {
-          goalDoneMap[gid] = (goalDoneMap[gid] || 0) + 1;
-        }
-      });
-    }
-
-    // ── weekly 목표: 주 단위 카운팅 (비활성 날은 미달 아님) ──
-    weeklyGoals.forEach((ug) => {
-      const gid = ug.goal_id;
-      const target = ug.target_count || 1;
-      const goalStart = ug.start_date || startDate;
-
-      let weekCursor = dayjs(startDate).startOf('isoWeek');
-      const monthEnd = dayjs(startDate).endOf('month');
-
-      while (weekCursor.isBefore(monthEnd) || weekCursor.isSame(monthEnd, 'day')) {
-        const weekEnd = weekCursor.endOf('isoWeek');
-
-        const effStart = weekCursor.format('YYYY-MM-DD') < goalStart
-          ? goalStart
-          : weekCursor.format('YYYY-MM-DD') < startDate
-            ? startDate
-            : weekCursor.format('YYYY-MM-DD');
-        const effEnd = weekEnd.format('YYYY-MM-DD') > monthEnd.format('YYYY-MM-DD')
-          ? monthEnd.format('YYYY-MM-DD')
-          : weekEnd.format('YYYY-MM-DD');
-
-        if (effStart > effEnd || effStart > today) {
-          weekCursor = weekCursor.add(1, 'week');
-          continue;
-        }
-
-        const weekCheckins = checkins.filter(
-          (c) => c.goal_id === gid && c.date >= effStart && c.date <= effEnd && c.date <= today,
-        );
-        const done = weekCheckins.filter(isDone).length;
-        const pass = weekCheckins.filter(isPass).length;
-
-        goalDoneMap[gid] = (goalDoneMap[gid] || 0) + done;
-        goalPassMap[gid] = (goalPassMap[gid] || 0) + pass;
-        weekCheckins.filter(isPass).forEach((c) => {
-          if (c.memo) passReasons.push(c.memo);
-        });
-
-        const isWeekComplete = weekEnd.format('YYYY-MM-DD') <= today;
-        if (isWeekComplete) {
-          const effectiveTarget = Math.max(0, target - pass);
-          const shortfall = Math.max(0, effectiveTarget - done);
-          goalFailMap[gid] = (goalFailMap[gid] || 0) + shortfall;
-        }
-
-        weekCursor = weekCursor.add(1, 'week');
-      }
-    });
-
-    // PASS 사유 TOP3
-    const reasonCounts: Record<string, number> = {};
-    passReasons.forEach((r) => {
-      const cleaned = r.replace(/^\[패스\]\s*/, '').trim();
-      if (cleaned) reasonCounts[cleaned] = (reasonCounts[cleaned] || 0) + 1;
-    });
-    const topReasons = Object.entries(reasonCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
-
-    const goalStats = goals.map((ug) => {
-      const goal = allGoals.find((g) => g.id === ug.goal_id);
-      return {
-        goalId: ug.goal_id,
-        name: goal?.name ?? '알 수 없음',
-        frequency: ug.frequency,
-        targetCount: ug.target_count,
-        done: goalDoneMap[ug.goal_id] || 0,
-        pass: goalPassMap[ug.goal_id] || 0,
-        fail: goalFailMap[ug.goal_id] || 0,
-      };
-    });
-
-    const failTotal = goalStats.reduce((sum, gs) => sum + gs.fail, 0);
-
-    const avg = dailyPercents.length > 0
-      ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
-      : 0;
-
-    let bestGoal: { name: string; rate: number; doneCount: number } | null = null;
-    let worstGoal: { name: string; rate: number; failCount: number } | null = null;
-    if (goalStats.length > 0) {
-      const withRate = goalStats.map(gs => {
-        const total = gs.done + gs.fail;
-        return { ...gs, rate: total > 0 ? Math.round((gs.done / total) * 100) : (gs.done > 0 ? 100 : 0) };
-      });
-      const best = withRate.reduce((a, b) => a.rate >= b.rate ? a : b);
-      bestGoal = { name: best.name, rate: best.rate, doneCount: best.done };
-      const worstWithRate = withRate.reduce((a, b) => a.fail >= b.fail ? a : b);
-      if (worstWithRate.fail > 0) worstGoal = { name: worstWithRate.name, rate: worstWithRate.rate, failCount: worstWithRate.fail };
-    }
-
-    return { doneTotal, passTotal, failTotal, avg, bestGoal, worstGoal, goalStats, topReasons };
-  }, [monthlyCheckins, myGoals, teamGoals, yearMonth]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -496,6 +318,7 @@ export default function MyPageScreen() {
             </View>
           </View>
 
+          
           {(teams || []).length === 0 ? (
             <Text style={styles.emptyText}>소속된 팀이 없어요. 팀을 만들거나 참가해보세요!</Text>
           ) : (
@@ -508,7 +331,7 @@ export default function MyPageScreen() {
                 ]}
                 onPress={() => {
                   selectTeam(team);
-                  navigation.navigate('TeamDetail', { teamId: team.id });
+                  navigation.navigate('TeamMember', { teamId: team.id });
                 }}
               >
                 <TouchableOpacity 
@@ -516,8 +339,18 @@ export default function MyPageScreen() {
                     selectTeam(team);
                     loadData(); // 팀 변경 시 데이터 새로고침
                   }}
+                  style={styles.teamImageWrap}
                 >
-                  <Ionicons name="enter-outline" size={22} color={COLORS.primaryLight} />
+                  {team.profile_image_url ? (
+                    <Image
+                      source={{ uri: team.profile_image_url }}
+                      style={styles.teamCardImage}
+                    />
+                  ) : (
+                    <View style={[styles.teamCardImage, styles.teamCardImagePlaceholder]}>
+                      <Ionicons name="people" size={20} color={COLORS.primaryLight} />
+                    </View>
+                  )}
                 </TouchableOpacity>
                 <View style={styles.teamInfo}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -556,7 +389,7 @@ export default function MyPageScreen() {
               </TouchableOpacity>
             ))
           )}
-        </View>
+          </View>
 
         {/* ── 한달 목표 설정 ── */}
         <GoalSetting
@@ -566,25 +399,6 @@ export default function MyPageScreen() {
           onAdd={handleAddGoal}
           onRemove={handleRemoveGoal}
         />
-        {/* ── 월간 통계 ── */}
-        <TouchableOpacity
-          onPress={() => {
-            if (!user) return;
-            navigation.navigate('MemberStats', {
-              userId: user.id,
-              teamId: currentTeam?.id,
-              nickname: user.nickname,
-            });
-          }}
-          activeOpacity={0.8}
-        >
-          <MonthlyStatsCard 
-            monthLabel={currentMonthLabel}
-            stats={monthlyStats}
-            teamCount={teams?.length}
-            showArrow
-          />
-        </TouchableOpacity>
 
         {/* ── 계정 관리 ── */}
         <View style={styles.accountSection}>
@@ -766,6 +580,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 12,
   },
+  teamImageWrap: {},
+  teamCardImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  teamCardImagePlaceholder: {
+    backgroundColor: 'rgba(255, 107, 61, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   teamItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -778,8 +603,6 @@ const styles = StyleSheet.create({
   activeTeamItem: {
     backgroundColor: 'rgba(255, 107, 61, 0.06)',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    borderBottomWidth: 0,
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 61, 0.22)',
   },

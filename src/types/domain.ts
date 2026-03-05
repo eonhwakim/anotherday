@@ -18,6 +18,7 @@ export interface Team {
   id: string;
   name: string;
   invite_code: string;
+  profile_image_url?: string | null;
   created_at: string;
 }
 
@@ -34,7 +35,7 @@ export interface TeamMember {
 
 /** 팀 멤버 + 유저 정보 조인 결과 */
 export interface TeamMemberWithUser extends TeamMember {
-  user: Pick<User, 'id' | 'nickname' | 'profile_image_url'>;
+  user: Pick<User, 'id' | 'nickname' | 'profile_image_url' | 'name' | 'gender' | 'age'>;
 }
 
 /** 팀 공통 목표 */
