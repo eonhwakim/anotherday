@@ -47,6 +47,8 @@ export default function MyPageScreen() {
     fetchTodayCheckins,
     fetchMonthlyCheckins,
     toggleUserGoal,
+    fetchMyGoalsForDisplay,
+    myGoalsForDisplay,
     addGoal,
     removeTeamGoal,
   } = useGoalStore();
@@ -78,12 +80,15 @@ export default function MyPageScreen() {
     await fetchTeams(user.id);
     const team = useTeamStore.getState().currentTeam;
     const teamId = team?.id ?? '';
-    await Promise.all([
-      fetchTeamGoals(teamId, user.id),
-      fetchMyGoals(user.id),
-      fetchTodayCheckins(user.id),
-      fetchMonthlyCheckins(user.id, yearMonth),
-    ]);
+    await fetchTeamGoals(teamId, user.id);
+    await fetchMyGoals(user.id);
+    await fetchTodayCheckins(user.id);
+    await fetchMonthlyCheckins(user.id, yearMonth);
+    const goals = useGoalStore.getState().teamGoals;
+    const myVisibleGoalIds = goals.filter((g) => g.owner_id === user.id).map((g) => g.id);
+    if (myVisibleGoalIds.length > 0) {
+      await fetchMyGoalsForDisplay(user.id, myVisibleGoalIds);
+    }
   }, [user, yearMonth]);
 
   useFocusEffect(
@@ -601,6 +606,7 @@ export default function MyPageScreen() {
           teamGoals={myVisibleGoals}
           allTeamGoals={teamGoals || []}
           myGoals={currentTeamUserGoals}
+          myGoalsForDisplay={myGoalsForDisplay}
           todayCheckedGoalIds={todayCheckedGoalIds}
           onToggle={handleToggleGoal}
           onAdd={handleAddGoal}

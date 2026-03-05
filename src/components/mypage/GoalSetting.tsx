@@ -7,6 +7,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, UserGoal, GoalFrequency } from '../../types/domain';
@@ -16,6 +17,7 @@ interface GoalSettingProps {
   teamGoals: Goal[];
   allTeamGoals?: Goal[]; // 전체 팀 목표 (추천/자동완성용)
   myGoals: UserGoal[];
+  myGoalsForDisplay?: UserGoal[]; // 활성+비활성 포함 (오늘 제외 토글용)
   todayCheckedGoalIds?: Set<string>;
   onToggle: (goalId: string) => void;
   onAdd: (name: string, frequency: GoalFrequency, targetCount: number | null) => Promise<boolean>;
@@ -33,6 +35,7 @@ export default function GoalSetting({
   teamGoals = [],
   allTeamGoals = [],
   myGoals = [],
+  myGoalsForDisplay = [],
   todayCheckedGoalIds = new Set(),
   onToggle,
   onAdd,
@@ -68,10 +71,10 @@ export default function GoalSetting({
   }, [newGoal, allTeamGoals, myGoals]);
 
   const isSelected = (goalId: string) =>
-    (myGoals || []).some((ug) => ug.goal_id === goalId);
+    (myGoalsForDisplay.length > 0 ? myGoalsForDisplay : myGoals).some((ug) => ug.goal_id === goalId);
 
   const getMyGoal = (goalId: string) =>
-    (myGoals || []).find((ug) => ug.goal_id === goalId);
+    (myGoalsForDisplay.length > 0 ? myGoalsForDisplay : myGoals).find((ug) => ug.goal_id === goalId);
 
   const handleAdd = async () => {
     const name = newGoal.trim();
@@ -234,7 +237,7 @@ export default function GoalSetting({
         </View>
       )}
 
-      {/* ── 기존 목표 목록 ── */}
+      {/* ── 등록된 목표 목록 (한 줄씩, 오늘 제외 토글) ── */}
       {(teamGoals || []).length === 0 ? (
         <View style={styles.emptyBox}>
           <Ionicons name="bulb-outline" size={28} color={COLORS.textSecondary} />
@@ -245,49 +248,73 @@ export default function GoalSetting({
       ) : (
         <>
           <Text style={styles.sectionLabel}>
-            등록된 목표 (탭: 선택/해제 · 길게 누름: 삭제)
+            등록된 목표 (길게 누름: 삭제)
           </Text>
-          <View style={styles.chips}>
+          <View style={styles.goalList}>
             {(teamGoals || []).map((goal) => {
               const active = isSelected(goal.id);
               const ug = getMyGoal(goal.id);
+              const isExcluded = active && !ug?.is_active;
+              const isDaily = ug?.frequency === 'daily';
+              const canToggleExclude = active && isDaily === false;
+
               return (
                 <TouchableOpacity
                   key={goal.id}
-                  style={[styles.chip, active && styles.chipActive]}
+                  style={[styles.goalRow, active && styles.goalRowActive]}
                   onPress={() => {
-                    if (active && ug?.frequency === 'daily') {
-                      Alert.alert('해제 불가', '매일 반복 목표는 해제할 수 없습니다.');
+                    if (!active) {
+                      onToggle(goal.id);
                       return;
                     }
                     if (active && todayCheckedGoalIds.has(goal.id)) {
                       Alert.alert('해제 불가', '이미 오늘 인증을 완료한 목표는 해제할 수 없습니다.');
-                      return;
                     }
-                    onToggle(goal.id);
                   }}
                   onLongPress={() => handleLongPress(goal)}
                   activeOpacity={0.7}
                   delayLongPress={500}
                 >
-                  <Ionicons
-                    name={active ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={18}
-                    color={active ? '#FF6B3D' : 'rgba(26,26,26,0.35)'}
-                  />
-                  <View>
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {goal.name}
-                    </Text>
-                    {active && ug && (
-                      <Text style={styles.chipSchedule}>{freqLabel(ug)}</Text>
-                    )}
+                  <View style={styles.goalRowLeft}>
+                    <Ionicons
+                      name={active ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={20}
+                      color={active ? '#FF6B3D' : 'rgba(26,26,26,0.35)'}
+                    />
+                    <View style={styles.goalRowText}>
+                      <Text style={[styles.goalName, active && styles.goalNameActive]}>
+                        {goal.name}
+                      </Text>
+                      {active && ug && (
+                        <Text style={styles.goalFreq}>{freqLabel(ug)}</Text>
+                      )}
+                    </View>
                   </View>
+                  {active && ug && (
+                    <View style={styles.toggleWrap} onStartShouldSetResponder={() => true}>
+                      <Text style={[styles.toggleLabel, !canToggleExclude && styles.toggleLabelDisabled]}>
+                        오늘 제외
+                      </Text>
+                      <Switch
+                        value={isExcluded}
+                        onValueChange={() => {
+                          if (!canToggleExclude) return;
+                          if (todayCheckedGoalIds.has(goal.id)) return;
+                          onToggle(goal.id);
+                        }}
+                        disabled={!canToggleExclude}
+                        trackColor={{ false: 'rgba(255, 107, 61, 0.25)', true: 'rgba(255, 107, 61, 0.5)' }}
+                        thumbColor={isExcluded ? '#FF6B3D' : '#fff'}
+                      />
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
           </View>
-          <Text style={styles.selectionInfo}>{(myGoals || []).length}개 선택됨</Text>
+          <Text style={styles.selectionInfo}>
+            {(myGoalsForDisplay.length > 0 ? myGoalsForDisplay : myGoals).length}개 등록됨
+          </Text>
         </>
       )}
     </View>
@@ -354,6 +381,36 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: 'rgba(26,26,26,0.45)', textAlign: 'center', lineHeight: 22, fontWeight: '500' },
 
   sectionLabel: { fontSize: 12, color: 'rgba(26,26,26,0.45)', marginBottom: 12, fontWeight: '600', letterSpacing: 0.3 },
+  goalList: { gap: 0 },
+  goalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 107, 61, 0.06)',
+  },
+  goalRowActive: {
+    backgroundColor: 'rgba(255, 107, 61, 0.03)',
+  },
+  goalRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  goalRowText: { flex: 1 },
+  goalName: { fontSize: 15, fontWeight: '600', color: 'rgba(26,26,26,0.70)' },
+  goalNameActive: { color: '#1A1A1A' },
+  goalFreq: { fontSize: 12, color: 'rgba(26,26,26,0.45)', marginTop: 2, fontWeight: '500' },
+  toggleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  toggleLabel: { fontSize: 12, color: 'rgba(26,26,26,0.55)', fontWeight: '600' },
+  toggleLabelDisabled: { color: 'rgba(26,26,26,0.30)' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

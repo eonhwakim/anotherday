@@ -75,6 +75,7 @@ async function getWeekDoneCount(
 interface GoalState {
   teamGoals: Goal[];
   myGoals: UserGoal[];
+  myGoalsForDisplay: UserGoal[];
   todayCheckins: Checkin[];
   memberProgress: MemberProgress[];
   calendarMarkings: CalendarDayMarking;
@@ -86,6 +87,7 @@ interface GoalState {
 
   fetchTeamGoals: (teamId: string, userId?: string) => Promise<void>;
   fetchMyGoals: (userId: string) => Promise<void>;
+  fetchMyGoalsForDisplay: (userId: string, goalIds: string[]) => Promise<void>;
   fetchLastMonthGoals: (userId: string) => Promise<void>;
   copyGoalsFromLastMonth: (userId: string) => Promise<void>;
   fetchTodayCheckins: (userId: string) => Promise<void>;
@@ -121,6 +123,7 @@ interface GoalState {
 export const useGoalStore = create<GoalState>((set, get) => ({
   teamGoals: [],
   myGoals: [],
+  myGoalsForDisplay: [],
   todayCheckins: [],
   memberProgress: [],
   calendarMarkings: {},
@@ -212,6 +215,22 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     set({ myGoals: data ?? [] });
   },
 
+  // ── 목표 설정 UI용: 활성+비활성 모두 (오늘 제외 토글 표시용) ──
+  fetchMyGoalsForDisplay: async (userId, goalIds) => {
+    if (goalIds.length === 0) {
+      set({ myGoalsForDisplay: [] });
+      return;
+    }
+    const today = dayjs().format('YYYY-MM-DD');
+    const { data } = await supabase
+      .from('user_goals')
+      .select('*')
+      .eq('user_id', userId)
+      .in('goal_id', goalIds)
+      .or(`end_date.is.null,end_date.gte.${today}`);
+    set({ myGoalsForDisplay: data ?? [] });
+  },
+
   // ── 오늘 체크인 로드 ──
   fetchTodayCheckins: async (userId) => {
     const today = dayjs().format('YYYY-MM-DD');
@@ -273,6 +292,11 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     if (updateErr) console.error('toggleUserGoal user_goals update error:', updateErr);
 
     await get().fetchMyGoals(userId);
+    const teamGoals = get().teamGoals;
+    const myVisibleGoalIds = teamGoals.filter((g) => g.owner_id === userId).map((g) => g.id);
+    if (myVisibleGoalIds.length > 0) {
+      await get().fetchMyGoalsForDisplay(userId, myVisibleGoalIds);
+    }
   },
 
   // ── 목표 추가 ──
@@ -348,7 +372,14 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     });
 
     await get().fetchMyGoals(userId);
-    if (teamId) await get().fetchTeamGoals(teamId, userId);
+    if (teamId) {
+      await get().fetchTeamGoals(teamId, userId);
+      const teamGoals = get().teamGoals;
+      const myVisibleGoalIds = teamGoals.filter((g) => g.owner_id === userId).map((g) => g.id);
+      if (myVisibleGoalIds.length > 0) {
+        await get().fetchMyGoalsForDisplay(userId, myVisibleGoalIds);
+      }
+    }
     return true;
   },
 
@@ -367,10 +398,13 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .eq('id', goalId);
     if (goalErr) console.error('removeTeamGoal goals delete error:', goalErr);
 
-    await Promise.all([
-      get().fetchTeamGoals(teamId, userId),
-      get().fetchMyGoals(userId),
-    ]);
+    await get().fetchTeamGoals(teamId, userId);
+    await get().fetchMyGoals(userId);
+    const teamGoals = get().teamGoals;
+    const myVisibleGoalIds = teamGoals.filter((g) => g.owner_id === userId).map((g) => g.id);
+    if (myVisibleGoalIds.length > 0) {
+      await get().fetchMyGoalsForDisplay(userId, myVisibleGoalIds);
+    }
   },
 
   // ── 멤버 진행상황 (산 애니메이션) ──
@@ -744,6 +778,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     set({
       teamGoals: [],
       myGoals: [],
+      myGoalsForDisplay: [],
       todayCheckins: [],
       memberProgress: [],
       calendarMarkings: {},

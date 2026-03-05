@@ -124,7 +124,12 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>TODAY'S MISSION</Text>
+        <View style={styles.titleWithHint}>
+          <Text style={styles.title}>TODAY'S MISSION</Text>
+          <Text style={styles.hintText}>
+            오늘 계획이 없는 주 N회 목표를 "오늘 제외"하면 달성률이 올라가요!
+          </Text>
+        </View>
         <Animated.View
           style={[styles.badgeWrapper, {
             opacity: badgeOpacityAnim,
@@ -217,7 +222,7 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
                                 <Ionicons name="pause" size={9} color="#ffffff" style={{ marginRight: 3 }} />
                               )}
                               <Text style={textStyle} numberOfLines={1}>
-                                {g.goalName}
+                                {g.goalName}{inactive ? ' (제외)' : ''}
                               </Text>
                             </View>
                           );
@@ -320,6 +325,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13, fontWeight: '700', color: 'rgba(26,26,26,0.45)',
     letterSpacing: 2,
+  },
+  hintText: {
+    fontSize: 11,
+    color: 'rgba(26,26,26,0.40)',
+    marginTop: 4,
+    lineHeight: 15,
   },
   badgeWrapper: { position: 'relative' },
   thumbBadge: {
