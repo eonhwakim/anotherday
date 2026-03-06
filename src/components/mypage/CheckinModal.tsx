@@ -47,7 +47,7 @@ export default function CheckinModal({
 }: CheckinModalProps) {
   const user = useAuthStore((s) => s.user);
   const createCheckin = useGoalStore((s) => s.createCheckin);
-  const toggleUserGoal = useGoalStore((s) => s.toggleUserGoal);
+  const deleteCheckin = useGoalStore((s) => s.deleteCheckin);
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,14 +66,25 @@ export default function CheckinModal({
   const isGoalDone = (goalId: string) =>
     checkins.some((c) => c.goal_id === goalId);
 
-  /** 주 N회 목표: 패스 토글 (오늘 제외 ↔ 다시 포함) */
-  const handlePassToggle = async (goalId: string) => {
+  /** 주 N회 목표: 패스 토글 (체크인 생성/삭제) */
+  const handlePassToggle = async (goalId: string, existingCheckinId?: string) => {
     if (!user) return;
     setIsLoading(true);
     try {
-      await toggleUserGoal(user.id, goalId);
+      if (existingCheckinId) {
+        // 이미 패스 상태이면 취소 (체크인 삭제)
+        await deleteCheckin(existingCheckinId);
+      } else {
+        // 패스 체크인 생성
+        await createCheckin({
+          userId: user.id,
+          goalId,
+          date,
+          status: 'pass',
+          memo: '[패스] 사용자가 패스함',
+        });
+      }
       onCheckinDone?.();
-      // 모달은 유지 (다시 패스 누르면 활성화 가능)
     } catch (e) {
       console.error('[Checkin] handlePassToggle error:', e);
     } finally {
@@ -186,8 +197,12 @@ export default function CheckinModal({
                   const checkin = checkins.find(
                     (c) => c.goal_id === goal.id,
                   );
-                  const isPass = checkin?.memo?.startsWith('[패스]');
-                  const isMissed = isPast && !done && !isExcluded;
+                  // status가 pass이거나, memo가 [패스]로 시작하면 패스로 간주
+                  const isPass = checkin?.status === 'pass' || checkin?.memo?.startsWith('[패스]');
+                  // isExcluded는 이제 사용 안함 (주N회 패스는 체크인으로 관리)
+                  // 단, 매일 목표의 휴무일 경우 등은 제외될 수 있으나 여기서는 주N회만 다룸
+                  
+                  const isMissed = isPast && !done && !isPass && !isExcluded;
                   const isWeekly = frequency === 'weekly_count';
                   const freqLabel = isWeekly
                     ? `주 ${targetCount ?? 0}회`
@@ -212,13 +227,15 @@ export default function CheckinModal({
                               ? isPass
                                 ? 'remove-circle'
                                 : 'checkmark-circle'
-                              : isExcluded
-                                ? 'close-circle'
-                                : 'ellipse-outline'
+                              : isPass // 패스 상태도 완료처럼 아이콘 표시 (remove-circle)
+                                ? 'remove-circle'
+                                : isExcluded
+                                  ? 'close-circle'
+                                  : 'ellipse-outline'
                           }
                           size={22}
                           color={
-                            done
+                            done || isPass
                               ? isPass
                                 ? COLORS.warning
                                 : COLORS.success
@@ -245,17 +262,32 @@ export default function CheckinModal({
                         </View>
                       </View>
 
-                      {done ? (
-                        <Text
-                          style={[
-                            styles.statusBadge,
-                            isPass
-                              ? styles.badgePass
-                              : styles.badgeSuccess,
-                          ]}
-                        >
-                          {isPass ? '패스' : '성공'}
-                        </Text>
+                      {done || isPass ? (
+                        <View style={styles.actionRow}>
+                          <Text
+                            style={[
+                              styles.statusBadge,
+                              isPass
+                                ? styles.badgePass
+                                : styles.badgeSuccess,
+                            ]}
+                          >
+                            {isPass ? '패스함' : '성공'}
+                          </Text>
+                          {isWeekly && isPass && (
+                            <TouchableOpacity
+                              style={styles.passBtn}
+                              onPress={() => handlePassToggle(goal.id, checkin?.id)}
+                            >
+                              <Ionicons
+                                name="refresh"
+                                size={15}
+                                color={COLORS.warning}
+                              />
+                              <Text style={[styles.passBtnText, { color: COLORS.warning }]}>취소</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       ) : isMissed ? (
                         <Text
                           style={[styles.statusBadge, styles.badgeMissed]}
@@ -267,19 +299,6 @@ export default function CheckinModal({
                           <Text style={[styles.badgeExcluded]}>
                             오늘 제외
                           </Text>
-                          {isWeekly && (
-                            <TouchableOpacity
-                              style={styles.passBtn}
-                              onPress={() => handlePassToggle(goal.id)}
-                            >
-                              <Ionicons
-                                name="refresh"
-                                size={15}
-                                color={COLORS.primaryLight}
-                              />
-                              <Text style={styles.passBtnText}>다시 포함</Text>
-                            </TouchableOpacity>
-                          )}
                         </View>
                       ) : (
                         <View style={styles.actionRow}>
@@ -441,6 +460,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 61, 0.12)',
+    alignSelf: 'center',
   },
   badgeSuccess: {
     backgroundColor: 'rgba(239, 122, 68, 0.08)',

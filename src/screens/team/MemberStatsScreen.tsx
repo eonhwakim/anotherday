@@ -163,39 +163,114 @@ export default function MemberStatsScreen() {
     const goalDoneMap: Record<string, number> = {};
     const goalPassMap: Record<string, number> = {};
     const goalFailMap: Record<string, number> = {};
+    const goalCalculableDoneMap: Record<string, number> = {};
+    const goalCalculableTargetMap: Record<string, number> = {};
     const passReasons: string[] = [];
+
+    const dailyGoals = goals.filter(ug => ug.frequency === 'daily');
+    const weeklyGoals = goals.filter(ug => ug.frequency === 'weekly_count');
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = dayjs(startDate).date(d).format('YYYY-MM-DD');
       if (dateStr > today) break;
 
-      const todayGoals = goals.filter((ug) => {
+      const todayAllGoals = goals.filter((ug) => {
         if (ug.start_date && dateStr < ug.start_date) return false;
         return true;
       });
-      const totalForDay = todayGoals.length;
-      if (totalForDay === 0) continue;
+      if (todayAllGoals.length === 0) continue;
 
       const dayCheckins = checkins.filter((c) => c.date === dateStr);
       const done = dayCheckins.filter(isDone).length;
       const pass = dayCheckins.filter(isPass).length;
-      const effectiveTotal = totalForDay - pass;
+      const effectiveTotal = todayAllGoals.length - pass;
       const pct = effectiveTotal > 0 ? (done / effectiveTotal) * 100 : (done > 0 ? 100 : 0);
       dailyPercents.push(pct);
+    }
 
-      todayGoals.forEach((ug) => {
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = dayjs(startDate).date(d).format('YYYY-MM-DD');
+      if (dateStr > today) break;
+
+      const todayDailyGoals = dailyGoals.filter((ug) => {
+        if (ug.start_date && dateStr < ug.start_date) return false;
+        return true;
+      });
+      if (todayDailyGoals.length === 0) continue;
+
+      const dayCheckins = checkins.filter((c) => c.date === dateStr);
+
+      todayDailyGoals.forEach((ug) => {
         const gid = ug.goal_id;
         const c = dayCheckins.find((ci) => ci.goal_id === gid);
         if (!c) {
           goalFailMap[gid] = (goalFailMap[gid] || 0) + 1;
+          goalCalculableTargetMap[gid] = (goalCalculableTargetMap[gid] || 0) + 1;
         } else if (isPass(c)) {
           goalPassMap[gid] = (goalPassMap[gid] || 0) + 1;
           if (c.memo) passReasons.push(c.memo);
         } else {
           goalDoneMap[gid] = (goalDoneMap[gid] || 0) + 1;
+          goalCalculableDoneMap[gid] = (goalCalculableDoneMap[gid] || 0) + 1;
+          goalCalculableTargetMap[gid] = (goalCalculableTargetMap[gid] || 0) + 1;
         }
       });
     }
+
+    weeklyGoals.forEach((ug) => {
+      const gid = ug.goal_id;
+      const target = ug.target_count || 1;
+      const goalStart = ug.start_date || startDate;
+
+      let weekCursor = dayjs(startDate).startOf('isoWeek');
+      const monthEnd = dayjs(startDate).endOf('month');
+
+      while (weekCursor.isBefore(monthEnd) || weekCursor.isSame(monthEnd, 'day')) {
+        const weekStart = weekCursor;
+        const weekEnd = weekCursor.endOf('isoWeek');
+
+        const potentialStart = dayjs(Math.max(weekStart.valueOf(), dayjs(goalStart).valueOf(), dayjs(startDate).valueOf()));
+        const potentialEnd = dayjs(Math.min(weekEnd.valueOf(), dayjs(monthEnd).valueOf()));
+        
+        const potentialDays = potentialEnd.diff(potentialStart, 'day') + 1;
+        const isPartialWeek = potentialDays < 7;
+
+        const validStart = potentialStart;
+        const validEnd = dayjs(Math.min(potentialEnd.valueOf(), dayjs(today).valueOf()));
+        
+        const effStartStr = validStart.format('YYYY-MM-DD');
+        const effEndStr = validEnd.format('YYYY-MM-DD');
+
+        if (effStartStr <= effEndStr) {
+          const weekCheckins = checkins.filter(
+            (c) => c.goal_id === gid && c.date >= effStartStr && c.date <= effEndStr
+          );
+          const done = weekCheckins.filter(isDone).length;
+          const pass = weekCheckins.filter(isPass).length;
+
+          goalDoneMap[gid] = (goalDoneMap[gid] || 0) + done;
+          goalPassMap[gid] = (goalPassMap[gid] || 0) + pass;
+          
+          weekCheckins.filter(isPass).forEach((c) => {
+            if (c.memo) passReasons.push(c.memo);
+          });
+
+          if (!isPartialWeek) {
+            const isWeekOver = weekEnd.format('YYYY-MM-DD') <= today;
+            
+            if (isWeekOver) {
+              const deficit = Math.max(0, target - done);
+              goalFailMap[gid] = (goalFailMap[gid] || 0) + deficit;
+            }
+
+            goalCalculableTargetMap[gid] = (goalCalculableTargetMap[gid] || 0) + target;
+            goalCalculableDoneMap[gid] = (goalCalculableDoneMap[gid] || 0) + done;
+          }
+        }
+
+        weekCursor = weekCursor.add(1, 'week');
+      }
+    });
 
     const reasonCounts: Record<string, number> = {};
     passReasons.forEach((r) => {
@@ -206,40 +281,53 @@ export default function MemberStatsScreen() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
 
-    const avg = dailyPercents.length > 0
-      ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
-      : 0;
-
-    const goalStats = goals.map((ug) => {
+    const mapGoalStats = (targetGoals: any[]) => targetGoals.map((ug) => {
       const goal = allGoals.find((g) => g.id === ug.goal_id);
       const name = goal?.name ?? myGoalNames[ug.goal_id] ?? '알 수 없음';
+      const cDone = goalCalculableDoneMap[ug.goal_id] || 0;
+      const cTarget = goalCalculableTargetMap[ug.goal_id] || 0;
+      const rate = cTarget > 0 ? Math.round((cDone / cTarget) * 100) : 0;
       return {
         goalId: ug.goal_id,
         name,
         frequency: ug.frequency,
         targetCount: ug.target_count,
+        startDate: ug.start_date, // 시작일 추가
         done: goalDoneMap[ug.goal_id] || 0,
         pass: goalPassMap[ug.goal_id] || 0,
         fail: goalFailMap[ug.goal_id] || 0,
+        rate,
       };
     });
 
-    const failTotal = goalStats.reduce((sum, gs) => sum + gs.fail, 0);
+    const dailyStats = mapGoalStats(dailyGoals);
+    const weeklyStats = mapGoalStats(weeklyGoals);
 
-    let bestGoal: { name: string; rate: number; doneCount: number } | null = null;
-    let worstGoal: { name: string; rate: number; failCount: number } | null = null;
-    if (goalStats.length > 0) {
-      const withRate = goalStats.map(gs => {
-        const total = gs.done + gs.fail;
-        return { ...gs, rate: total > 0 ? Math.round((gs.done / total) * 100) : (gs.done > 0 ? 100 : 0) };
-      });
-      const best = withRate.reduce((a, b) => a.rate >= b.rate ? a : b);
-      bestGoal = { name: best.name, rate: best.rate, doneCount: best.done };
-      const worstWithRate = withRate.reduce((a, b) => a.fail >= b.fail ? a : b);
-      if (worstWithRate.fail > 0) worstGoal = { name: worstWithRate.name, rate: worstWithRate.rate, failCount: worstWithRate.fail };
-    }
+    const dailyAvg = dailyPercents.length > 0
+      ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
+      : 0;
+    
+    const weeklyAvg = weeklyStats.length > 0
+      ? Math.round(weeklyStats.reduce((sum, g) => sum + (g.rate || 0), 0) / weeklyStats.length)
+      : 0;
 
-    return { doneTotal, passTotal, failTotal, avg, bestGoal, worstGoal, goalStats, topReasons };
+    return {
+      daily: {
+        avgRate: dailyAvg,
+        goals: dailyStats,
+        doneTotal: dailyStats.reduce((sum, g) => sum + g.done, 0),
+        passTotal: dailyStats.reduce((sum, g) => sum + g.pass, 0),
+        failTotal: dailyStats.reduce((sum, g) => sum + g.fail, 0),
+      },
+      weekly: {
+        avgRate: weeklyAvg,
+        goals: weeklyStats,
+        doneTotal: weeklyStats.reduce((sum, g) => sum + g.done, 0),
+        passTotal: weeklyStats.reduce((sum, g) => sum + g.pass, 0),
+        failTotal: weeklyStats.reduce((sum, g) => sum + g.fail, 0),
+      },
+      topReasons,
+    };
   }, [monthlyCheckins, myGoals, teamGoals, yearMonth, myGoalNames]);
 
   return (
@@ -263,11 +351,11 @@ export default function MemberStatsScreen() {
       </View>
 
       <ScrollView style={styles.scroll}>
-        {/* Resolution & Retrospective */}
+        {/* Resolution & Retrospective - 팀 상세 페이지에서 작성 기능 제거되었으므로 읽기 전용으로 표시 */}
         {teamId && (
           <View style={styles.messageCard}>
             <View style={styles.messageSection}>
-              <Text style={styles.messageLabel}>이번 달 한마디</Text>
+              <Text style={styles.messageLabel}>이번 달 한마디(목표)</Text>
               <Text style={[styles.messageText, !resolution && styles.placeholderText]}>
                 {resolution || '등록된 한마디가 없습니다.'}
               </Text>

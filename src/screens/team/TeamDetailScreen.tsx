@@ -63,10 +63,12 @@ export default function TeamDetailScreen() {
   
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState('');
-  const [editResModalVisible, setEditResModalVisible] = useState(false);
-  const [editResText, setEditResText] = useState('');
-  const [editRetroModalVisible, setEditRetroModalVisible] = useState(false);
-  const [editRetroText, setEditRetroText] = useState('');
+  
+  // 수정 기능 제거: 모달 및 상태값 삭제
+  // const [editResModalVisible, setEditResModalVisible] = useState(false);
+  // const [editResText, setEditResText] = useState('');
+  // const [editRetroModalVisible, setEditRetroModalVisible] = useState(false);
+  // const [editRetroText, setEditRetroText] = useState('');
 
   const currentTeamInfo = teams.find(t => t.id === teamId);
   const myRole = currentTeamInfo?.role;
@@ -195,35 +197,9 @@ export default function TeamDetailScreen() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleSaveResolution = async () => {
-    if (!user) return;
-    try {
-      const { error } = await supabase.from('monthly_resolutions').upsert({
-        user_id: user.id, team_id: teamId, year_month: yearMonth, content: editResText.trim(),
-      }, { onConflict: 'user_id, team_id, year_month' });
-      if (error) throw error;
-      setEditResModalVisible(false);
-      loadData();
-    } catch (e) {
-      console.error(e);
-      Alert.alert('오류', '저장 중 오류가 발생했습니다.');
-    }
-  };
-
-  const handleSaveRetrospective = async () => {
-    if (!user) return;
-    try {
-      const { error } = await supabase.from('monthly_retrospectives').upsert({
-        user_id: user.id, team_id: teamId, year_month: yearMonth, content: editRetroText.trim(),
-      }, { onConflict: 'user_id, team_id, year_month' });
-      if (error) throw error;
-      setEditRetroModalVisible(false);
-      loadData();
-    } catch (e) {
-      console.error(e);
-      Alert.alert('오류', '저장 중 오류가 발생했습니다.');
-    }
-  };
+  // 수정 기능 제거: 저장 핸들러 삭제
+  // const handleSaveResolution = ...
+  // const handleSaveRetrospective = ...
 
   const goToPrevMonth = () => setYearMonth((prev) => dayjs(`${prev}-01`).subtract(1, 'month').format('YYYY-MM'));
   const goToNextMonth = () => setYearMonth((prev) => dayjs(`${prev}-01`).add(1, 'month').format('YYYY-MM'));
@@ -287,16 +263,11 @@ export default function TeamDetailScreen() {
                               완료 {stats?.doneCount ?? 0} · 패스 {stats?.passCount ?? 0}{(stats?.missedCount ?? 0) > 0 ? ` · 미달 ${stats.missedCount}` : ''}
                             </Text>
                           </View>
-                          <TouchableOpacity 
-                            disabled={!isMe}
-                            onPress={() => { setEditResText(resolution || ''); setEditResModalVisible(true); }}
-                            style={styles.resolutionBox}
-                          >
+                          <View style={styles.resolutionBox}>
                             <Text style={[styles.resolutionText, !resolution && styles.placeholderText]}>
-                              {resolution ? `"${resolution}"` : (isMe ? '이번 달 나의 한마디를 남겨보세요' : '아직 한마디가 없어요')}
+                              {resolution ? `"${resolution}"` : '아직 한마디가 없어요'}
                             </Text>
-                            {isMe && <Ionicons name="pencil" size={12} color={COLORS.textMuted} />}
-                          </TouchableOpacity>
+                          </View>
                         </View>
                       </View>
                       <TouchableOpacity
@@ -338,21 +309,14 @@ export default function TeamDetailScreen() {
                       )}
                     </View>
 
-                    {(retrospective || isMe) && (
+                    {retrospective ? (
                       <View style={styles.retroSection}>
                         <Text style={styles.retroLabel}>월간 회고</Text>
-                        <TouchableOpacity 
-                          disabled={!isMe}
-                          onPress={() => { setEditRetroText(retrospective || ''); setEditRetroModalVisible(true); }}
-                          style={styles.retroBox}
-                        >
-                          <Text style={[styles.retroText, !retrospective && styles.placeholderText]}>
-                            {retrospective || '이번 달 활동은 어떠셨나요? 회고를 작성해주세요.'}
-                          </Text>
-                          {isMe && <Ionicons name="pencil" size={12} color={COLORS.textMuted} />}
-                        </TouchableOpacity>
+                        <View style={styles.retroBox}>
+                          <Text style={styles.retroText}>{retrospective}</Text>
+                        </View>
                       </View>
-                    )}
+                    ) : null}
                   </View>
                 );
               })}
@@ -362,46 +326,7 @@ export default function TeamDetailScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <Modal visible={editResModalVisible} transparent animationType="fade" onRequestClose={() => setEditResModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>나의 한마디</Text>
-            <TextInput
-              style={styles.input}
-              value={editResText}
-              onChangeText={setEditResText}
-              placeholder="이번 달 다짐을 적어주세요"
-              placeholderTextColor={COLORS.textMuted}
-              maxLength={50}
-            />
-            <View style={styles.modalButtons}>
-              <Button title="취소" variant="secondary" onPress={() => setEditResModalVisible(false)} style={{ flex: 1 }} />
-              <Button title="저장" onPress={handleSaveResolution} style={{ flex: 1 }} />
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <Modal visible={editRetroModalVisible} transparent animationType="fade" onRequestClose={() => setEditRetroModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>월간 회고</Text>
-            <TextInput
-              style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
-              value={editRetroText}
-              onChangeText={setEditRetroText}
-              placeholder="이번 달 활동을 돌아보며 회고를 작성해주세요"
-              placeholderTextColor={COLORS.textMuted}
-              multiline
-              maxLength={500}
-            />
-            <View style={styles.modalButtons}>
-              <Button title="취소" variant="secondary" onPress={() => setEditRetroModalVisible(false)} style={{ flex: 1 }} />
-              <Button title="저장" onPress={handleSaveRetrospective} style={{ flex: 1 }} />
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* 모달 제거됨 */}
     </SafeAreaView>
   );
 }

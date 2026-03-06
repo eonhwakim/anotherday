@@ -5,6 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -19,6 +24,8 @@ import MonthlyStatsCard from '../../components/common/MonthlyStatsCard';
 import dayjs from '../../lib/dayjs';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/defaults';
+import { supabase } from '../../lib/supabaseClient';
+import Button from '../../components/common/Button';
 
 export default function StatisticsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -38,6 +45,12 @@ export default function StatisticsScreen() {
   const lastTapRef = useRef(0);
 
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
+  const [monthlyComment, setMonthlyComment] = useState('');
+  const [monthlyReview, setMonthlyReview] = useState('');
+  
+  const [editCommentModalVisible, setEditCommentModalVisible] = useState(false);
+  const [editReviewModalVisible, setEditReviewModalVisible] = useState(false);
+  const [tempText, setTempText] = useState('');
 
   React.useEffect(() => {
     const unsubscribe = tabNavigation.addListener('tabPress', () => {
@@ -52,17 +65,101 @@ export default function StatisticsScreen() {
     return unsubscribe;
   }, [tabNavigation]);
 
+  const loadReviews = async () => {
+    if (!user || !currentTeam) {
+      setMonthlyComment('');
+      setMonthlyReview('');
+      return;
+    }
+
+    try {
+      const { data: resData } = await supabase
+        .from('monthly_resolutions')
+        .select('content')
+        .eq('user_id', user.id)
+        .eq('team_id', currentTeam.id)
+        .eq('year_month', yearMonth)
+        .maybeSingle();
+      setMonthlyComment(resData?.content || '');
+
+      const { data: retroData } = await supabase
+        .from('monthly_retrospectives')
+        .select('content')
+        .eq('user_id', user.id)
+        .eq('team_id', currentTeam.id)
+        .eq('year_month', yearMonth)
+        .maybeSingle();
+      setMonthlyReview(retroData?.content || '');
+    } catch (e) {
+      console.error('Failed to load reviews:', e);
+    }
+  };
+
+  const saveComment = async () => {
+    if (!user || !currentTeam) return;
+    try {
+      const { error } = await supabase
+        .from('monthly_resolutions')
+        .upsert({
+          user_id: user.id,
+          team_id: currentTeam.id,
+          year_month: yearMonth,
+          content: tempText,
+        }, { onConflict: 'user_id, team_id, year_month' });
+        
+      if (error) throw error;
+      setMonthlyComment(tempText);
+      setEditCommentModalVisible(false);
+    } catch (e) {
+      Alert.alert('저장 실패', '이번 달 한마디(목표) 저장 중 오류가 발생했습니다.');
+      console.error(e);
+    }
+  };
+
+  const saveReview = async () => {
+    if (!user || !currentTeam) return;
+    try {
+      const { error } = await supabase
+        .from('monthly_retrospectives')
+        .upsert({
+          user_id: user.id,
+          team_id: currentTeam.id,
+          year_month: yearMonth,
+          content: tempText,
+        }, { onConflict: 'user_id, team_id, year_month' });
+
+      if (error) throw error;
+      setMonthlyReview(tempText);
+      setEditReviewModalVisible(false);
+    } catch (e) {
+      Alert.alert('저장 실패', '월간 회고 저장 중 오류가 발생했습니다.');
+      console.error(e);
+    }
+  };
+
   const loadData = useCallback(async () => {
     if (!user) return;
     await fetchTeams(user.id);
     const team = useTeamStore.getState().currentTeam;
-    const teamId = team?.id ?? '';
+    
+    // 팀이 없으면 로드 중단 (또는 개인 데이터만?)
+    // 현재 구조상 팀 기반 데이터가 많으므로 팀이 있어야 함
+    if (!team) return;
+
     await Promise.all([
-      fetchTeamGoals(teamId, user.id),
+      fetchTeamGoals(team.id, user.id),
       fetchMyGoals(user.id),
       fetchMonthlyCheckins(user.id, yearMonth),
     ]);
-  }, [user, yearMonth]);
+    
+    // Load reviews after team is confirmed
+    loadReviews();
+  }, [user, yearMonth, currentTeam?.id]); // Depend on currentTeam.id to reload when team changes
+
+  // currentTeam 변경 시 loadReviews 호출 (useEffect 추가)
+  React.useEffect(() => {
+    loadReviews();
+  }, [currentTeam?.id, yearMonth]);
 
   useFocusEffect(
     useCallback(() => {
@@ -115,8 +212,10 @@ export default function StatisticsScreen() {
     const goalDoneMap: Record<string, number> = {};
     const goalPassMap: Record<string, number> = {};
     const goalFailMap: Record<string, number> = {};
-    const passReasons: string[] = [];
     const dailyPercents: number[] = [];
+
+    const goalCalculableDoneMap: Record<string, number> = {};
+    const goalCalculableTargetMap: Record<string, number> = {};
 
     const dailyGoals = goals.filter(ug => ug.frequency === 'daily');
     const weeklyGoals = goals.filter(ug => ug.frequency === 'weekly_count');
@@ -148,8 +247,7 @@ export default function StatisticsScreen() {
         if (ug.start_date && dateStr < ug.start_date) return false;
         return true;
       });
-      const totalForDay = todayDailyGoals.length;
-      if (totalForDay === 0) continue;
+      if (todayDailyGoals.length === 0) continue;
 
       const dayCheckins = checkins.filter((c) => c.date === dateStr);
 
@@ -158,11 +256,15 @@ export default function StatisticsScreen() {
         const c = dayCheckins.find((ci) => ci.goal_id === gid);
         if (!c) {
           goalFailMap[gid] = (goalFailMap[gid] || 0) + 1;
+          goalCalculableTargetMap[gid] = (goalCalculableTargetMap[gid] || 0) + 1;
         } else if (isPass(c)) {
-          goalPassMap[gid] = (goalPassMap[gid] || 0) + 1;
-          if (c.memo) passReasons.push(c.memo);
+          // 매일 목표는 패스가 없음 -> 미달로 처리하거나 무시? 
+          // "매일 목표에서 패스는 없는거기 때문에 없애" -> 카운팅 제외 (무시)
+          // 다만 기존 데이터가 있을 수 있으므로 done에는 포함 안 됨.
         } else {
           goalDoneMap[gid] = (goalDoneMap[gid] || 0) + 1;
+          goalCalculableDoneMap[gid] = (goalCalculableDoneMap[gid] || 0) + 1;
+          goalCalculableTargetMap[gid] = (goalCalculableTargetMap[gid] || 0) + 1;
         }
       });
     }
@@ -176,87 +278,117 @@ export default function StatisticsScreen() {
       const monthEnd = dayjs(startDate).endOf('month');
 
       while (weekCursor.isBefore(monthEnd) || weekCursor.isSame(monthEnd, 'day')) {
+        const weekStart = weekCursor;
         const weekEnd = weekCursor.endOf('isoWeek');
 
-        const effStart = weekCursor.format('YYYY-MM-DD') < goalStart
-          ? goalStart
-          : weekCursor.format('YYYY-MM-DD') < startDate
-            ? startDate
-            : weekCursor.format('YYYY-MM-DD');
-        const effEnd = weekEnd.format('YYYY-MM-DD') > monthEnd.format('YYYY-MM-DD')
-          ? monthEnd.format('YYYY-MM-DD')
-          : weekEnd.format('YYYY-MM-DD');
+        // 부분 주차 확인 (Partial Week Check)
+        // 1. 목표 시작일이 주차 시작일보다 늦음 (가입/생성 주차)
+        // 2. 월 말이 주차 종료일보다 빠름 (월말 주차)
+        // 3. 월 시작이 주차 시작일보다 늦음 (월초 주차) -> startDate 기준 처리
+        
+        const potentialStart = dayjs(Math.max(weekStart.valueOf(), dayjs(goalStart).valueOf(), dayjs(startDate).valueOf()));
+        const potentialEnd = dayjs(Math.min(weekEnd.valueOf(), dayjs(monthEnd).valueOf()));
+        
+        const potentialDays = potentialEnd.diff(potentialStart, 'day') + 1;
+        const isPartialWeek = potentialDays < 7;
 
-        if (effStart > effEnd || effStart > today) {
-          weekCursor = weekCursor.add(1, 'week');
-          continue;
-        }
+        // 실제 유효 범위 (체크인 카운팅용 - 오늘 날짜 제한 등)
+        const validStart = potentialStart;
+        const validEnd = dayjs(Math.min(potentialEnd.valueOf(), dayjs(today).valueOf()));
+        
+        const effStartStr = validStart.format('YYYY-MM-DD');
+        const effEndStr = validEnd.format('YYYY-MM-DD');
 
-        const weekCheckins = checkins.filter(
-          (c) => c.goal_id === gid && c.date >= effStart && c.date <= effEnd && c.date <= today,
-        );
-        const done = weekCheckins.filter(isDone).length;
-        const pass = weekCheckins.filter(isPass).length;
+        if (effStartStr <= effEndStr) {
+          const weekCheckins = checkins.filter(
+            (c) => c.goal_id === gid && c.date >= effStartStr && c.date <= effEndStr
+          );
+          const done = weekCheckins.filter(isDone).length;
+          const pass = weekCheckins.filter(isPass).length;
 
-        goalDoneMap[gid] = (goalDoneMap[gid] || 0) + done;
-        goalPassMap[gid] = (goalPassMap[gid] || 0) + pass;
-        weekCheckins.filter(isPass).forEach((c) => {
-          if (c.memo) passReasons.push(c.memo);
-        });
+          goalDoneMap[gid] = (goalDoneMap[gid] || 0) + done;
+          goalPassMap[gid] = (goalPassMap[gid] || 0) + pass;
+          
+          // weekCheckins.filter(isPass).forEach((c) => {
+          //   if (c.memo) passReasons.push(c.memo);
+          // });
 
-        const isWeekComplete = weekEnd.format('YYYY-MM-DD') <= today;
-        if (isWeekComplete) {
-          const effectiveTarget = Math.max(0, target - pass);
-          const shortfall = Math.max(0, effectiveTarget - done);
-          goalFailMap[gid] = (goalFailMap[gid] || 0) + shortfall;
+          // 부분 주차가 아닐 때만 미달/달성률 계산
+           if (!isPartialWeek) {
+             const isWeekOver = weekEnd.format('YYYY-MM-DD') <= today;
+             
+             // 미달은 주차가 완전히 끝났을 때만 계산
+            if (isWeekOver) {
+              const deficit = Math.max(0, target - done);
+              goalFailMap[gid] = (goalFailMap[gid] || 0) + deficit;
+            }
+
+            // 달성률을 위한 모수 누적 (진행 중인 주차도 포함하여 현재 달성률 반영)
+            goalCalculableTargetMap[gid] = (goalCalculableTargetMap[gid] || 0) + target;
+            goalCalculableDoneMap[gid] = (goalCalculableDoneMap[gid] || 0) + done;
+          }
         }
 
         weekCursor = weekCursor.add(1, 'week');
       }
     });
 
-    const reasonCounts: Record<string, number> = {};
-    passReasons.forEach((r) => {
-      const cleaned = r.replace(/^\[패스\]\s*/, '').trim();
-      if (cleaned) reasonCounts[cleaned] = (reasonCounts[cleaned] || 0) + 1;
-    });
-    const topReasons = Object.entries(reasonCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
+    // const reasonCounts: Record<string, number> = {};
+    // passReasons.forEach((r) => {
+    //   const cleaned = r.replace(/^\[패스\]\s*/, '').trim();
+    //   if (cleaned) reasonCounts[cleaned] = (reasonCounts[cleaned] || 0) + 1;
+    // });
+    // const topReasons = Object.entries(reasonCounts)
+    //   .sort((a, b) => b[1] - a[1])
+    //   .slice(0, 3);
 
-    const goalStats = goals.map((ug) => {
+    const mapGoalStats = (targetGoals: any[]) => targetGoals.map((ug) => {
       const goal = allGoals.find((g) => g.id === ug.goal_id);
+      const cDone = goalCalculableDoneMap[ug.goal_id] || 0;
+      const cTarget = goalCalculableTargetMap[ug.goal_id] || 0;
+      const rate = cTarget > 0 ? Math.round((cDone / cTarget) * 100) : 0;
       return {
         goalId: ug.goal_id,
         name: goal?.name ?? '알 수 없음',
         frequency: ug.frequency,
         targetCount: ug.target_count,
+        startDate: ug.start_date, // 시작일 추가
         done: goalDoneMap[ug.goal_id] || 0,
         pass: goalPassMap[ug.goal_id] || 0,
         fail: goalFailMap[ug.goal_id] || 0,
+        rate,
       };
     });
 
-    const failTotal = goalStats.reduce((sum, gs) => sum + gs.fail, 0);
+    const dailyStats = mapGoalStats(dailyGoals);
+    const weeklyStats = mapGoalStats(weeklyGoals);
 
-    const avg = dailyPercents.length > 0
+    const dailyAvg = dailyPercents.length > 0
       ? Math.round(dailyPercents.reduce((a, b) => a + b, 0) / dailyPercents.length)
       : 0;
+    
+    // 주간 목표 전체 평균 달성률 (각 목표 달성률의 평균)
+    const weeklyAvg = weeklyStats.length > 0
+      ? Math.round(weeklyStats.reduce((sum, g) => sum + (g.rate || 0), 0) / weeklyStats.length)
+      : 0;
 
-    let bestGoal: { name: string; rate: number; doneCount: number } | null = null;
-    let worstGoal: { name: string; rate: number; failCount: number } | null = null;
-    if (goalStats.length > 0) {
-      const withRate = goalStats.map(gs => {
-        const total = gs.done + gs.fail;
-        return { ...gs, rate: total > 0 ? Math.round((gs.done / total) * 100) : (gs.done > 0 ? 100 : 0) };
-      });
-      const best = withRate.reduce((a, b) => a.rate >= b.rate ? a : b);
-      bestGoal = { name: best.name, rate: best.rate, doneCount: best.done };
-      const worstWithRate = withRate.reduce((a, b) => a.fail >= b.fail ? a : b);
-      if (worstWithRate.fail > 0) worstGoal = { name: worstWithRate.name, rate: worstWithRate.rate, failCount: worstWithRate.fail };
-    }
-
-    return { doneTotal, passTotal, failTotal, avg, bestGoal, worstGoal, goalStats, topReasons };
+    return {
+      daily: {
+        avgRate: dailyAvg,
+        goals: dailyStats,
+        doneTotal: dailyStats.reduce((sum, g) => sum + g.done, 0),
+        passTotal: dailyStats.reduce((sum, g) => sum + g.pass, 0),
+        failTotal: dailyStats.reduce((sum, g) => sum + g.fail, 0),
+      },
+      weekly: {
+        avgRate: weeklyAvg,
+        goals: weeklyStats,
+        doneTotal: weeklyStats.reduce((sum, g) => sum + g.done, 0),
+        passTotal: weeklyStats.reduce((sum, g) => sum + g.pass, 0),
+        failTotal: weeklyStats.reduce((sum, g) => sum + g.fail, 0),
+      },
+      // topReasons,
+    };
   }, [monthlyCheckins, myGoals, teamGoals, yearMonth, currentTeamUserGoals]);
 
   return (
@@ -283,26 +415,51 @@ export default function StatisticsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* 이번 달 한마디(목표) & 월간 회고 (통계 위로 이동) */}
+        {currentTeam && (
+          <View style={styles.reviewSection}>
+            <View style={styles.reviewHeader}>
+              <Text style={styles.reviewTitle}>이번 달 한마디(목표)</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.reviewBox}
+              onPress={() => {
+                setTempText(monthlyComment);
+                setEditCommentModalVisible(true);
+              }}
+            >
+              <Text style={[styles.reviewText, !monthlyComment && styles.placeholderText]}>
+                {monthlyComment || '이번 달의 다짐이나 목표를 적어보세요.'}
+              </Text>
+              <Ionicons name="pencil" size={14} color={COLORS.textSecondary} style={styles.reviewIcon} />
+            </TouchableOpacity>
+
+            <View style={[styles.reviewHeader, { marginTop: 20 }]}>
+              <Text style={styles.reviewTitle}>월간 회고</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.reviewBox}
+              onPress={() => {
+                setTempText(monthlyReview);
+                setEditReviewModalVisible(true);
+              }}
+            >
+              <Text style={[styles.reviewText, !monthlyReview && styles.placeholderText]}>
+                {monthlyReview || '이번 달을 돌아보며 회고를 작성해보세요.'}
+              </Text>
+              <Ionicons name="pencil" size={14} color={COLORS.textSecondary} style={styles.reviewIcon} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* 나의 통계 */}
         <Text style={styles.sectionLabel}>나의 통계</Text>
-        <TouchableOpacity
-          onPress={() => {
-            if (!user) return;
-            navigation.navigate('MemberStats', {
-              userId: user.id,
-              teamId: currentTeam?.id,
-              nickname: user.nickname,
-            });
-          }}
-          activeOpacity={0.8}
-        >
-          <MonthlyStatsCard
-            monthLabel={currentMonthLabel}
-            stats={monthlyStats}
-            teamCount={teams?.length}
-            showArrow
-          />
-        </TouchableOpacity>
+        <MonthlyStatsCard
+          monthLabel={currentMonthLabel}
+          stats={monthlyStats}
+          teamCount={teams?.length}
+          showArrow={false} // 화살표 제거 (클릭 이동 X)
+        />
 
         {/* 소속팀 */}
         <Text style={styles.sectionLabel}>소속팀</Text>
@@ -351,6 +508,48 @@ export default function StatisticsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* 한마디 수정 모달 */}
+      <Modal visible={editCommentModalVisible} transparent animationType="fade" onRequestClose={() => setEditCommentModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>이번 달 한마디(목표)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={tempText}
+              onChangeText={setTempText}
+              placeholder="이번 달의 다짐이나 목표를 적어보세요"
+              multiline
+              maxLength={100}
+            />
+            <View style={styles.modalButtons}>
+              <Button title="취소" variant="secondary" onPress={() => setEditCommentModalVisible(false)} style={{ flex: 1 }} />
+              <Button title="저장" onPress={saveComment} style={{ flex: 1 }} />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* 회고 수정 모달 */}
+      <Modal visible={editReviewModalVisible} transparent animationType="fade" onRequestClose={() => setEditReviewModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>월간 회고</Text>
+            <TextInput
+              style={[styles.modalInput, { height: 120 }]}
+              value={tempText}
+              onChangeText={setTempText}
+              placeholder="이번 달을 돌아보며 잘한 점, 아쉬운 점 등을 자유롭게 기록해보세요"
+              multiline
+              textAlignVertical="top"
+            />
+            <View style={styles.modalButtons}>
+              <Button title="취소" variant="secondary" onPress={() => setEditReviewModalVisible(false)} style={{ flex: 1 }} />
+              <Button title="저장" onPress={saveReview} style={{ flex: 1 }} />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -387,12 +586,51 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sectionLabel: {
+    fontSize: 16, // 크기 키움
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    marginTop: 24,
+  },
+  reviewSection: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reviewTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: 'rgba(26,26,26,0.55)',
-    marginHorizontal: 16,
-    marginBottom: 10,
-    marginTop: 8,
+    color: 'rgba(26,26,26,0.6)',
+  },
+  reviewBox: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  reviewText: {
+    fontSize: 14,
+    color: '#1A1A1A',
+    lineHeight: 20,
+    flex: 1,
+  },
+  reviewIcon: {
+    marginTop: 2,
+    opacity: 0.5,
+  },
+  placeholderText: {
+    color: 'rgba(26,26,26,0.3)',
   },
   emptyTeamBox: {
     marginHorizontal: 16,
@@ -468,5 +706,39 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: 'rgba(26,26,26,0.50)',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    color: '#1A1A1A',
+    minHeight: 80,
+    marginBottom: 20,
+    textAlignVertical: 'top',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
   },
 });

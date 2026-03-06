@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useAuthStore } from './authStore';
 import { supabase } from '../lib/supabaseClient';
 import type {
   Goal,
@@ -99,6 +100,7 @@ interface GoalState {
     memo?: string | null;
     status?: 'done' | 'pass';
   }) => Promise<boolean>;
+  deleteCheckin: (checkinId: string) => Promise<boolean>;
   toggleUserGoal: (userId: string, goalId: string) => Promise<void>;
   addGoal: (params: {
     teamId?: string;
@@ -267,6 +269,21 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     if (error) return false;
     await get().fetchTodayCheckins(userId);
+    return true;
+  },
+
+  // ── 체크인 삭제 ──
+  deleteCheckin: async (checkinId: string) => {
+    const { error } = await supabase
+      .from('checkins')
+      .delete()
+      .eq('id', checkinId);
+
+    if (error) {
+      console.error('deleteCheckin error:', error);
+      return false;
+    }
+    
     return true;
   },
 
