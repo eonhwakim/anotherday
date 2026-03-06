@@ -18,6 +18,9 @@ interface GoalSettingProps {
   myGoals: UserGoal[];
   onAdd: (name: string, frequency: GoalFrequency, targetCount: number | null) => Promise<boolean>;
   onRemove: (goalId: string) => void;
+  // 추가: 이번 달 한마디 관련 props
+  monthlyResolution?: string;
+  onUpdateResolution?: (text: string) => Promise<void>;
 }
 
 /** 주기 표시 텍스트 */
@@ -33,12 +36,37 @@ export default function GoalSetting({
   myGoals = [],
   onAdd,
   onRemove,
+  monthlyResolution = '',
+  onUpdateResolution,
 }: GoalSettingProps) {
   const [newGoal, setNewGoal] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [frequency, setFrequency] = useState<GoalFrequency>('daily');
   const [targetCount, setTargetCount] = useState(3); // 주 N회 기본값
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // 이번 달 한마디 상태
+  const [resolution, setResolution] = useState(monthlyResolution);
+  const [isEditingResolution, setIsEditingResolution] = useState(false);
+  const [isSavingResolution, setIsSavingResolution] = useState(false);
+
+  // monthlyResolution prop이 변경되면 내부 상태도 업데이트
+  React.useEffect(() => {
+    setResolution(monthlyResolution);
+  }, [monthlyResolution]);
+
+  const handleSaveResolution = async () => {
+    if (!onUpdateResolution) return;
+    setIsSavingResolution(true);
+    try {
+      await onUpdateResolution(resolution);
+      setIsEditingResolution(false);
+    } catch (e) {
+      Alert.alert('저장 실패', '한마디 저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSavingResolution(false);
+    }
+  };
 
   // ── 추천 태그 (내가 아직 선택하지 않은 팀 목표 중 랜덤 5개) ──
   const recommendedGoals = React.useMemo(() => {
@@ -121,8 +149,64 @@ export default function GoalSetting({
         목표를 추가하면 오늘부터 이번 달 말까지 적용됩니다
       </Text>
 
+      {/* ── 이번 달 한마디 (목표) ── */}
+      {onUpdateResolution && (
+        <View style={styles.resolutionSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>이번 달 한마디(목표)</Text>
+          </View>
+          
+          {isEditingResolution ? (
+            <View style={styles.resolutionEditBox}>
+              <TextInput
+                style={styles.resolutionInput}
+                value={resolution}
+                onChangeText={setResolution}
+                placeholder="이번 달의 다짐이나 목표를 적어보세요"
+                placeholderTextColor="rgba(26,26,26,0.30)"
+                maxLength={50}
+                autoFocus
+              />
+              <View style={styles.resolutionActions}>
+                <TouchableOpacity 
+                  style={styles.resolutionCancelBtn}
+                  onPress={() => {
+                    setResolution(monthlyResolution);
+                    setIsEditingResolution(false);
+                  }}
+                  disabled={isSavingResolution}
+                >
+                  <Text style={styles.resolutionCancelText}>취소</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.resolutionSaveBtn}
+                  onPress={handleSaveResolution}
+                  disabled={isSavingResolution}
+                >
+                  {isSavingResolution ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.resolutionSaveText}>저장</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={styles.resolutionBox}
+              onPress={() => setIsEditingResolution(true)}
+            >
+              <Text style={[styles.resolutionText, !resolution && styles.placeholderText]}>
+                {resolution || '이번 달의 다짐이나 목표를 적어보세요.'}
+              </Text>
+              <Ionicons name="pencil" size={14} color={COLORS.textSecondary} style={styles.reviewIcon} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {/* ── 2. 인기 태그 (추천 목표) ── */}
-      {recommendedGoals.length > 0 && (
+      {/* {recommendedGoals.length > 0 && (
         <View style={styles.recommendSection}>
           <Text style={styles.recommendTitle}>🔥 팀원들이 도전 중인 목표</Text>
           <View style={styles.recommendChips}>
@@ -137,7 +221,7 @@ export default function GoalSetting({
             ))}
           </View>
         </View>
-      )}
+      )} */}
 
       {/* ── 새 목표 입력 & 1. 자동완성 ── */}
       <View style={{ zIndex: 10 }}>
@@ -298,6 +382,35 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
   subtitle: { fontSize: 13, color: 'rgba(26,26,26,0.50)', marginBottom: 20, lineHeight: 20, fontWeight: '500' },
+
+  resolutionSection: { marginBottom: 24 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
+  resolutionBox: {
+    backgroundColor: '#FFFAF7', padding: 14, borderRadius: 8,
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10,
+  },
+  resolutionText: { fontSize: 14, color: '#1A1A1A', flex: 1 },
+  reviewIcon: { marginTop: 2, opacity: 0.5 },
+  placeholderText: { color: 'rgba(26,26,26,0.30)' },
+  resolutionEditBox: { gap: 8 },
+  resolutionInput: {
+    backgroundColor: '#FFFAF7', padding: 12, borderRadius: 8,
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.30)',
+    fontSize: 14, color: '#1A1A1A',
+  },
+  resolutionActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  resolutionCancelBtn: {
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6,
+    backgroundColor: 'rgba(26,26,26,0.05)',
+  },
+  resolutionCancelText: { fontSize: 13, color: 'rgba(26,26,26,0.6)', fontWeight: '600' },
+  resolutionSaveBtn: {
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6,
+    backgroundColor: '#FF6B3D', minWidth: 60, alignItems: 'center',
+  },
+  resolutionSaveText: { fontSize: 13, color: '#fff', fontWeight: '600' },
 
   inputRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   input: {

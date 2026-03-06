@@ -48,7 +48,6 @@ export default function StatisticsScreen() {
   const [monthlyComment, setMonthlyComment] = useState('');
   const [monthlyReview, setMonthlyReview] = useState('');
   
-  const [editCommentModalVisible, setEditCommentModalVisible] = useState(false);
   const [editReviewModalVisible, setEditReviewModalVisible] = useState(false);
   const [tempText, setTempText] = useState('');
 
@@ -95,26 +94,7 @@ export default function StatisticsScreen() {
     }
   };
 
-  const saveComment = async () => {
-    if (!user || !currentTeam) return;
-    try {
-      const { error } = await supabase
-        .from('monthly_resolutions')
-        .upsert({
-          user_id: user.id,
-          team_id: currentTeam.id,
-          year_month: yearMonth,
-          content: tempText,
-        }, { onConflict: 'user_id, team_id, year_month' });
-        
-      if (error) throw error;
-      setMonthlyComment(tempText);
-      setEditCommentModalVisible(false);
-    } catch (e) {
-      Alert.alert('저장 실패', '이번 달 한마디(목표) 저장 중 오류가 발생했습니다.');
-      console.error(e);
-    }
-  };
+  // const saveComment = ... (마이페이지로 이동됨)
 
   const saveReview = async () => {
     if (!user || !currentTeam) return;
@@ -415,24 +395,18 @@ export default function StatisticsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 이번 달 한마디(목표) & 월간 회고 (통계 위로 이동) */}
+         {/* 이번 달 한마디(목표) & 월간 회고 (통계 아래로 이동) */}
         {currentTeam && (
           <View style={styles.reviewSection}>
             <View style={styles.reviewHeader}>
               <Text style={styles.reviewTitle}>이번 달 한마디(목표)</Text>
             </View>
-            <TouchableOpacity 
-              style={styles.reviewBox}
-              onPress={() => {
-                setTempText(monthlyComment);
-                setEditCommentModalVisible(true);
-              }}
-            >
+            <View style={styles.reviewBox}>
               <Text style={[styles.reviewText, !monthlyComment && styles.placeholderText]}>
-                {monthlyComment || '이번 달의 다짐이나 목표를 적어보세요.'}
+                {monthlyComment || '등록된 한마디가 없습니다.'}
               </Text>
-              <Ionicons name="pencil" size={14} color={COLORS.textSecondary} style={styles.reviewIcon} />
-            </TouchableOpacity>
+              {/* 수정 버튼 제거 (마이페이지에서만 가능) */}
+            </View>
 
             <View style={[styles.reviewHeader, { marginTop: 20 }]}>
               <Text style={styles.reviewTitle}>월간 회고</Text>
@@ -509,26 +483,7 @@ export default function StatisticsScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* 한마디 수정 모달 */}
-      <Modal visible={editCommentModalVisible} transparent animationType="fade" onRequestClose={() => setEditCommentModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>이번 달 한마디(목표)</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={tempText}
-              onChangeText={setTempText}
-              placeholder="이번 달의 다짐이나 목표를 적어보세요"
-              multiline
-              maxLength={100}
-            />
-            <View style={styles.modalButtons}>
-              <Button title="취소" variant="secondary" onPress={() => setEditCommentModalVisible(false)} style={{ flex: 1 }} />
-              <Button title="저장" onPress={saveComment} style={{ flex: 1 }} />
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* 한마디 수정 모달 제거됨 (마이페이지로 이동) */}
 
       {/* 회고 수정 모달 */}
       <Modal visible={editReviewModalVisible} transparent animationType="fade" onRequestClose={() => setEditReviewModalVisible(false)}>
@@ -596,6 +551,7 @@ const styles = StyleSheet.create({
   reviewSection: {
     marginHorizontal: 16,
     marginBottom: 8,
+    marginTop: 24, // 통계 카드 아래로 이동했으므로 여백 추가
   },
   reviewHeader: {
     flexDirection: 'row',

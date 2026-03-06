@@ -172,7 +172,7 @@ export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArr
         <View style={styles.sectionHeaderRow}>
           <View style={styles.sectionTitleCol}>
             <Text style={styles.sectionTitle}>주 N회 목표</Text>
-            <Text style={styles.sectionSubtitle}>유연하게 달성해보세요</Text>
+            <Text style={styles.sectionSubtitle}>매주(월~일)가 지나야 달성 여부를 알 수 있어요</Text>
           </View>
           <CircularProgress rate={stats.weekly.avgRate} color="#3B82F6" />
         </View>

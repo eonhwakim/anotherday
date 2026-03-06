@@ -27,6 +27,7 @@ import GoalSetting from '../../components/mypage/GoalSetting';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import dayjs from '../../lib/dayjs';
+import { supabase } from '../../lib/supabaseClient';
 import { COLORS } from '../../constants/defaults';
 
 export default function MyPageScreen() {
@@ -67,6 +68,28 @@ export default function MyPageScreen() {
   const [teamInputValue, setTeamInputValue] = useState('');
   const [teamLoading, setTeamLoading] = useState(false);
 
+  const [monthlyResolution, setMonthlyResolution] = useState('');
+
+  const loadResolution = useCallback(async () => {
+    if (!user || !currentTeam) {
+      setMonthlyResolution('');
+      return;
+    }
+    const yearMonth = dayjs().format('YYYY-MM');
+    try {
+      const { data } = await supabase
+        .from('monthly_resolutions')
+        .select('content')
+        .eq('user_id', user.id)
+        .eq('team_id', currentTeam.id)
+        .eq('year_month', yearMonth)
+        .maybeSingle();
+      setMonthlyResolution(data?.content || '');
+    } catch (e) {
+      console.error(e);
+    }
+  }, [user, currentTeam]);
+
   const loadData = useCallback(async () => {
     if (!user) return;
     await fetchTeams(user.id);
@@ -77,7 +100,13 @@ export default function MyPageScreen() {
       fetchMyGoals(user.id),
       fetchTodayCheckins(user.id),
     ]);
-  }, [user]);
+    await loadResolution();
+  }, [user, loadResolution]);
+
+  // 팀 변경 시 한마디 다시 로드
+  React.useEffect(() => {
+    loadResolution();
+  }, [currentTeam?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -149,6 +178,27 @@ export default function MyPageScreen() {
     await removeTeamGoal(activeTeam?.id ?? '', user.id, goalId);
   };
 
+  const handleUpdateResolution = async (text: string) => {
+    if (!user || !currentTeam) return;
+    const yearMonth = dayjs().format('YYYY-MM');
+    try {
+      const { error } = await supabase
+        .from('monthly_resolutions')
+        .upsert({
+          user_id: user.id,
+          team_id: currentTeam.id,
+          year_month: yearMonth,
+          content: text,
+        }, { onConflict: 'user_id, team_id, year_month' });
+        
+      if (error) throw error;
+      setMonthlyResolution(text);
+    } catch (e) {
+      console.error(e);
+      throw e; // GoalSetting 컴포넌트에서 에러 처리
+    }
+  };
+
   const handleCreateTeam = async () => {
     if (!user || !teamInputValue.trim()) return;
     setTeamLoading(true);
@@ -197,6 +247,14 @@ export default function MyPageScreen() {
     } finally {
       setTeamLoading(false);
     }
+  };
+
+  const handleOpenTeamModal = (type: 'create' | 'join') => {
+    if (teams.length >= 1) {
+      Alert.alert('알림', '현재는 팀을 1개까지만 생성/참가할 수 있습니다.');
+      return;
+    }
+    setTeamModalType(type);
   };
 
   const handleLogout = () => {
@@ -264,7 +322,11 @@ export default function MyPageScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView ref={scrollRef} style={styles.scroll}>
+      <ScrollView 
+        ref={scrollRef} 
+        style={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.screenTitle}>마이페이지</Text>
 
         {/* ── 프로필 카드 ── */}
@@ -303,14 +365,14 @@ export default function MyPageScreen() {
             <View style={styles.teamActions}>
               <TouchableOpacity 
                 style={styles.teamActionBtn} 
-                onPress={() => setTeamModalType('create')}
+                onPress={() => handleOpenTeamModal('create')}
               >
                 <Ionicons name="add-circle-outline" size={18} color={COLORS.primaryLight} />
                 <Text style={styles.teamActionText}>팀 생성</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.teamActionBtn}
-                onPress={() => setTeamModalType('join')}
+                onPress={() => handleOpenTeamModal('join')}
               >
                 <Ionicons name="enter-outline" size={18} color={COLORS.primaryLight} />
                 <Text style={styles.teamActionText}>팀 참가</Text>
@@ -398,6 +460,8 @@ export default function MyPageScreen() {
           myGoals={currentTeamUserGoals}
           onAdd={handleAddGoal}
           onRemove={handleRemoveGoal}
+          monthlyResolution={monthlyResolution}
+          onUpdateResolution={handleUpdateResolution}
         />
 
         {/* ── 계정 관리 ── */}
