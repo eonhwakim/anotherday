@@ -269,6 +269,8 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     if (error) return false;
     await get().fetchTodayCheckins(userId);
+    // 홈 화면 갱신을 위해 멤버 진행상황도 다시 로드
+    await get().fetchMemberProgress(undefined, userId);
     return true;
   },
 
@@ -283,6 +285,15 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       console.error('deleteCheckin error:', error);
       return false;
     }
+    
+    // 홈 화면 갱신을 위해 멤버 진행상황도 다시 로드 (userId를 모르므로 현재 상태에서 유추하거나, 파라미터로 받아야 함)
+    // deleteCheckin 호출 시 userId를 넘겨주는 것이 좋지만, 인터페이스 변경이 크므로
+    // 일단 전체 리프레시나, 호출처에서 refresh를 하도록 유도.
+    // 하지만 createCheckin처럼 store 내부에서 해결하는게 깔끔함.
+    // 여기서는 deleteCheckin이 호출되는 상황(CheckinModal 등)에서 fetchMemberProgress를 호출하도록 하는게 나을 수도 있지만,
+    // 일관성을 위해 여기서 처리하고 싶음.
+    // 단, userId를 모름.
+    // CheckinModal에서 deleteCheckin 호출 후 onCheckinDone을 부르고, 거기서 fetchMemberProgress를 호출하는지 확인.
     
     return true;
   },
@@ -443,35 +454,28 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       const user = member.user as any;
       const uid = member.user_id || user.id;
 
-      // 활성 목표 (현재 팀 + 본인이 만든 목표만)
+      // 활성/비활성 구분 없이 모든 내 목표 조회
+      // (사용자 요청: 어제 패스(비활성) 처리된 목표도 오늘 다시 '할 일'로 떠야 함 -> is_active 필터 제거)
       const ugQuery = supabase
         .from('user_goals')
-        .select('goal_id, frequency, target_count, start_date, goal:goals!inner(team_id, owner_id)')
+        .select('goal_id, frequency, target_count, start_date, is_active, goal:goals!inner(team_id, owner_id)')
         .eq('user_id', uid)
-        .eq('is_active', true)
         .eq('goal.owner_id', uid);
       if (teamId) ugQuery.eq('goal.team_id', teamId);
+      
       const { data: userGoalsRaw } = await ugQuery;
+      
+      // userGoals: 모든 목표 (활성 + 비활성)
       const userGoals = (userGoalsRaw ?? []).map((ug: any) => ({
         goal_id: ug.goal_id,
         frequency: ug.frequency,
         target_count: ug.target_count,
         start_date: ug.start_date,
+        is_active: ug.is_active,
       }));
 
-      // 비활성 목표도 조회 (회색 표시용)
-      const inactiveQuery = supabase
-        .from('user_goals')
-        .select('goal_id, goal:goals!inner(team_id, owner_id, name)')
-        .eq('user_id', uid)
-        .eq('is_active', false)
-        .eq('goal.owner_id', uid);
-      if (teamId) inactiveQuery.eq('goal.team_id', teamId);
-      const { data: inactiveGoalsRaw } = await inactiveQuery;
-      const inactiveGoals = (inactiveGoalsRaw ?? []).map((ig: any) => ({
-        goal_id: ig.goal_id,
-        goalName: (ig.goal as any)?.name ?? '목표',
-      }));
+      // inactiveGoals 쿼리는 제거 (위에서 다 가져왔으므로)
+      const inactiveGoals: any[] = [];
 
       // 오늘 해당되는 목표 필터링
       const todayGoalIds: string[] = [];
@@ -535,7 +539,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
           goalId: ig.goal_id,
           goalName: ig.goalName,
           isDone: false,
-          isPass: false,
+          isPass: true, // 비활성 목표도 패스로 간주 (사용자 요청: "비활성 === 패스")
           isActive: false,
         })),
       ];

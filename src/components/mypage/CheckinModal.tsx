@@ -66,24 +66,32 @@ export default function CheckinModal({
   const isGoalDone = (goalId: string) =>
     checkins.some((c) => c.goal_id === goalId);
 
-  /** 주 N회 목표: 패스 토글 (체크인 생성/삭제) */
-  const handlePassToggle = async (goalId: string, existingCheckinId?: string) => {
+  /** 체크인 취소 (성공/패스 모두 삭제) */
+  const handleCancelCheckin = async (checkinId: string) => {
     if (!user) return;
     setIsLoading(true);
     try {
-      if (existingCheckinId) {
-        // 이미 패스 상태이면 취소 (체크인 삭제)
-        await deleteCheckin(existingCheckinId);
-      } else {
-        // 패스 체크인 생성
-        await createCheckin({
-          userId: user.id,
-          goalId,
-          date,
-          status: 'pass',
-          memo: '[패스] 사용자가 패스함',
-        });
-      }
+      await deleteCheckin(checkinId);
+      onCheckinDone?.();
+    } catch (e) {
+      console.error('[Checkin] handleCancelCheckin error:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /** 주 N회 목표: 패스 토글 (체크인 생성/삭제) */
+  const handlePassToggle = async (goalId: string) => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      // 패스 체크인 생성
+      await createCheckin({
+        userId: user.id,
+        goalId,
+        date,
+        status: 'pass',
+      });
       onCheckinDone?.();
     } catch (e) {
       console.error('[Checkin] handlePassToggle error:', e);
@@ -200,10 +208,10 @@ export default function CheckinModal({
                   // status가 pass이거나, memo가 [패스]로 시작하면 패스로 간주
                   const isPass = checkin?.status === 'pass' || checkin?.memo?.startsWith('[패스]');
                   // isExcluded는 이제 사용 안함 (주N회 패스는 체크인으로 관리)
-                  // 단, 매일 목표의 휴무일 경우 등은 제외될 수 있으나 여기서는 주N회만 다룸
                   
-                  const isMissed = isPast && !done && !isPass && !isExcluded;
                   const isWeekly = frequency === 'weekly_count';
+                  const isMissed = isPast && !done && !isPass && !isExcluded && !isWeekly; // 주N회 목표는 지난 날짜여도 인증/패스 가능
+                  
                   const freqLabel = isWeekly
                     ? `주 ${targetCount ?? 0}회`
                     : '매일';
@@ -229,9 +237,7 @@ export default function CheckinModal({
                                 : 'checkmark-circle'
                               : isPass // 패스 상태도 완료처럼 아이콘 표시 (remove-circle)
                                 ? 'remove-circle'
-                                : isExcluded
-                                  ? 'close-circle'
-                                  : 'ellipse-outline'
+                                : 'ellipse-outline'
                           }
                           size={22}
                           color={
@@ -239,9 +245,7 @@ export default function CheckinModal({
                               ? isPass
                                 ? COLORS.warning
                                 : COLORS.success
-                              : isExcluded
-                                ? '#EF4444'
-                                : COLORS.textSecondary
+                              : COLORS.textSecondary
                           }
                         />
                         <View style={styles.goalNameRow}>
@@ -277,7 +281,7 @@ export default function CheckinModal({
                           {isWeekly && isPass && (
                             <TouchableOpacity
                               style={styles.passBtn}
-                              onPress={() => handlePassToggle(goal.id, checkin?.id)}
+                              onPress={() => handleCancelCheckin(checkin!.id)}
                             >
                               <Ionicons
                                 name="refresh"
@@ -287,6 +291,13 @@ export default function CheckinModal({
                               <Text style={[styles.passBtnText, { color: COLORS.warning }]}>취소</Text>
                             </TouchableOpacity>
                           )}
+                          {/* 성공 상태일 때도 주간 목표면 패스로 전환 가능하게? -> 기획상 불명확하지만, 
+                              일단 패스함 상태에서 취소 버튼이 보이도록 함.
+                              성공 상태에서 취소는? -> 성공 취소 로직은 별도 구현이 없으나, 
+                              성공 버튼을 다시 누르면 취소가 되나? -> handleSuccess는 사진 업로드 프로세스임.
+                              성공 취소는 현재 구현되어 있지 않음 (삭제 로직 필요).
+                              하지만 사용자의 요구는 "패스함/취소" 가 뜨는 것.
+                           */}
                         </View>
                       ) : isMissed ? (
                         <Text
@@ -295,10 +306,38 @@ export default function CheckinModal({
                           미달
                         </Text>
                       ) : isExcluded ? (
-                        <View style={styles.actionRow}>
-                          <Text style={[styles.badgeExcluded]}>
-                            오늘 제외
-                          </Text>
+                        // 오늘 제외(isExcluded) 상태여도 사용자가 원하면 패스/성공 가능하게?
+                        // "오늘 제외는 이전에 구현해놨던 기능이야 이제는 필요없어" 라고 했으므로,
+                        // isExcluded 상태를 무시하고 버튼을 보여줘야 함.
+                        // 하지만 isExcluded는 store에서 계산되어 넘어옴.
+                        // 여기서 분기 처리를 수정하여 버튼을 보여주도록 변경.
+                         <View style={styles.actionRow}>
+                          <TouchableOpacity
+                            style={styles.successBtn}
+                            onPress={() => handleSuccess(goal.id)}
+                          >
+                            <Ionicons
+                              name="camera"
+                              size={15}
+                              color="#FFFFFF"
+                            />
+                            <Text style={styles.successBtnText}>
+                              성공
+                            </Text>
+                          </TouchableOpacity>
+                          {isWeekly && (
+                            <TouchableOpacity
+                              style={styles.passBtn}
+                              onPress={() => handlePassToggle(goal.id)}
+                            >
+                              <Ionicons
+                                name="close-circle-outline"
+                                size={15}
+                                color={COLORS.warning}
+                              />
+                              <Text style={styles.passBtnText}>패스</Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                       ) : (
                         <View style={styles.actionRow}>

@@ -200,29 +200,33 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
                     {member.goalDetails.length > 0 ? (
                       <View style={styles.goalChips}>
                         {member.goalDetails.map((g) => {
-                          const inactive = g.isActive === false && !g.isDone && !g.isPass;
+                          const isInactive = g.isActive === false && !g.isDone && !g.isPass;
+                          // 패스 상태도 비활성(회색) 스타일 적용
+                          const isPassStyle = g.isPass;
+                          
                           const chipStyle = [
                             styles.goalChip,
-                            inactive && styles.goalChipInactive,
-                            g.isPass && styles.goalChipPass,
+                            isInactive && styles.goalChipInactive,
+                            // 패스면 회색(Inactive) 스타일 사용 (테두리 등), 혹은 별도 정의
+                            // 사용자 요청: "회색처리된목표(패스)"
+                            isPassStyle && styles.goalChipInactive, 
                             g.isDone && styles.goalChipDone,
                           ];
                           const textStyle = [
                             styles.goalChipText,
-                            inactive && styles.goalChipTextInactive,
-                            g.isPass && styles.goalChipTextPass,
+                            isInactive && styles.goalChipTextInactive,
+                            isPassStyle && styles.goalChipTextInactive,
                             g.isDone && styles.goalChipTextDone,
                           ];
+                          
                           return (
                             <View key={g.goalId} style={chipStyle}>
                               {g.isDone && (
                                 <Ionicons name="checkmark" size={10} color="#ffffff" style={{ marginRight: 3 }} />
                               )}
-                              {g.isPass && (
-                                <Ionicons name="pause" size={9} color="#ffffff" style={{ marginRight: 3 }} />
-                              )}
+                              {/* 패스 아이콘은 제거하거나 유지? "회색처리된목표(패스)" 텍스트로 대체 */}
                               <Text style={textStyle} numberOfLines={1}>
-                                {g.goalName}{inactive ? ' (패스)' : ''}
+                                {g.goalName}{g.isPass ? ' (패스)' : ''}
                               </Text>
                             </View>
                           );

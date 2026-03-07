@@ -280,16 +280,18 @@ export default function CalendarScreen() {
           onMonthChange={handleMonthChange}
         />
 
-        {/* ── 인증하기 버튼 (오늘 날짜 선택 시에만 활성화) ── */}
+        {/* ── 인증하기 버튼 ── */}
         <View style={styles.checkinButtonWrap}>
           <Button
             title="인증하기"
             onPress={handleCheckinPress}
+            // 오늘 날짜가 아니면(과거/미래) 인증 불가 (사용자 요청: 이전 날짜 기록 수정 불가)
             disabled={!isTodaySelected}
+            variant={isTodaySelected ? 'primary' : 'outline'}
           />
           {!isTodaySelected && (
             <Text style={styles.checkinButtonHint}>
-              오늘 날짜를 선택하면 인증할 수 있어요
+              오늘 날짜만 인증할 수 있어요
             </Text>
           )}
         </View>
