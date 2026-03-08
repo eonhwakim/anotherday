@@ -61,6 +61,7 @@ export default function CheckinModal({
 
   const isFuture = dayjs(date).isAfter(dayjs(), 'day');
   const isPast = dayjs(date).isBefore(dayjs(), 'day');
+  const isToday = !isFuture && !isPast;
   const formattedDate = dayjs(date).format('M월 D일 (ddd)');
 
   const isGoalDone = (goalId: string) =>
@@ -191,187 +192,141 @@ export default function CheckinModal({
             </View>
           ) : (
             <ScrollView style={styles.body} bounces={false}>
-              {isFuture ? (
+              {goalsWithFrequency.length === 0 ? (
                 <Text style={styles.emptyText}>
-                  미래 날짜는 인증할 수 없어요
-                </Text>
-              ) : goalsWithFrequency.length === 0 ? (
-                <Text style={styles.emptyText}>
-                  설정된 목표가 없어요
+                  {isFuture ? '예정된 목표가 없어요' : '설정된 목표가 없어요'}
                 </Text>
               ) : (
-                goalsWithFrequency.map(({ goal, frequency, isExcluded, targetCount, weeklyDoneCount = 0 }) => {
-                  const done = isGoalDone(goal.id);
-                  const checkin = checkins.find(
-                    (c) => c.goal_id === goal.id,
-                  );
-                  // status가 pass이거나, memo가 [패스]로 시작하면 패스로 간주
-                  const isPass = checkin?.status === 'pass' || checkin?.memo?.startsWith('[패스]');
-                  // isExcluded는 이제 사용 안함 (주N회 패스는 체크인으로 관리)
-                  
-                  const isWeekly = frequency === 'weekly_count';
-                  const isMissed = isPast && !done && !isPass && !isExcluded && !isWeekly; // 주N회 목표는 지난 날짜여도 인증/패스 가능
-                  
-                  const freqLabel = isWeekly
-                    ? `주 ${targetCount ?? 0}회`
-                    : '매일';
-                  const weeklyProgress = isWeekly && targetCount != null
-                    ? ` (${weeklyDoneCount} / ${targetCount})`
-                    : '';
-
-                  return (
-                    <View
-                      key={goal.id}
-                      style={[
-                        styles.goalRow,
-                        done && styles.goalRowDone,
-                        isMissed && styles.goalRowMissed,
-                      ]}
-                    >
-                      <View style={styles.goalInfo}>
-                        <Ionicons
-                          name={
-                            done
-                              ? isPass
-                                ? 'remove-circle'
-                                : 'checkmark-circle'
-                              : isPass // 패스 상태도 완료처럼 아이콘 표시 (remove-circle)
-                                ? 'remove-circle'
-                                : 'ellipse-outline'
-                          }
-                          size={22}
-                          color={
-                            done || isPass
-                              ? isPass
-                                ? COLORS.warning
-                                : COLORS.success
-                              : COLORS.textSecondary
-                          }
-                        />
-                        <View style={styles.goalNameRow}>
-                          <Text
-                            style={[
-                              styles.goalName,
-                              done && styles.goalNameDone,
-                              isMissed && styles.goalNameMissed,
-                            ]}
-                            numberOfLines={2}
-                            ellipsizeMode="tail"
-                          >
-                            {goal.name}
-                          </Text>
-                          <Text style={styles.freqLabel}>
-                            {freqLabel}{weeklyProgress}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {done || isPass ? (
-                        <View style={styles.actionRow}>
-                          <Text
-                            style={[
-                              styles.statusBadge,
-                              isPass
-                                ? styles.badgePass
-                                : styles.badgeSuccess,
-                            ]}
-                          >
-                            {isPass ? '패스함' : '성공'}
-                          </Text>
-                          {isWeekly && isPass && (
-                            <TouchableOpacity
-                              style={styles.passBtn}
-                              onPress={() => handleCancelCheckin(checkin!.id)}
-                            >
-                              <Ionicons
-                                name="refresh"
-                                size={15}
-                                color={COLORS.warning}
-                              />
-                              <Text style={[styles.passBtnText, { color: COLORS.warning }]}>취소</Text>
-                            </TouchableOpacity>
-                          )}
-                          {/* 성공 상태일 때도 주간 목표면 패스로 전환 가능하게? -> 기획상 불명확하지만, 
-                              일단 패스함 상태에서 취소 버튼이 보이도록 함.
-                              성공 상태에서 취소는? -> 성공 취소 로직은 별도 구현이 없으나, 
-                              성공 버튼을 다시 누르면 취소가 되나? -> handleSuccess는 사진 업로드 프로세스임.
-                              성공 취소는 현재 구현되어 있지 않음 (삭제 로직 필요).
-                              하지만 사용자의 요구는 "패스함/취소" 가 뜨는 것.
-                           */}
-                        </View>
-                      ) : isMissed ? (
-                        <Text
-                          style={[styles.statusBadge, styles.badgeMissed]}
-                        >
-                          미달
-                        </Text>
-                      ) : isExcluded ? (
-                        // 오늘 제외(isExcluded) 상태여도 사용자가 원하면 패스/성공 가능하게?
-                        // "오늘 제외는 이전에 구현해놨던 기능이야 이제는 필요없어" 라고 했으므로,
-                        // isExcluded 상태를 무시하고 버튼을 보여줘야 함.
-                        // 하지만 isExcluded는 store에서 계산되어 넘어옴.
-                        // 여기서 분기 처리를 수정하여 버튼을 보여주도록 변경.
-                         <View style={styles.actionRow}>
-                          <TouchableOpacity
-                            style={styles.successBtn}
-                            onPress={() => handleSuccess(goal.id)}
-                          >
-                            <Ionicons
-                              name="camera"
-                              size={15}
-                              color="#FFFFFF"
-                            />
-                            <Text style={styles.successBtnText}>
-                              성공
-                            </Text>
-                          </TouchableOpacity>
-                          {isWeekly && (
-                            <TouchableOpacity
-                              style={styles.passBtn}
-                              onPress={() => handlePassToggle(goal.id)}
-                            >
-                              <Ionicons
-                                name="close-circle-outline"
-                                size={15}
-                                color={COLORS.warning}
-                              />
-                              <Text style={styles.passBtnText}>패스</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      ) : (
-                        <View style={styles.actionRow}>
-                          <TouchableOpacity
-                            style={styles.successBtn}
-                            onPress={() => handleSuccess(goal.id)}
-                          >
-                            <Ionicons
-                              name="camera"
-                              size={15}
-                              color="#FFFFFF"
-                            />
-                            <Text style={styles.successBtnText}>
-                              성공
-                            </Text>
-                          </TouchableOpacity>
-                          {isWeekly && (
-                            <TouchableOpacity
-                              style={styles.passBtn}
-                              onPress={() => handlePassToggle(goal.id)}
-                            >
-                              <Ionicons
-                                name="close-circle-outline"
-                                size={15}
-                                color={COLORS.warning}
-                              />
-                              <Text style={styles.passBtnText}>패스</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      )}
+                <>
+                  {!isToday && (
+                    <View style={styles.readOnlyBanner}>
+                      <Ionicons name="eye-outline" size={14} color="rgba(26,26,26,0.45)" />
+                      <Text style={styles.readOnlyText}>
+                        {isFuture ? '미래 날짜 — 예정된 목표 미리보기' : '지난 기록 보기'}
+                      </Text>
                     </View>
-                  );
-                })
+                  )}
+                  {goalsWithFrequency.map(({ goal, frequency, isExcluded, targetCount, weeklyDoneCount = 0 }) => {
+                    const done = isGoalDone(goal.id);
+                    const checkin = checkins.find(
+                      (c) => c.goal_id === goal.id,
+                    );
+                    const isPass = checkin?.status === 'pass' || checkin?.memo?.startsWith('[패스]');
+                    
+                    const isWeekly = frequency === 'weekly_count';
+                    // 매일 목표: 과거 미인증 = 미달 / 주N회 목표: 과거 미인증 = 자동패스
+                    const isMissed = isPast && !done && !isPass && !isWeekly;
+                    const isAutoPass = isPast && !done && !isPass && isWeekly;
+                    
+                    const freqLabel = isWeekly
+                      ? `주 ${targetCount ?? 0}회`
+                      : '매일';
+                    const weeklyProgress = isWeekly && targetCount != null
+                      ? ` (${weeklyDoneCount} / ${targetCount})`
+                      : '';
+
+                    return (
+                      <View
+                        key={goal.id}
+                        style={[
+                          styles.goalRow,
+                          done && styles.goalRowDone,
+                          isMissed && styles.goalRowMissed,
+                        ]}
+                      >
+                        <View style={styles.goalInfo}>
+                          <Ionicons
+                            name={
+                              done
+                                ? isPass
+                                  ? 'remove-circle'
+                                  : 'checkmark-circle'
+                                : isPass || isAutoPass
+                                  ? 'remove-circle'
+                                  : isFuture
+                                    ? 'time-outline'
+                                    : 'ellipse-outline'
+                            }
+                            size={22}
+                            color={
+                              done
+                                ? COLORS.success
+                                : isPass || isAutoPass
+                                  ? COLORS.warning
+                                  : isFuture
+                                    ? 'rgba(255, 107, 61, 0.4)'
+                                    : COLORS.textSecondary
+                            }
+                          />
+                          <View style={styles.goalNameRow}>
+                            <Text
+                              style={[
+                                styles.goalName,
+                                done && styles.goalNameDone,
+                                isMissed && styles.goalNameMissed,
+                              ]}
+                              numberOfLines={2}
+                              ellipsizeMode="tail"
+                            >
+                              {goal.name}
+                            </Text>
+                            <Text style={styles.freqLabel}>
+                              {freqLabel}{weeklyProgress}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* 상태 표시 / 액션 버튼 */}
+                        {done || isPass ? (
+                          <View style={styles.actionRow}>
+                            <Text
+                              style={[
+                                styles.statusBadge,
+                                isPass ? styles.badgePass : styles.badgeSuccess,
+                              ]}
+                            >
+                              {isPass ? '패스함' : '성공'}
+                            </Text>
+                            {isToday && isWeekly && isPass && (
+                              <TouchableOpacity
+                                style={styles.passBtn}
+                                onPress={() => handleCancelCheckin(checkin!.id)}
+                              >
+                                <Ionicons name="refresh" size={15} color={COLORS.warning} />
+                                <Text style={[styles.passBtnText, { color: COLORS.warning }]}>취소</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        ) : isAutoPass ? (
+                          <Text style={[styles.statusBadge, styles.badgePass]}>자동패스</Text>
+                        ) : isMissed ? (
+                          <Text style={[styles.statusBadge, styles.badgeMissed]}>미달</Text>
+                        ) : isFuture ? (
+                          <Text style={[styles.statusBadge, styles.badgeFuture]}>예정</Text>
+                        ) : isToday ? (
+                          <View style={styles.actionRow}>
+                            <TouchableOpacity
+                              style={styles.successBtn}
+                              onPress={() => handleSuccess(goal.id)}
+                            >
+                              <Ionicons name="camera" size={15} color="#FFFFFF" />
+                              <Text style={styles.successBtnText}>성공</Text>
+                            </TouchableOpacity>
+                            {isWeekly && (
+                              <TouchableOpacity
+                                style={styles.passBtn}
+                                onPress={() => handlePassToggle(goal.id)}
+                              >
+                                <Ionicons name="close-circle-outline" size={15} color={COLORS.warning} />
+                                <Text style={styles.passBtnText}>패스</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </>
               )}
             </ScrollView>
           )}
@@ -516,9 +471,25 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     borderColor: 'rgba(239,68,68,0.18)',
   },
-  badgeExcluded: {
-    color: 'rgba(26,26,26,0.50)',
-    alignSelf: 'center',
+  badgeFuture: {
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
+    color: 'rgba(255, 107, 61, 0.65)',
+    borderColor: 'rgba(255, 107, 61, 0.15)',
+  },
+  readOnlyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(26,26,26,0.04)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  readOnlyText: {
+    fontSize: 12,
+    color: 'rgba(26,26,26,0.45)',
+    fontWeight: '500',
   },
   goalRowMissed: {
     backgroundColor: 'rgba(239,68,68,0.04)',

@@ -39,14 +39,13 @@ export default function MonthlyGoalCalendar({
 }: MonthlyGoalCalendarProps) {
   const today = dayjs().format('YYYY-MM-DD');
 
-  /** 특정 날짜에 유효한 목표 ID 목록 (start_date 이후만) */
+  /** 특정 날짜에 유효한 목표 ID 목록 (start_date ~ end_date 범위) */
   const getActiveGoalIdsForDate = (dateStr: string): string[] => {
     return (myGoals || [])
       .filter((ug) => {
-        // start_date가 없으면 항상 유효
-        if (!ug.start_date) return true;
-        // start_date 이후인 날짜만 유효
-        return dateStr >= ug.start_date;
+        if (ug.start_date && dateStr < ug.start_date) return false;
+        if (ug.end_date && dateStr > ug.end_date) return false;
+        return true;
       })
       .map((ug) => ug.goal_id);
   };
@@ -81,20 +80,42 @@ export default function MonthlyGoalCalendar({
   }, [yearMonth]);
 
   const getDayStatus = (dateStr: string) => {
-    // 해당 날짜에 유효한 목표만 필터링 (start_date 이후)
     const activeIds = getActiveGoalIdsForDate(dateStr);
     const dayCheckins = (checkins || []).filter((c) => c.date === dateStr);
-    const doneGoalIds = dayCheckins.map((c) => c.goal_id);
-    const completed = activeIds.filter((id) =>
-      doneGoalIds.includes(id),
+
+    const doneCount = dayCheckins.filter((c) =>
+      c.status === 'done' && !(c.memo?.startsWith('[패스]'))
     ).length;
+    const explicitPassCount = dayCheckins.filter((c) =>
+      c.status === 'pass' || c.memo?.startsWith('[패스]')
+    ).length;
+
+    // 자동 패스: 주N회 목표 중 체크인 없는 것 (과거 날짜만)
+    let autoPassCount = 0;
+    if (dateStr < today) {
+      activeIds.forEach((goalId) => {
+        const ug = (myGoals || []).find((g) => g.goal_id === goalId);
+        if (ug?.frequency !== 'weekly_count') return;
+        const hasCheckin = dayCheckins.some((c) => c.goal_id === goalId);
+        if (!hasCheckin) autoPassCount++;
+      });
+    }
+
+    const totalPassCount = explicitPassCount + autoPassCount;
+    const completed = doneCount + totalPassCount;
     const total = activeIds.length;
+    const hasPass = totalPassCount > 0;
 
-    const hasPass = dayCheckins.some((c) =>
-      c.memo?.startsWith('[패스]'),
-    );
-
-    const missed = dateStr < today ? total - completed : 0;
+    // 미달: 매일 목표 중 체크인 없는 것 (과거 날짜만)
+    let missed = 0;
+    if (dateStr < today) {
+      activeIds.forEach((goalId) => {
+        const ug = (myGoals || []).find((g) => g.goal_id === goalId);
+        if (ug?.frequency === 'weekly_count') return;
+        const hasCheckin = dayCheckins.some((c) => c.goal_id === goalId);
+        if (!hasCheckin) missed++;
+      });
+    }
 
     return { completed, total, allDone: total > 0 && completed >= total, hasPass, activeIds, missed };
   };

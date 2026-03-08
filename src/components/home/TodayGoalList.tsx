@@ -20,9 +20,11 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   const progress = totalAll > 0 ? completedAll / totalAll : 0;
 
   const myMember = members.find(m => m.userId === currentUserId);
+  const myDone = myMember?.doneGoals ?? 0;
+  const myPass = myMember?.passGoals ?? 0;
   const myTotal = myMember?.totalGoals ?? 0;
-  const myCompleted = myMember?.completedGoals ?? 0;
-  const myProgress = myTotal > 0 ? myCompleted / myTotal : 0;
+  const myEffective = myTotal - myPass;
+  const myProgress = myEffective > 0 ? myDone / myEffective : (myPass > 0 ? 1 : 0);
 
   const getEncouragement = (): string => {
     const pct = Math.floor(myProgress * 100);

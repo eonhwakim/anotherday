@@ -132,7 +132,12 @@ export default function MemberProfileModal({
         const gid = ug.goal_id;
         const c = dayCheckins.find((ci) => ci.goal_id === gid);
         if (!c) {
-          goalFailMap[gid] = (goalFailMap[gid] || 0) + 1;
+          // 매일 목표: 미달 / 주N회 목표: 자동 패스
+          if (ug.frequency === 'weekly_count') {
+            goalPassMap[gid] = (goalPassMap[gid] || 0) + 1;
+          } else {
+            goalFailMap[gid] = (goalFailMap[gid] || 0) + 1;
+          }
         } else if (isPass(c)) {
           goalPassMap[gid] = (goalPassMap[gid] || 0) + 1;
         } else {

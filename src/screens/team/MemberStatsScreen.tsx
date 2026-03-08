@@ -246,10 +246,14 @@ export default function MemberStatsScreen() {
             (c) => c.goal_id === gid && c.date >= effStartStr && c.date <= effEndStr
           );
           const done = weekCheckins.filter(isDone).length;
-          const pass = weekCheckins.filter(isPass).length;
+          const explicitPass = weekCheckins.filter(isPass).length;
+          // 주N회 목표: 체크인 없는 날 = 자동 패스
+          const weekDays = dayjs(effEndStr).diff(dayjs(effStartStr), 'day') + 1;
+          const autoPass = Math.max(0, weekDays - done - explicitPass);
+          const totalPass = explicitPass + autoPass;
 
           goalDoneMap[gid] = (goalDoneMap[gid] || 0) + done;
-          goalPassMap[gid] = (goalPassMap[gid] || 0) + pass;
+          goalPassMap[gid] = (goalPassMap[gid] || 0) + totalPass;
           
           weekCheckins.filter(isPass).forEach((c) => {
             if (c.memo) passReasons.push(c.memo);

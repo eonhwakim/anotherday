@@ -238,9 +238,7 @@ export default function StatisticsScreen() {
           goalFailMap[gid] = (goalFailMap[gid] || 0) + 1;
           goalCalculableTargetMap[gid] = (goalCalculableTargetMap[gid] || 0) + 1;
         } else if (isPass(c)) {
-          // 매일 목표는 패스가 없음 -> 미달로 처리하거나 무시? 
-          // "매일 목표에서 패스는 없는거기 때문에 없애" -> 카운팅 제외 (무시)
-          // 다만 기존 데이터가 있을 수 있으므로 done에는 포함 안 됨.
+          // 매일 목표에 패스 버튼은 없지만, 기존 데이터 호환을 위해 무시
         } else {
           goalDoneMap[gid] = (goalDoneMap[gid] || 0) + 1;
           goalCalculableDoneMap[gid] = (goalCalculableDoneMap[gid] || 0) + 1;
@@ -284,26 +282,23 @@ export default function StatisticsScreen() {
             (c) => c.goal_id === gid && c.date >= effStartStr && c.date <= effEndStr
           );
           const done = weekCheckins.filter(isDone).length;
-          const pass = weekCheckins.filter(isPass).length;
+          const explicitPass = weekCheckins.filter(isPass).length;
+          // 주N회 목표: 체크인 없는 날 = 자동 패스
+          const weekDays = dayjs(effEndStr).diff(dayjs(effStartStr), 'day') + 1;
+          const autoPass = Math.max(0, weekDays - done - explicitPass);
+          const totalPass = explicitPass + autoPass;
 
           goalDoneMap[gid] = (goalDoneMap[gid] || 0) + done;
-          goalPassMap[gid] = (goalPassMap[gid] || 0) + pass;
-          
-          // weekCheckins.filter(isPass).forEach((c) => {
-          //   if (c.memo) passReasons.push(c.memo);
-          // });
+          goalPassMap[gid] = (goalPassMap[gid] || 0) + totalPass;
 
-          // 부분 주차가 아닐 때만 미달/달성률 계산
-           if (!isPartialWeek) {
-             const isWeekOver = weekEnd.format('YYYY-MM-DD') <= today;
-             
-             // 미달은 주차가 완전히 끝났을 때만 계산
+          if (!isPartialWeek) {
+            const isWeekOver = weekEnd.format('YYYY-MM-DD') <= today;
+            
             if (isWeekOver) {
               const deficit = Math.max(0, target - done);
               goalFailMap[gid] = (goalFailMap[gid] || 0) + deficit;
             }
 
-            // 달성률을 위한 모수 누적 (진행 중인 주차도 포함하여 현재 달성률 반영)
             goalCalculableTargetMap[gid] = (goalCalculableTargetMap[gid] || 0) + target;
             goalCalculableDoneMap[gid] = (goalCalculableDoneMap[gid] || 0) + done;
           }

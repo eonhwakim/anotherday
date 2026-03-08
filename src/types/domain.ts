@@ -158,6 +158,8 @@ export interface MemberProgress {
   profileImageUrl: string | null;
   totalGoals: number;
   completedGoals: number;
+  doneGoals: number;
+  passGoals: number;
   position: MountainPosition;
   goalDetails: MemberGoalDetail[];
 }
@@ -168,11 +170,13 @@ export interface CalendarDayMarking {
     marked: boolean;
     dotColor?: string;
     checkinCount: number;
-    /** 상태: all_done(✅), mixed(✅💤), mostly_fail(❌), partial */
-    dayStatus?: 'all_done' | 'mixed' | 'mostly_fail' | 'partial' | 'none';
+    /** 상태: all_done(✅), mixed(✅💤), mostly_fail(❌), partial, future(미래 예정) */
+    dayStatus?: 'all_done' | 'mixed' | 'mostly_fail' | 'partial' | 'none' | 'future';
     doneCount?: number;
     passCount?: number;
     totalGoals?: number;
+    /** 해당 날짜에 유효한 목표 이름 목록 (캘린더 상세 표시용) */
+    goalNames?: string[];
   };
 }
 

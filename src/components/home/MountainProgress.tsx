@@ -654,7 +654,8 @@ function GeometricParticle({ emoji, index }: any) {
 }
 
 function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatarColor, startAnimation }: any) {
-  const progress = Math.min(1, Math.max(0, member.totalGoals > 0 ? member.completedGoals / member.totalGoals : 0));
+  const effective = member.totalGoals - (member.passGoals ?? 0);
+  const progress = Math.min(1, Math.max(0, effective > 0 ? (member.doneGoals ?? 0) / effective : ((member.passGoals ?? 0) > 0 ? 1 : 0)));
   const spreadOffset = totalMembers > 1 ? ((index / (totalMembers - 1)) * 2 - 1) * 20 : 0;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;

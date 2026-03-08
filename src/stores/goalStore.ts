@@ -17,10 +17,11 @@ import dayjs from '../lib/dayjs';
 
 // ─── Helpers ──────────────────────────────────────────────────
 
-/** 달성률 → 산 위치 매핑 */
-function getPosition(completed: number, total: number): MountainPosition {
-  if (total === 0) return 'base';
-  const ratio = completed / total;
+/** 달성률 → 산 위치 매핑 (패스 제외 공식: done / (total - pass)) */
+function getPosition(done: number, total: number, pass: number = 0): MountainPosition {
+  const effective = total - pass;
+  if (effective <= 0) return pass > 0 ? 'summit' : 'base';
+  const ratio = done / effective;
   if (ratio >= MOUNTAIN_THRESHOLDS.SUMMIT) return 'summit';
   if (ratio >= MOUNTAIN_THRESHOLDS.MIDDLE) return 'middle';
   return 'base';
@@ -525,7 +526,8 @@ export const useGoalStore = create<GoalState>((set, get) => ({
           .filter((c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]')))
           .map((c: any) => c.goal_id),
       );
-      const completedCount = doneGoalIds.size + passGoalIds.size;
+      const doneCount = doneGoalIds.size;
+      const passCount = passGoalIds.size;
 
       const goalDetails: MemberGoalDetail[] = [
         ...todayGoalIds.map((gid) => ({
@@ -539,7 +541,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
           goalId: ig.goal_id,
           goalName: ig.goalName,
           isDone: false,
-          isPass: true, // 비활성 목표도 패스로 간주 (사용자 요청: "비활성 === 패스")
+          isPass: true,
           isActive: false,
         })),
       ];
@@ -549,8 +551,10 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         nickname: user?.nickname ?? '알 수 없음',
         profileImageUrl: user?.profile_image_url ?? null,
         totalGoals: total,
-        completedGoals: completedCount,
-        position: getPosition(completedCount, total),
+        completedGoals: doneCount + passCount,
+        doneGoals: doneCount,
+        passGoals: passCount,
+        position: getPosition(doneCount, total, passCount),
         goalDetails,
       });
     }
@@ -572,9 +576,16 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     const { data: userGoals } = await supabase
       .from('user_goals')
-      .select('goal_id, frequency, target_count, start_date')
+      .select('goal_id, frequency, target_count, start_date, end_date')
       .eq('user_id', userId)
       .eq('is_active', true);
+
+    // 목표 이름 조회
+    const goalIds = [...new Set((userGoals ?? []).map((ug: any) => ug.goal_id))];
+    const { data: goalRows } = goalIds.length > 0
+      ? await supabase.from('goals').select('id, name').in('id', goalIds)
+      : { data: [] as { id: string; name: string }[] };
+    const goalNameMap = new Map((goalRows ?? []).map((g: any) => [g.id, g.name as string]));
 
     const markings: CalendarDayMarking = {};
     const today = dayjs().format('YYYY-MM-DD');
@@ -582,27 +593,52 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = dayjs(startDate).date(d).format('YYYY-MM-DD');
-      if (dateStr > today) break;
 
-      // 해당 날짜에 유효한 목표 (start_date 이후 + frequency 규칙)
       const activeGoals = (userGoals ?? []).filter((ug: any) => {
         if (!isGoalActiveOnDate(ug, dateStr)) return false;
-        if (ug.frequency === 'daily') return true;
-        if (ug.frequency === 'weekly_count') return true; // weekly_count는 일단 모두 포함
         return true;
       });
 
       const totalGoals = activeGoals.length;
       if (totalGoals === 0) continue;
 
+      const goalNames = activeGoals.map((ug: any) => goalNameMap.get(ug.goal_id) ?? '목표');
+
+      // 미래 날짜: 목표 예정만 표시
+      if (dateStr > today) {
+        markings[dateStr] = {
+          marked: true,
+          dotColor: 'rgba(255, 107, 61, 0.35)',
+          checkinCount: 0,
+          dayStatus: 'future',
+          doneCount: 0,
+          passCount: 0,
+          totalGoals,
+          goalNames,
+        };
+        continue;
+      }
+
       const dayCheckins = (checkins ?? []).filter((c) => c.date === dateStr);
       const doneCount = dayCheckins.filter((c) => c.status === 'done' && !(c.memo && (c.memo as string).startsWith('[패스]'))).length;
-      const passCount = dayCheckins.filter((c) => c.status === 'pass' || (c.memo && (c.memo as string).startsWith('[패스]'))).length;
+      const explicitPassCount = dayCheckins.filter((c) => c.status === 'pass' || (c.memo && (c.memo as string).startsWith('[패스]'))).length;
+
+      // 자동 패스 계산: 주N회 목표 중 체크인 없는 것은 자동 패스 (과거 날짜만)
+      let autoPassCount = 0;
+      if (dateStr < today) {
+        activeGoals.forEach((ug: any) => {
+          if (ug.frequency !== 'weekly_count') return;
+          const hasCheckin = dayCheckins.some((c) => c.goal_id === ug.goal_id);
+          if (!hasCheckin) autoPassCount++;
+        });
+      }
+
+      const totalPassCount = explicitPassCount + autoPassCount;
 
       let dayStatus: 'all_done' | 'mixed' | 'mostly_fail' | 'partial' | 'none' = 'none';
-      if (doneCount + passCount >= totalGoals && doneCount > 0) {
-        dayStatus = passCount > 0 ? 'mixed' : 'all_done';
-      } else if (doneCount > 0 || passCount > 0) {
+      if (doneCount + totalPassCount >= totalGoals && doneCount > 0) {
+        dayStatus = totalPassCount > 0 ? 'mixed' : 'all_done';
+      } else if (doneCount > 0 || totalPassCount > 0) {
         dayStatus = 'partial';
       } else {
         dayStatus = 'mostly_fail';
@@ -611,11 +647,12 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       markings[dateStr] = {
         marked: true,
         dotColor: dayStatus === 'all_done' ? '#4ADE80' : dayStatus === 'mixed' ? '#FBBF24' : '#EF4444',
-        checkinCount: doneCount + passCount,
+        checkinCount: doneCount + totalPassCount,
         dayStatus,
         doneCount,
-        passCount,
+        passCount: totalPassCount,
         totalGoals,
+        goalNames,
       };
     }
 

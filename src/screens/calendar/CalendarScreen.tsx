@@ -237,7 +237,10 @@ export default function CalendarScreen() {
         marked: true,
         dotColor: m.dotColor,
         selected: date === selectedDate,
-        selectedColor: 'rgba(255, 107, 61, 0.18)',
+        selectedColor: date === selectedDate
+          ? 'rgba(255, 107, 61, 0.18)'
+          : undefined,
+        selectedTextColor: date === selectedDate ? '#FF6B3D' : undefined,
       };
     });
     if (selectedDate && !marks[selectedDate]) {
@@ -283,48 +286,63 @@ export default function CalendarScreen() {
         {/* ── 인증하기 버튼 ── */}
         <View style={styles.checkinButtonWrap}>
           <Button
-            title="인증하기"
+            title={isTodaySelected ? '인증하기' : '기록 보기'}
             onPress={handleCheckinPress}
-            // 오늘 날짜가 아니면(과거/미래) 인증 불가 (사용자 요청: 이전 날짜 기록 수정 불가)
-            disabled={!isTodaySelected}
             variant={isTodaySelected ? 'primary' : 'outline'}
           />
-          {!isTodaySelected && (
-            <Text style={styles.checkinButtonHint}>
-              오늘 날짜만 인증할 수 있어요
-            </Text>
-          )}
         </View>
 
         {/* ── 날짜 요약 ── */}
         <View style={styles.dateSummary}>
           <Text style={styles.dateSummaryTitle}>{formattedDate}</Text>
-          {selectedMarking && (
-            <View style={styles.statusRow}>
-              {STATUS_IMAGES[selectedMarking.dayStatus ?? 'none'] && (
-                <Image
-                  source={STATUS_IMAGES[selectedMarking.dayStatus ?? 'none']}
-                  style={styles.statusImage}
-                  resizeMode="contain"
-                />
-              )}
-              <Text style={styles.statusText}>
-                {(selectedMarking.passCount ?? 0) > 0 && ` ${selectedMarking.passCount}패스 · `}
-                {selectedMarking.doneCount ?? 0}완료
-                {' / '}{selectedMarking.totalGoals ?? 0}개 목표
-              </Text>
-              {selectedMarking.totalGoals && selectedMarking.totalGoals > 0 && (
-                <Text style={styles.percentText}>
-                  {Math.round(((selectedMarking.doneCount ?? 0) / ((selectedMarking.totalGoals ?? 1) - (selectedMarking.passCount ?? 0) || 1)) * 100)}%
-                </Text>
+          {selectedMarking && selectedMarking.dayStatus === 'future' ? (
+            <View>
+              <Text style={styles.futureLabel}>예정된 목표 {selectedMarking.totalGoals}개</Text>
+              {(selectedMarking.goalNames ?? []).length > 0 && (
+                <View style={styles.goalNameChips}>
+                  {(selectedMarking.goalNames ?? []).map((name, i) => (
+                    <View key={i} style={styles.goalNameChip}>
+                      <Text style={styles.goalNameChipText}>{name}</Text>
+                    </View>
+                  ))}
+                </View>
               )}
             </View>
-          )}
-          {!selectedMarking && !isFuture && (
-            <Text style={styles.noDataText}>기록 없음</Text>
-          )}
-          {isFuture && (
-            <Text style={styles.noDataText}>아직 오지 않은 날이에요</Text>
+          ) : selectedMarking ? (
+            <View>
+              <View style={styles.statusRow}>
+                {STATUS_IMAGES[selectedMarking.dayStatus ?? 'none'] && (
+                  <Image
+                    source={STATUS_IMAGES[selectedMarking.dayStatus ?? 'none']}
+                    style={styles.statusImage}
+                    resizeMode="contain"
+                  />
+                )}
+                <Text style={styles.statusText}>
+                  {(selectedMarking.passCount ?? 0) > 0 && `${selectedMarking.passCount}패스 · `}
+                  {selectedMarking.doneCount ?? 0}완료
+                  {' / '}{selectedMarking.totalGoals ?? 0}개 목표
+                </Text>
+                {selectedMarking.totalGoals && selectedMarking.totalGoals > 0 && (
+                  <Text style={styles.percentText}>
+                    {Math.round(((selectedMarking.doneCount ?? 0) / ((selectedMarking.totalGoals ?? 1) - (selectedMarking.passCount ?? 0) || 1)) * 100)}%
+                  </Text>
+                )}
+              </View>
+              {(selectedMarking.goalNames ?? []).length > 0 && (
+                <View style={styles.goalNameChips}>
+                  {(selectedMarking.goalNames ?? []).map((name, i) => (
+                    <View key={i} style={styles.goalNameChip}>
+                      <Text style={styles.goalNameChipText}>{name}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : (
+            <Text style={styles.noDataText}>
+              {isFuture ? '아직 오지 않은 날이에요' : '기록 없음'}
+            </Text>
           )}
         </View>
 
@@ -544,6 +562,23 @@ const styles = StyleSheet.create({
   },
   noDataText: {
     fontSize: 13, color: 'rgba(26,26,26,0.30)', fontWeight: '500',
+  },
+  futureLabel: {
+    fontSize: 13, fontWeight: '600', color: 'rgba(255, 107, 61, 0.65)', marginBottom: 8,
+  },
+  goalNameChips: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8,
+  },
+  goalNameChip: {
+    backgroundColor: 'rgba(255, 107, 61, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 61, 0.14)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  goalNameChipText: {
+    fontSize: 11, fontWeight: '600', color: 'rgba(26,26,26,0.50)',
   },
 
   // ── 팀 멤버 섹션 ──

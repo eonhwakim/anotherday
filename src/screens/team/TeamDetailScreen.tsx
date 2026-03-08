@@ -157,11 +157,15 @@ export default function TeamDetailScreen() {
         const myGoalStatuses: MemberGoalStatus[] = myGoals.map(ug => {
           const gCheckins = relevantCheckins.filter(c => c.goal_id === ug.goal_id);
           const gDone = gCheckins.filter(c => c.status === 'done').length;
-          const gPass = gCheckins.filter(c => c.status === 'pass').length;
+          const gExplicitPass = gCheckins.filter(c => c.status === 'pass').length;
           const goalStart = ug.start_date && ug.start_date > startOfMonth ? ug.start_date : startOfMonth;
           const countEnd = todayStr < endOfMonth ? todayStr : endOfMonth;
           const activeDays = goalStart <= countEnd ? dayjs(countEnd).diff(dayjs(goalStart), 'day') : 0;
-          const gFail = Math.max(0, activeDays - gDone - gPass);
+          const noCheckinDays = Math.max(0, activeDays - gDone - gExplicitPass);
+          // 매일 목표: 미인증 = 미달 / 주N회 목표: 미인증 = 자동 패스
+          const isWeekly = ug.frequency === 'weekly_count';
+          const gPass = gExplicitPass + (isWeekly ? noCheckinDays : 0);
+          const gFail = isWeekly ? 0 : noCheckinDays;
           return {
             goalId: ug.goal_id,
             name: teamGoalsMap.get(ug.goal_id) || 'Unknown',
