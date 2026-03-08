@@ -132,6 +132,7 @@ export default function TeamDetailScreen() {
       const teamUserGoals = (userGoalsData as UserGoal[] || []).filter(ug => {
         if (!teamGoalsMap.has(ug.goal_id)) return false;
         if (ug.start_date && ug.start_date > endOfMonth) return false;
+        if (ug.end_date && ug.end_date < startOfMonth) return false;
         return true;
       });
 
