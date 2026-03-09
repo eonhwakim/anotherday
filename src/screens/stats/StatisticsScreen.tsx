@@ -20,7 +20,7 @@ import {
   GoalStat, WeekData, WeeklyPaceGoal,
   dayjsMax, dayjsMin, isPassCheckin, isDoneCheckin,
   AreaChart, MountainBg, ProgressBar,
-  getCalendarWeekRanges, getTrendInsight,
+  getCalendarWeekRanges, getGoalWeekRanges, getTrendInsight,
 } from '../../components/stats/StatsShared';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -130,16 +130,16 @@ export default function StatisticsScreen() {
 
     weeklyGoals.forEach(ug => {
       const target = ug.target_count || 1;
+      const gs = ug.start_date || startDate;
+      const ge = ug.end_date || monthEnd.format('YYYY-MM-DD');
+      const goalWeeks = getGoalWeekRanges(yearMonth, gs, ge, target);
       let totalDoneG = 0, totalTarget = 0;
-      const { ranges } = getCalendarWeekRanges(yearMonth);
-      ranges.forEach(wr => {
-        const gs = ug.start_date || startDate;
-        const effS = dayjsMax(wr.s, dayjs(gs));
-        const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
-        if (effS.isAfter(effE)) return;
+      goalWeeks.forEach(gw => {
+        const effE = dayjsMin(gw.e, dayjs(today));
+        if (gw.s.isAfter(effE)) return;
         totalTarget += target;
         const wCheckins = checkins.filter(c =>
-          c.goal_id === ug.goal_id && c.date >= effS.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD')
+          c.goal_id === ug.goal_id && c.date >= gw.s.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD')
         );
         totalDoneG += wCheckins.filter(isDoneCheckin).length;
       });
@@ -192,19 +192,34 @@ export default function StatisticsScreen() {
     return { goals: paceGoals, overallRate, weekLabel: `${weekMon.format('M/D')}~${weekMon.add(6, 'day').format('M/D')}` };
   }, [goals, checkins, allGoalMap, today]);
 
-  // ─── 3. Trend Data (calendar-style weeks: 1일~첫째 일요일, Mon~Sun, ..., 마지막 Mon~말일)
+  // ─── 3. Trend Data (calendar-style weeks, 부분주는 말일 기준 합산)
   const trendData = useMemo(() => {
     const weeks: WeekData[] = [];
     const { ranges } = getCalendarWeekRanges(yearMonth);
 
-    ranges.forEach((wr, idx) => {
+    // 마지막 주가 3일 이하면 이전 주에 합산 (월 경계 부분주 처리)
+    const mergedRanges = [...ranges];
+    if (mergedRanges.length > 1) {
+      const lastR = mergedRanges[mergedRanges.length - 1];
+      const lastClipped = dayjsMin(lastR.e, monthEnd);
+      const lastDays = lastClipped.diff(lastR.s, 'day') + 1;
+      if (lastDays <= 3) {
+        const prev = mergedRanges[mergedRanges.length - 2];
+        mergedRanges[mergedRanges.length - 2] = { s: prev.s, e: lastClipped };
+        mergedRanges.pop();
+      }
+    }
+
+    mergedRanges.forEach((wr, idx) => {
       const effS = wr.s;
-      const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
+      const clippedE = dayjsMin(wr.e, monthEnd);
+      const effE = dayjsMin(clippedE, dayjs(today));
       if (effS.isAfter(dayjs(today))) return;
 
       const weekDays = effE.diff(effS, 'day') + 1;
       let weekDone = 0, weekPass = 0;
       const weekRates: number[] = [];
+      const isMerged = clippedE.diff(effS, 'day') + 1 > 7;
 
       goals.forEach(ug => {
         const gStartStr = ug.start_date || startDate;
@@ -228,7 +243,7 @@ export default function StatisticsScreen() {
           if (days > 0) weekRates.push(done / days * 100);
         } else {
           const t = ug.target_count || 1;
-          weekRates.push(done / t * 100);
+          weekRates.push(Math.min(done / t * 100, 200));
         }
       });
 
@@ -238,11 +253,12 @@ export default function StatisticsScreen() {
 
       weeks.push({
         label: `${idx + 1}주차`,
-        range: `${effS.format('M/D')}~${effE.format('M/D')}`,
+        range: `${effS.format('M/D')}~${dayjsMin(clippedE, dayjs(today)).format('M/D')}`,
         days: weekDays,
         rate,
         doneCount: weekDone,
         passCount: weekPass,
+        isMerged,
       });
     });
     return weeks;
@@ -273,24 +289,24 @@ export default function StatisticsScreen() {
         return { goalId: ug.goal_id, name: allGoalMap.get(ug.goal_id) ?? '목표', frequency: 'daily' as const, targetCount: null, startDate: ug.start_date || null, done, pass: 0, fail, rate };
       } else {
         const target = ug.target_count || 1;
+        const gs = ug.start_date || startDate;
+        const ge = ug.end_date || monthEnd.format('YYYY-MM-DD');
+        const goalWeeks = getGoalWeekRanges(yearMonth, gs, ge, target);
         let totalTarget = 0;
-        const { ranges } = getCalendarWeekRanges(yearMonth);
-        ranges.forEach(wr => {
-          const gs = ug.start_date || startDate;
-          const effS = dayjsMax(wr.s, dayjs(gs));
-          const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
-          if (effS.isAfter(effE)) return;
+        goalWeeks.forEach(gw => {
+          const effE = dayjsMin(gw.e, dayjs(today));
+          if (gw.s.isAfter(effE)) return;
 
           const wCk = checkins.filter(c =>
-            c.goal_id === ug.goal_id && c.date >= effS.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD')
+            c.goal_id === ug.goal_id && c.date >= gw.s.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD')
           );
           done += wCk.filter(isDoneCheckin).length;
           const ep = wCk.filter(isPassCheckin).length;
-          const wd = effE.diff(effS, 'day') + 1;
+          const wd = effE.diff(gw.s, 'day') + 1;
           pass += ep + Math.max(0, wd - wCk.filter(isDoneCheckin).length - ep);
 
           totalTarget += target;
-          const weekOver = wr.e.format('YYYY-MM-DD') <= today;
+          const weekOver = gw.e.format('YYYY-MM-DD') <= today;
           if (weekOver) fail += Math.max(0, target - wCk.filter(isDoneCheckin).length);
         });
         const rate = totalTarget > 0 ? Math.round(done / totalTarget * 100) : 0;
@@ -312,13 +328,30 @@ export default function StatisticsScreen() {
   const trendInsight = useMemo(() => getTrendInsight(trendData), [trendData]);
 
   // ─── 3-1. Week Detail (selected week breakdown) ────────────
+
+  const mergedRangesForDetail = useMemo(() => {
+    const { ranges } = getCalendarWeekRanges(yearMonth);
+    const merged = [...ranges];
+    if (merged.length > 1) {
+      const lastR = merged[merged.length - 1];
+      const lastClipped = dayjsMin(lastR.e, monthEnd);
+      const lastDays = lastClipped.diff(lastR.s, 'day') + 1;
+      if (lastDays <= 3) {
+        const prev = merged[merged.length - 2];
+        merged[merged.length - 2] = { s: prev.s, e: lastClipped };
+        merged.pop();
+      }
+    }
+    return merged;
+  }, [yearMonth, monthEnd]);
+
   const weekDetail = useMemo(() => {
     if (selectedWeekIdx === null) return null;
-    const { ranges } = getCalendarWeekRanges(yearMonth);
-    const wr = ranges[selectedWeekIdx];
+    const wr = mergedRangesForDetail[selectedWeekIdx];
     if (!wr) return null;
 
-    const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
+    const clippedE = dayjsMin(wr.e, monthEnd);
+    const effE = dayjsMin(clippedE, dayjs(today));
     if (wr.s.isAfter(dayjs(today))) return null;
 
     const days: string[] = [];
@@ -358,12 +391,13 @@ export default function StatisticsScreen() {
         });
 
         const doneCount = dayEntries.filter(e => e.status === 'done').length;
+        const achieved = isWeekly && doneCount >= (ug.target_count || 1);
 
-        return { goalId: ug.goal_id, name, isWeekly, target: isWeekly ? (ug.target_count || 1) : activeDays.length, doneCount, dayEntries };
+        return { goalId: ug.goal_id, name, isWeekly, target: isWeekly ? (ug.target_count || 1) : activeDays.length, doneCount, dayEntries, achieved };
       });
 
     return goalBreakdowns;
-  }, [selectedWeekIdx, goals, checkins, allGoalMap, yearMonth, startDate, today, monthEnd]);
+  }, [selectedWeekIdx, mergedRangesForDetail, goals, checkins, allGoalMap, yearMonth, startDate, today, monthEnd]);
 
   // ─── Data Loading ─────────────────────────────────────────
   const loadReviews = async () => {
@@ -545,13 +579,26 @@ export default function StatisticsScreen() {
                     onPress={() => setSelectedWeekIdx(prev => prev === idx ? null : idx)}
                     activeOpacity={0.7}
                   >
-                    <Text style={s.trendLegendLabel}>{w.label} <Text style={s.trendLegendDays}>({w.days}일)</Text></Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Text style={s.trendLegendLabel}>{w.label} <Text style={s.trendLegendDays}>({w.days}일)</Text></Text>
+                      {w.isMerged && (
+                        <View style={s.mergedBadge}>
+                          <Text style={s.mergedBadgeText}>합산</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={s.trendLegendRange}>{w.range}</Text>
-                    <Text style={s.trendLegendVal}>인증 {w.doneCount} · 패스 {w.passCount}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <Text style={s.trendLegendVal}>인증 {w.doneCount} · 패스 {w.passCount}</Text>
+                      {w.rate >= 100 && <Text style={s.achievedBadgeText}>달성</Text>}
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
-              {trendData.some(w => w.days !== 7) && (
+              {trendData.some(w => w.isMerged) && (
+                <Text style={s.trendNote}>* 달성 가능 일수가 부족한 주는 인접 주에 합산됩니다</Text>
+              )}
+              {trendData.some(w => w.days !== 7 && !w.isMerged) && (
                 <Text style={s.trendNote}>* 첫째 주와 마지막 주는 7일이 아닐 수 있어요</Text>
               )}
               {weekDetail && weekDetail.length > 0 && (
@@ -563,10 +610,18 @@ export default function StatisticsScreen() {
                     <View key={g.goalId} style={s.weekDetailGoal}>
                       <View style={s.weekDetailGoalHead}>
                         <Text style={s.weekDetailGoalName} numberOfLines={1}>{g.name}</Text>
-                        <Text style={s.weekDetailGoalCount}>
-                          {g.doneCount}/{g.target}
-                          {g.doneCount >= g.target ? ' ✓' : ''}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={s.weekDetailGoalCount}>
+                            {g.doneCount}/{g.target}
+                          </Text>
+                          {g.achieved !== undefined && (
+                            <View style={[s.weekAchieveBadge, g.achieved ? s.weekAchieved : s.weekFailed]}>
+                              <Text style={[s.weekAchieveText, g.achieved ? { color: '#15803d' } : { color: '#b91c1c' }]}>
+                                {g.achieved ? '달성' : '미달'}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                       <View style={s.weekDetailDays}>
                         {g.dayEntries.map(entry => (
@@ -815,6 +870,9 @@ const s = StyleSheet.create({
   trendLegendDays: { fontSize: 10, fontWeight: '400', color: 'rgba(26,26,26,0.35)' },
   trendLegendVal: { fontSize: 10, color: 'rgba(26,26,26,0.45)', marginTop: 2 },
   trendLegendItemActive: { borderWidth: 1.5, borderColor: '#FF6B3D' },
+  mergedBadge: { backgroundColor: 'rgba(59,130,246,0.10)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3 },
+  mergedBadgeText: { fontSize: 8, fontWeight: '700', color: '#3B82F6' },
+  achievedBadgeText: { fontSize: 9, fontWeight: '700', color: '#15803d' },
   trendNote: { fontSize: 10, color: 'rgba(26,26,26,0.30)', marginTop: 6, textAlign: 'center', fontStyle: 'italic' },
 
   weekDetailWrap: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
@@ -823,6 +881,10 @@ const s = StyleSheet.create({
   weekDetailGoalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   weekDetailGoalName: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', flex: 1 },
   weekDetailGoalCount: { fontSize: 12, fontWeight: '700', color: '#FF6B3D' },
+  weekAchieveBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  weekAchieved: { backgroundColor: 'rgba(22,163,74,0.10)' },
+  weekFailed: { backgroundColor: 'rgba(239,68,68,0.10)' },
+  weekAchieveText: { fontSize: 10, fontWeight: '700' },
   weekDetailDays: { gap: 4 },
   weekDetailDay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(0,0,0,0.015)', borderRadius: 6 },
   weekDetailDayLabel: { fontSize: 11, color: 'rgba(26,26,26,0.55)', fontWeight: '500' },

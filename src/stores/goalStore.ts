@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { useAuthStore } from './authStore';
 import { supabase } from '../lib/supabaseClient';
 import type {
   Goal,
@@ -30,8 +29,8 @@ function getPosition(done: number, total: number, pass: number = 0): MountainPos
 /** 주의 시작 월요일 (dayjs 기준) */
 function getWeekMonday(dateStr: string): string {
   const d = dayjs(dateStr);
-  const day = d.day(); // 0=일, 1=월, ...
-  const diff = day === 0 ? 6 : day - 1; // 월요일 기준 offset
+  const day = d.day();
+  const diff = day === 0 ? 6 : day - 1;
   return d.subtract(diff, 'day').format('YYYY-MM-DD');
 }
 
@@ -42,42 +41,11 @@ function isGoalActiveOnDate(ug: any, dateStr: string): boolean {
   return true;
 }
 
-/** 주 N회 목표가 연습 주인지 (생성 주와 같은 주) */
-function isPracticeWeek(startDate: string, dateStr: string): boolean {
-  if (!startDate) return false;
-  return getWeekMonday(startDate) === getWeekMonday(dateStr);
-}
-
-/**
- * 주 N회 목표의 이번 주 완료 횟수를 세어서,
- * 오늘 목표에 포함해야 하는지 판별
- */
-async function getWeekDoneCount(
-  userId: string,
-  goalId: string,
-  dateStr: string,
-): Promise<number> {
-  const monday = getWeekMonday(dateStr);
-  const sunday = dayjs(monday).add(6, 'day').format('YYYY-MM-DD');
-
-  const { count } = await supabase
-    .from('checkins')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('goal_id', goalId)
-    .eq('status', 'done')
-    .gte('date', monday)
-    .lte('date', sunday);
-
-  return count ?? 0;
-}
-
 // ─── Store Interface ──────────────────────────────────────────
 
 interface GoalState {
   teamGoals: Goal[];
   myGoals: UserGoal[];
-  myGoalsForDisplay: UserGoal[];
   todayCheckins: Checkin[];
   memberProgress: MemberProgress[];
   calendarMarkings: CalendarDayMarking;
@@ -89,7 +57,6 @@ interface GoalState {
 
   fetchTeamGoals: (teamId: string, userId?: string) => Promise<void>;
   fetchMyGoals: (userId: string) => Promise<void>;
-  fetchMyGoalsForDisplay: (userId: string, goalIds: string[]) => Promise<void>;
   fetchLastMonthGoals: (userId: string) => Promise<void>;
   copyGoalsFromLastMonth: (userId: string) => Promise<void>;
   fetchTodayCheckins: (userId: string) => Promise<void>;
@@ -101,7 +68,6 @@ interface GoalState {
     memo?: string | null;
     status?: 'done' | 'pass';
   }) => Promise<boolean>;
-  deleteCheckin: (checkinId: string) => Promise<boolean>;
   toggleUserGoal: (userId: string, goalId: string) => Promise<void>;
   addGoal: (params: {
     teamId?: string;
@@ -116,6 +82,7 @@ interface GoalState {
   fetchCheckinsForDate: (userId: string, date: string) => Promise<void>;
   fetchMonthlyCheckins: (userId: string, yearMonth: string) => Promise<void>;
   fetchMemberDateCheckins: (teamId: string | undefined, userId: string, date: string) => Promise<void>;
+  deleteCheckin: (checkinId: string) => Promise<void>;
   toggleReaction: (checkinId: string, user: { id: string; nickname: string; profile_image_url: string | null }) => Promise<void>;
   /** 스토어 초기화 (로그아웃 시) */
   reset: () => void;
@@ -126,7 +93,6 @@ interface GoalState {
 export const useGoalStore = create<GoalState>((set, get) => ({
   teamGoals: [],
   myGoals: [],
-  myGoalsForDisplay: [],
   todayCheckins: [],
   memberProgress: [],
   calendarMarkings: {},
@@ -218,22 +184,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     set({ myGoals: data ?? [] });
   },
 
-  // ── 목표 설정 UI용: 활성+비활성 모두 (오늘 제외 토글 표시용) ──
-  fetchMyGoalsForDisplay: async (userId, goalIds) => {
-    if (goalIds.length === 0) {
-      set({ myGoalsForDisplay: [] });
-      return;
-    }
-    const today = dayjs().format('YYYY-MM-DD');
-    const { data } = await supabase
-      .from('user_goals')
-      .select('*')
-      .eq('user_id', userId)
-      .in('goal_id', goalIds)
-      .or(`end_date.is.null,end_date.gte.${today}`);
-    set({ myGoalsForDisplay: data ?? [] });
-  },
-
   // ── 오늘 체크인 로드 ──
   fetchTodayCheckins: async (userId) => {
     const today = dayjs().format('YYYY-MM-DD');
@@ -270,32 +220,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     if (error) return false;
     await get().fetchTodayCheckins(userId);
-    // 홈 화면 갱신을 위해 멤버 진행상황도 다시 로드
-    await get().fetchMemberProgress(undefined, userId);
-    return true;
-  },
-
-  // ── 체크인 삭제 ──
-  deleteCheckin: async (checkinId: string) => {
-    const { error } = await supabase
-      .from('checkins')
-      .delete()
-      .eq('id', checkinId);
-
-    if (error) {
-      console.error('deleteCheckin error:', error);
-      return false;
-    }
-    
-    // 홈 화면 갱신을 위해 멤버 진행상황도 다시 로드 (userId를 모르므로 현재 상태에서 유추하거나, 파라미터로 받아야 함)
-    // deleteCheckin 호출 시 userId를 넘겨주는 것이 좋지만, 인터페이스 변경이 크므로
-    // 일단 전체 리프레시나, 호출처에서 refresh를 하도록 유도.
-    // 하지만 createCheckin처럼 store 내부에서 해결하는게 깔끔함.
-    // 여기서는 deleteCheckin이 호출되는 상황(CheckinModal 등)에서 fetchMemberProgress를 호출하도록 하는게 나을 수도 있지만,
-    // 일관성을 위해 여기서 처리하고 싶음.
-    // 단, userId를 모름.
-    // CheckinModal에서 deleteCheckin 호출 후 onCheckinDone을 부르고, 거기서 fetchMemberProgress를 호출하는지 확인.
-    
     return true;
   },
 
@@ -321,11 +245,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     if (updateErr) console.error('toggleUserGoal user_goals update error:', updateErr);
 
     await get().fetchMyGoals(userId);
-    const teamGoals = get().teamGoals;
-    const myVisibleGoalIds = teamGoals.filter((g) => g.owner_id === userId).map((g) => g.id);
-    if (myVisibleGoalIds.length > 0) {
-      await get().fetchMyGoalsForDisplay(userId, myVisibleGoalIds);
-    }
   },
 
   // ── 목표 추가 ──
@@ -420,13 +339,17 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .eq('id', goalId);
     if (goalErr) console.error('removeTeamGoal goals delete error:', goalErr);
 
-    await get().fetchTeamGoals(teamId, userId);
-    await get().fetchMyGoals(userId);
+    await Promise.all([
+      get().fetchTeamGoals(teamId, userId),
+      get().fetchMyGoals(userId),
+    ]);
   },
 
   // ── 멤버 진행상황 (산 애니메이션) ──
   fetchMemberProgress: async (teamId, userId) => {
     const today = dayjs().format('YYYY-MM-DD');
+    const monday = getWeekMonday(today);
+    const sunday = dayjs(monday).add(6, 'day').format('YYYY-MM-DD');
 
     let members: any[] = [];
     if (teamId) {
@@ -455,45 +378,52 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       const user = member.user as any;
       const uid = member.user_id || user.id;
 
-      // 활성/비활성 구분 없이 모든 내 목표 조회
-      // (사용자 요청: 어제 패스(비활성) 처리된 목표도 오늘 다시 '할 일'로 떠야 함 -> is_active 필터 제거)
       const ugQuery = supabase
         .from('user_goals')
-        .select('goal_id, frequency, target_count, start_date, is_active, goal:goals!inner(team_id, owner_id)')
+        .select('goal_id, frequency, target_count, start_date, end_date, goal:goals!inner(team_id, owner_id)')
         .eq('user_id', uid)
+        .eq('is_active', true)
         .eq('goal.owner_id', uid);
       if (teamId) ugQuery.eq('goal.team_id', teamId);
-      
       const { data: userGoalsRaw } = await ugQuery;
-      
-      // userGoals: 모든 목표 (활성 + 비활성)
       const userGoals = (userGoalsRaw ?? []).map((ug: any) => ({
         goal_id: ug.goal_id,
         frequency: ug.frequency,
         target_count: ug.target_count,
         start_date: ug.start_date,
-        is_active: ug.is_active,
+        end_date: ug.end_date,
       }));
 
-      // inactiveGoals 쿼리는 제거 (위에서 다 가져왔으므로)
-      const inactiveGoals: any[] = [];
+      // 이번 주(월~일) done 체크인을 한 번에 조회 (N+1 방지)
+      const weeklyGoalIds = userGoals
+        .filter(ug => ug.frequency === 'weekly_count' && isGoalActiveOnDate(ug, today))
+        .map(ug => ug.goal_id);
 
-      // 오늘 해당되는 목표 필터링
+      const weekDoneMap = new Map<string, number>();
+      if (weeklyGoalIds.length > 0) {
+        const { data: weekCheckins } = await supabase
+          .from('checkins')
+          .select('goal_id')
+          .eq('user_id', uid)
+          .eq('status', 'done')
+          .gte('date', monday)
+          .lte('date', sunday)
+          .in('goal_id', weeklyGoalIds);
+        (weekCheckins ?? []).forEach((c: any) => {
+          weekDoneMap.set(c.goal_id, (weekDoneMap.get(c.goal_id) ?? 0) + 1);
+        });
+      }
+
       const todayGoalIds: string[] = [];
-      for (const ug of userGoals ?? []) {
+      for (const ug of userGoals) {
         if (!isGoalActiveOnDate(ug, today)) continue;
 
         if (ug.frequency === 'daily') {
           todayGoalIds.push(ug.goal_id);
         } else if (ug.frequency === 'weekly_count') {
-          const practice = isPracticeWeek(ug.start_date, today);
-          if (practice) {
-            todayGoalIds.push(ug.goal_id); // 연습 주에도 목표에 포함
-          } else {
-            const weekDone = await getWeekDoneCount(uid, ug.goal_id, today);
-            if (weekDone < (ug.target_count ?? 1)) {
-              todayGoalIds.push(ug.goal_id);
-            }
+          const weekDone = weekDoneMap.get(ug.goal_id) ?? 0;
+          if (weekDone < (ug.target_count ?? 1)) {
+            todayGoalIds.push(ug.goal_id);
           }
         } else {
           todayGoalIds.push(ug.goal_id);
@@ -502,13 +432,11 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
       const total = todayGoalIds.length;
 
-      // 목표 이름 조회
       const { data: goalRows } = total > 0
         ? await supabase.from('goals').select('id, name').in('id', todayGoalIds)
         : { data: [] as { id: string; name: string }[] };
       const goalNameMap = new Map((goalRows ?? []).map((g: any) => [g.id, g.name as string]));
 
-      // 오늘 체크인
       const { data: todayCheckins } = await supabase
         .from('checkins')
         .select('goal_id, status, memo')
@@ -529,22 +457,13 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       const doneCount = doneGoalIds.size;
       const passCount = passGoalIds.size;
 
-      const goalDetails: MemberGoalDetail[] = [
-        ...todayGoalIds.map((gid) => ({
-          goalId: gid,
-          goalName: goalNameMap.get(gid) ?? '목표',
-          isDone: doneGoalIds.has(gid),
-          isPass: passGoalIds.has(gid),
-          isActive: true,
-        })),
-        ...inactiveGoals.map((ig) => ({
-          goalId: ig.goal_id,
-          goalName: ig.goalName,
-          isDone: false,
-          isPass: true,
-          isActive: false,
-        })),
-      ];
+      const goalDetails: MemberGoalDetail[] = todayGoalIds.map((gid) => ({
+        goalId: gid,
+        goalName: goalNameMap.get(gid) ?? '목표',
+        isDone: doneGoalIds.has(gid),
+        isPass: passGoalIds.has(gid),
+        isActive: true,
+      }));
 
       progress.push({
         userId: uid,
@@ -576,16 +495,9 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     const { data: userGoals } = await supabase
       .from('user_goals')
-      .select('goal_id, frequency, target_count, start_date, end_date')
+      .select('goal_id, frequency, target_count, start_date')
       .eq('user_id', userId)
       .eq('is_active', true);
-
-    // 목표 이름 조회
-    const goalIds = [...new Set((userGoals ?? []).map((ug: any) => ug.goal_id))];
-    const { data: goalRows } = goalIds.length > 0
-      ? await supabase.from('goals').select('id, name').in('id', goalIds)
-      : { data: [] as { id: string; name: string }[] };
-    const goalNameMap = new Map((goalRows ?? []).map((g: any) => [g.id, g.name as string]));
 
     const markings: CalendarDayMarking = {};
     const today = dayjs().format('YYYY-MM-DD');
@@ -593,52 +505,27 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = dayjs(startDate).date(d).format('YYYY-MM-DD');
+      if (dateStr > today) break;
 
+      // 해당 날짜에 유효한 목표 (start_date 이후 + frequency 규칙)
       const activeGoals = (userGoals ?? []).filter((ug: any) => {
         if (!isGoalActiveOnDate(ug, dateStr)) return false;
+        if (ug.frequency === 'daily') return true;
+        if (ug.frequency === 'weekly_count') return true; // weekly_count는 일단 모두 포함
         return true;
       });
 
       const totalGoals = activeGoals.length;
       if (totalGoals === 0) continue;
 
-      const goalNames = activeGoals.map((ug: any) => goalNameMap.get(ug.goal_id) ?? '목표');
-
-      // 미래 날짜: 목표 예정만 표시
-      if (dateStr > today) {
-        markings[dateStr] = {
-          marked: true,
-          dotColor: 'rgba(255, 107, 61, 0.35)',
-          checkinCount: 0,
-          dayStatus: 'future',
-          doneCount: 0,
-          passCount: 0,
-          totalGoals,
-          goalNames,
-        };
-        continue;
-      }
-
       const dayCheckins = (checkins ?? []).filter((c) => c.date === dateStr);
       const doneCount = dayCheckins.filter((c) => c.status === 'done' && !(c.memo && (c.memo as string).startsWith('[패스]'))).length;
-      const explicitPassCount = dayCheckins.filter((c) => c.status === 'pass' || (c.memo && (c.memo as string).startsWith('[패스]'))).length;
-
-      // 자동 패스 계산: 주N회 목표 중 체크인 없는 것은 자동 패스 (과거 날짜만)
-      let autoPassCount = 0;
-      if (dateStr < today) {
-        activeGoals.forEach((ug: any) => {
-          if (ug.frequency !== 'weekly_count') return;
-          const hasCheckin = dayCheckins.some((c) => c.goal_id === ug.goal_id);
-          if (!hasCheckin) autoPassCount++;
-        });
-      }
-
-      const totalPassCount = explicitPassCount + autoPassCount;
+      const passCount = dayCheckins.filter((c) => c.status === 'pass' || (c.memo && (c.memo as string).startsWith('[패스]'))).length;
 
       let dayStatus: 'all_done' | 'mixed' | 'mostly_fail' | 'partial' | 'none' = 'none';
-      if (doneCount + totalPassCount >= totalGoals && doneCount > 0) {
-        dayStatus = totalPassCount > 0 ? 'mixed' : 'all_done';
-      } else if (doneCount > 0 || totalPassCount > 0) {
+      if (doneCount + passCount >= totalGoals && doneCount > 0) {
+        dayStatus = passCount > 0 ? 'mixed' : 'all_done';
+      } else if (doneCount > 0 || passCount > 0) {
         dayStatus = 'partial';
       } else {
         dayStatus = 'mostly_fail';
@@ -647,12 +534,11 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       markings[dateStr] = {
         marked: true,
         dotColor: dayStatus === 'all_done' ? '#4ADE80' : dayStatus === 'mixed' ? '#FBBF24' : '#EF4444',
-        checkinCount: doneCount + totalPassCount,
+        checkinCount: doneCount + passCount,
         dayStatus,
         doneCount,
-        passCount: totalPassCount,
+        passCount,
         totalGoals,
-        goalNames,
       };
     }
 
@@ -749,6 +635,12 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     set({ memberDateCheckins: summaries });
   },
 
+  // ── 체크인 삭제 ──
+  deleteCheckin: async (checkinId) => {
+    const { error } = await supabase.from('checkins').delete().eq('id', checkinId);
+    if (error) console.error('deleteCheckin error:', error);
+  },
+
   // ── 리액션 토글 (좋아요) - 낙관적 업데이트 적용 ──
   toggleReaction: async (checkinId, user) => {
     const userId = user.id;
@@ -824,7 +716,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     set({
       teamGoals: [],
       myGoals: [],
-      myGoalsForDisplay: [],
       todayCheckins: [],
       memberProgress: [],
       calendarMarkings: {},

@@ -33,6 +33,7 @@ export interface WeekData {
   rate: number;
   doneCount: number;
   passCount: number;
+  isMerged?: boolean;
 }
 
 export interface WeeklyPaceGoal {
@@ -164,6 +165,63 @@ export function getCalendarWeekRanges(yearMonth: string) {
     cursor = cursor.add(1, 'week');
   }
   return { ranges, monthEnd };
+}
+
+// ─── Goal-aware week ranges (부분주 합산) ───────────────────
+
+export interface GoalWeekRange {
+  s: dayjs.Dayjs;
+  e: dayjs.Dayjs;
+  label: string;
+  activeDays: number;
+  isMerged: boolean;
+}
+
+/**
+ * 주N회 목표의 통계용 주차 범위 계산.
+ * 활성일이 targetCount 미만인 부분 주는 인접 주에 합산.
+ */
+export function getGoalWeekRanges(
+  yearMonth: string,
+  goalStart: string,
+  goalEnd: string,
+  targetCount: number,
+): GoalWeekRange[] {
+  const { ranges, monthEnd } = getCalendarWeekRanges(yearMonth);
+  const gS = dayjs(goalStart);
+  const gE = dayjsMin(dayjs(goalEnd), monthEnd);
+  const todayD = dayjs();
+
+  const raw: { s: dayjs.Dayjs; e: dayjs.Dayjs; activeDays: number }[] = [];
+  for (const wr of ranges) {
+    const effS = dayjsMax(dayjsMax(wr.s, gS), dayjs(`${yearMonth}-01`));
+    const effE = dayjsMin(dayjsMin(wr.e, gE), monthEnd);
+    if (effS.isAfter(effE)) continue;
+    const activeDays = effE.diff(effS, 'day') + 1;
+    raw.push({ s: effS, e: effE, activeDays });
+  }
+
+  if (raw.length === 0) return [];
+
+  // 부분주 합산: 첫 주 activeDays < targetCount → 다음 주에 합산
+  while (raw.length > 1 && raw[0].activeDays < targetCount) {
+    raw[1] = { s: raw[0].s, e: raw[1].e, activeDays: raw[0].activeDays + raw[1].activeDays };
+    raw.splice(0, 1);
+  }
+  // 부분주 합산: 마지막 주 activeDays < targetCount → 이전 주에 합산
+  while (raw.length > 1 && raw[raw.length - 1].activeDays < targetCount) {
+    const last = raw.length - 1;
+    raw[last - 1] = { s: raw[last - 1].s, e: raw[last].e, activeDays: raw[last - 1].activeDays + raw[last].activeDays };
+    raw.splice(last, 1);
+  }
+
+  return raw.map((r, i) => ({
+    s: r.s,
+    e: r.e,
+    label: `${i + 1}주차`,
+    activeDays: r.activeDays,
+    isMerged: r.activeDays > 7,
+  }));
 }
 
 // ─── Trend Insight Message ──────────────────────────────────

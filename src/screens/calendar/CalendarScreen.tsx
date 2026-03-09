@@ -39,8 +39,6 @@ export default function CalendarScreen() {
     fetchMyGoals,
     fetchMonthlyCheckins,
     fetchMemberProgress,
-    fetchMyGoalsForDisplay,
-    myGoalsForDisplay,
     toggleReaction,
   } = useGoalStore();
 
@@ -100,7 +98,7 @@ export default function CalendarScreen() {
 
   // ── 인증 모달용: 활성+비활성(오늘 제외) 모두 포함 (패스 토글 가능)
   const goalsForCheckinModal = React.useMemo(() => {
-    const ugSource = myGoalsForDisplay.length > 0 ? myGoalsForDisplay : currentTeamUserGoals;
+    const ugSource = currentTeamUserGoals;
     const myOwnedGoalIds = new Set(
       (teamGoals || []).filter((g) => g.owner_id === user?.id).map((g) => g.id),
     );
@@ -131,18 +129,18 @@ export default function CalendarScreen() {
           weeklyDoneCount,
         };
       });
-  }, [teamGoals, myGoalsForDisplay, currentTeamUserGoals, selectedDate, user, monthlyCheckins]);
+  }, [teamGoals, currentTeamUserGoals, selectedDate, user, monthlyCheckins]);
 
   const selectedDateCheckins = React.useMemo(
     () =>
       (monthlyCheckins || []).filter(
         (c) =>
           c.date === selectedDate &&
-          (myGoalsForDisplay.length > 0 ? myGoalsForDisplay : currentTeamUserGoals).some(
+          currentTeamUserGoals.some(
             (g) => g.goal_id === c.goal_id,
           ),
       ),
-    [monthlyCheckins, selectedDate, currentTeamUserGoals, myGoalsForDisplay],
+    [monthlyCheckins, selectedDate, currentTeamUserGoals],
   );
 
   const isTodaySelected = selectedDate === dayjs().format('YYYY-MM-DD');
@@ -155,10 +153,6 @@ export default function CalendarScreen() {
     if (!user) return;
     await fetchMyGoals(user.id);
     const goals = useGoalStore.getState().teamGoals;
-    const myVisibleGoalIds = goals.filter((g) => g.owner_id === user.id).map((g) => g.id);
-    if (myVisibleGoalIds.length > 0) {
-      await fetchMyGoalsForDisplay(user.id, myVisibleGoalIds);
-    }
     await fetchMonthlyCheckins(user.id, currentMonth);
     await fetchMemberDateCheckins(currentTeam?.id, user.id, selectedDate);
     await fetchCalendarMarkings(user.id, currentMonth);
@@ -175,11 +169,6 @@ export default function CalendarScreen() {
         fetchMyGoals(user.id);
         fetchTeamGoals(currentTeam?.id ?? '', user.id);
         fetchMonthlyCheckins(user.id, currentMonth);
-        const goals = useGoalStore.getState().teamGoals;
-        const myVisibleGoalIds = goals.filter((g) => g.owner_id === user.id).map((g) => g.id);
-        if (myVisibleGoalIds.length > 0) {
-          fetchMyGoalsForDisplay(user.id, myVisibleGoalIds);
-        }
         fetchMemberDateCheckins(currentTeam?.id, user.id, selectedDateRef.current);
       }
     }, [user, currentMonth, currentTeam]),
@@ -325,7 +314,7 @@ export default function CalendarScreen() {
                 </Text>
                 {selectedMarking.totalGoals && selectedMarking.totalGoals > 0 && (
                   <Text style={styles.percentText}>
-                    {Math.round(((selectedMarking.doneCount ?? 0) / ((selectedMarking.totalGoals ?? 1) - (selectedMarking.passCount ?? 0) || 1)) * 100)}%
+                    {Math.round(((selectedMarking.doneCount ?? 0) / ((selectedMarking.totalGoals ?? 1) || 1)) * 100)}%
                   </Text>
                 )}
               </View>
