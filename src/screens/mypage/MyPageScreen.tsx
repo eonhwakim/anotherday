@@ -327,7 +327,12 @@ export default function MyPageScreen() {
         style={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.screenTitle}>마이페이지</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.screenTitle}>마이페이지</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('AppSettings')} style={{ padding: 14 }}>
+            <Ionicons name="settings-outline" size={22} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
         {/* ── 프로필 카드 ── */}
         <TouchableOpacity 

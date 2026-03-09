@@ -12,7 +12,9 @@ import TeamMemberScreen from '../screens/team/TeamMemberScreen';
 import TeamProfileEditScreen from '../screens/team/TeamProfileEditScreen';
 import MemberStatsScreen from '../screens/team/MemberStatsScreen';
 import ProfileEditScreen from '../screens/mypage/ProfileEditScreen';
+import AppSettingsScreen from '../screens/mypage/AppSettingsScreen';
 import { COLORS } from '../constants/defaults';
+import { scheduleDailyNotifications } from '../utils/notifications';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -26,11 +28,12 @@ export default function RootNavigator() {
     restoreSession();
   }, []);
 
-  // 2. 유저 정보 로드 후, 팀 정보 로드
+  // 2. 유저 정보 로드 후, 팀 정보 로드 + 알림 스케줄
   useEffect(() => {
     const init = async () => {
       if (user) {
         await fetchTeams(user.id);
+        scheduleDailyNotifications().catch(() => {});
       }
       setIsReady(true);
     };
@@ -64,6 +67,7 @@ export default function RootNavigator() {
             <Stack.Screen name="TeamMember" component={TeamMemberScreen} />
             <Stack.Screen name="TeamProfileEdit" component={TeamProfileEditScreen} />
             <Stack.Screen name="MemberStats" component={MemberStatsScreen} />
+            <Stack.Screen name="AppSettings" component={AppSettingsScreen} />
           </>
         )}
       </Stack.Navigator>

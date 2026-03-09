@@ -2,16 +2,16 @@
   "expo": {
     "name": "anotherday",
     "slug": "anotherday",
-    "version": "1.1.0",
+    "version": "1.0.2",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "orientation": "portrait",
-    "icon": "./assets/brand-icon.png",
+    "icon": "./assets/anotherday-icon-2.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/brand-icon.png",
+      "image": "./assets/anotherday-icon-2.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -21,7 +21,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anotherday.app",
-      "buildNumber": "7",
       "infoPlist": {
         "NSCameraUsageDescription": "목표 인증을 위해 카메라 접근 권한이 필요합니다.",
         "NSPhotoLibraryUsageDescription": "인증 사진을 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.",
@@ -30,8 +29,9 @@
       }
     },
     "android": {
+      "package": "com.anotherday.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/anotherday-icon.png",
+        "foregroundImage": "./assets/anotherday-icon-2.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -42,7 +42,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/anotherday-icon.png"
+      "favicon": "./assets/anotherday-icon-2.png"
     },
     "plugins": [
       [
@@ -50,6 +50,14 @@
         {
           "cameraPermission": "목표 인증을 위해 카메라 접근 권한이 필요합니다.",
           "photosPermission": "인증 사진을 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/brand-icon.png",
+          "color": "#FF6B3D",
+          "sounds": []
         }
       ]
     ],
