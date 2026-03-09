@@ -29,6 +29,7 @@ export interface GoalStat {
 export interface WeekData {
   label: string;
   range: string;
+  days: number;
   rate: number;
   doneCount: number;
   passCount: number;

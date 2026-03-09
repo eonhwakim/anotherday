@@ -32,6 +32,7 @@ export default function MemberStatsScreen() {
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
   const [resolution, setResolution] = useState('');
   const [retrospective, setRetrospective] = useState('');
+  const [selectedWeekIdx, setSelectedWeekIdx] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     if (teamId) await fetchTeamGoals(teamId, userId);
@@ -49,10 +50,10 @@ export default function MemberStatsScreen() {
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
-  const goToPrev = () => setYearMonth(p => dayjs(`${p}-01`).subtract(1, 'month').format('YYYY-MM'));
+  const goToPrev = () => { setYearMonth(p => dayjs(`${p}-01`).subtract(1, 'month').format('YYYY-MM')); setSelectedWeekIdx(null); };
   const goToNext = () => {
     const next = dayjs(`${yearMonth}-01`).add(1, 'month').format('YYYY-MM');
-    if (next <= dayjs().format('YYYY-MM')) setYearMonth(next);
+    if (next <= dayjs().format('YYYY-MM')) { setYearMonth(next); setSelectedWeekIdx(null); }
   };
   const monthLabel = dayjs(`${yearMonth}-01`).format('YYYY년 M월');
   const canNext = dayjs(`${yearMonth}-01`).add(1, 'month').format('YYYY-MM') <= dayjs().format('YYYY-MM');
@@ -125,20 +126,17 @@ export default function MemberStatsScreen() {
     weeklyGoals.forEach(ug => {
       const target = ug.target_count || 1;
       let totalTarget = 0, totalDoneG = 0;
-      let wc = dayjs(startDate).startOf('isoWeek');
-      while (wc.isBefore(monthEnd) || wc.isSame(monthEnd, 'day')) {
-        const ws = wc, we = wc.endOf('isoWeek');
+      const { ranges } = getCalendarWeekRanges(yearMonth);
+      ranges.forEach(wr => {
         const gs = ug.start_date || startDate;
-        const effS = dayjsMax(dayjsMax(ws, dayjs(gs)), dayjs(startDate));
-        const effE = dayjsMin(dayjsMin(we, monthEnd), dayjs(today));
-        if (effS.isAfter(effE)) { wc = wc.add(1, 'week'); continue; }
-        const days = effE.diff(effS, 'day') + 1;
-        if (days >= 7) {
-          totalTarget += target;
-          totalDoneG += checkins.filter(c => c.goal_id === ug.goal_id && c.date >= effS.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD')).filter(isDoneCheckin).length;
-        }
-        wc = wc.add(1, 'week');
-      }
+        const effS = dayjsMax(wr.s, dayjs(gs));
+        const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
+        if (effS.isAfter(effE)) return;
+        totalTarget += target;
+        totalDoneG += checkins.filter(c =>
+          c.goal_id === ug.goal_id && c.date >= effS.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD')
+        ).filter(isDoneCheckin).length;
+      });
       if (totalTarget > 0) allGoalRates.push(totalDoneG / totalTarget * 100);
     });
 
@@ -210,9 +208,11 @@ export default function MemberStatsScreen() {
         }
       });
 
+      const weekDays = effE.diff(effS, 'day') + 1;
       weeks.push({
         label: `${idx + 1}주차`,
         range: `${effS.format('M/D')}~${effE.format('M/D')}`,
+        days: weekDays,
         rate: weekRates.length > 0 ? Math.round(weekRates.reduce((a, b) => a + b, 0) / weekRates.length) : 0,
         doneCount: weekDone, passCount: weekPass,
       });
@@ -244,24 +244,21 @@ export default function MemberStatsScreen() {
       } else {
         const target = ug.target_count || 1;
         let totalTarget = 0;
-        let wc = dayjs(startDate).startOf('isoWeek');
-        while (wc.isBefore(monthEnd) || wc.isSame(monthEnd, 'day')) {
-          const ws = wc, we = wc.endOf('isoWeek');
+        const { ranges } = getCalendarWeekRanges(yearMonth);
+        ranges.forEach(wr => {
           const gs = ug.start_date || startDate;
-          const effS = dayjsMax(dayjsMax(ws, dayjs(gs)), dayjs(startDate));
-          const effE = dayjsMin(dayjsMin(we, monthEnd), dayjs(today));
-          if (effS.isAfter(effE)) { wc = wc.add(1, 'week'); continue; }
+          const effS = dayjsMax(wr.s, dayjs(gs));
+          const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
+          if (effS.isAfter(effE)) return;
           const wCk = checkins.filter(c => c.goal_id === ug.goal_id && c.date >= effS.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD'));
           done += wCk.filter(isDoneCheckin).length;
           const ep = wCk.filter(isPassCheckin).length;
           const wd = effE.diff(effS, 'day') + 1;
           pass += ep + Math.max(0, wd - wCk.filter(isDoneCheckin).length - ep);
-          if (wd >= 7) {
-            totalTarget += target;
-            if (we.format('YYYY-MM-DD') <= today) fail += Math.max(0, target - wCk.filter(isDoneCheckin).length);
-          }
-          wc = wc.add(1, 'week');
-        }
+          totalTarget += target;
+          const weekOver = wr.e.format('YYYY-MM-DD') <= today;
+          if (weekOver) fail += Math.max(0, target - wCk.filter(isDoneCheckin).length);
+        });
         const rate = totalTarget > 0 ? Math.round(done / totalTarget * 100) : 0;
         return { goalId: ug.goal_id, name: allGoalMap.get(ug.goal_id) ?? '목표', frequency: 'weekly_count' as const, targetCount: ug.target_count, startDate: ug.start_date || null, done, pass, fail, rate };
       }
@@ -274,6 +271,44 @@ export default function MemberStatsScreen() {
     const worst = all.filter(g => g.fail > 0).length > 0 ? all.filter(g => g.fail > 0).reduce((a, b) => a.fail >= b.fail ? a : b) : null;
     return { all, best, worst };
   }, [goals, checkins, allGoalMap, startDate, today, monthEnd]);
+
+  const weekDetail = useMemo(() => {
+    if (selectedWeekIdx === null) return null;
+    const { ranges } = getCalendarWeekRanges(yearMonth);
+    const wr = ranges[selectedWeekIdx];
+    if (!wr) return null;
+    const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
+    if (wr.s.isAfter(dayjs(today))) return null;
+    const days: string[] = [];
+    let cur = wr.s;
+    while (cur.isBefore(effE) || cur.isSame(effE, 'day')) { days.push(cur.format('YYYY-MM-DD')); cur = cur.add(1, 'day'); }
+    const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+    return goals
+      .filter(ug => {
+        const gs = ug.start_date || startDate;
+        const ge = ug.end_date || monthEnd.format('YYYY-MM-DD');
+        return effE.format('YYYY-MM-DD') >= gs && wr.s.format('YYYY-MM-DD') <= ge;
+      })
+      .map(ug => {
+        const name = allGoalMap.get(ug.goal_id) ?? '목표';
+        const isWeekly = ug.frequency === 'weekly_count';
+        const activeDays = days.filter(d => {
+          if (ug.start_date && d < ug.start_date) return false;
+          if (ug.end_date && d > ug.end_date) return false;
+          return true;
+        });
+        const dayEntries = activeDays.map(d => {
+          const c = checkins.find(ci => ci.goal_id === ug.goal_id && ci.date === d);
+          const dayOfWeek = DAY_LABELS[dayjs(d).day()];
+          const dateLabel = `${dayjs(d).format('M/D')}(${dayOfWeek})`;
+          if (c && isDoneCheckin(c)) return { date: dateLabel, status: 'done' as const };
+          if (c && isPassCheckin(c)) return { date: dateLabel, status: 'pass' as const };
+          if (d < today) return { date: dateLabel, status: isWeekly ? 'auto_pass' as const : 'fail' as const };
+          return { date: dateLabel, status: 'upcoming' as const };
+        });
+        return { goalId: ug.goal_id, name, isWeekly, target: isWeekly ? (ug.target_count || 1) : activeDays.length, doneCount: dayEntries.filter(e => e.status === 'done').length, dayEntries };
+      });
+  }, [selectedWeekIdx, goals, checkins, allGoalMap, yearMonth, startDate, today, monthEnd]);
 
   // ─── RENDER ───────────────────────────────────────────────
   return (
@@ -313,7 +348,7 @@ export default function MemberStatsScreen() {
             </View>
             <View style={s.heroChip}>
               <Ionicons name="pause-circle" size={14} color="#FBBF24" />
-              <Text style={s.heroChipText}>휴식 {heroData.totalPass}회</Text>
+              <Text style={s.heroChipText}>패스 {heroData.totalPass}회</Text>
             </View>
           </View>
         </View>
@@ -355,7 +390,7 @@ export default function MemberStatsScreen() {
         {/* ═══ Trend Chart ═══ */}
         {trendData.length >= 1 && (
           <>
-            <Text style={s.sectionTitle}>등반 궤적</Text>
+            <Text style={s.sectionTitle}>목표 궤적</Text>
             <View style={s.card}>
               <Text style={s.insightText}>{trendInsight}</Text>
               {trendData.length >= 2 ? (
@@ -366,14 +401,47 @@ export default function MemberStatsScreen() {
                 <Text style={s.emptySmall}>주간 데이터가 쌓이면 등반 궤적이 그려져요</Text>
               )}
               <View style={s.trendLegend}>
-                {trendData.map(w => (
-                  <View key={w.label} style={s.trendLegendItem}>
-                    <Text style={s.trendLegendLabel}>{w.label}</Text>
+                {trendData.map((w, idx) => (
+                  <TouchableOpacity
+                    key={w.label}
+                    style={[s.trendLegendItem, selectedWeekIdx === idx && s.trendLegendItemActive]}
+                    onPress={() => setSelectedWeekIdx(prev => prev === idx ? null : idx)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={s.trendLegendLabel}>{w.label} <Text style={s.trendLegendDays}>({w.days}일)</Text></Text>
                     <Text style={s.trendLegendRange}>{w.range}</Text>
-                    <Text style={s.trendLegendVal}>인증 {w.doneCount} · 휴식 {w.passCount}</Text>
-                  </View>
+                    <Text style={s.trendLegendVal}>인증 {w.doneCount} · 패스 {w.passCount}</Text>
+                  </TouchableOpacity>
                 ))}
               </View>
+              {trendData.some(w => w.days !== 7) && (
+                <Text style={s.trendNote}>* 첫째 주와 마지막 주는 7일이 아닐 수 있어요</Text>
+              )}
+              {weekDetail && weekDetail.length > 0 && (
+                <View style={s.weekDetailWrap}>
+                  <Text style={s.weekDetailTitle}>{trendData[selectedWeekIdx!]?.label} 상세</Text>
+                  {weekDetail.map(g => (
+                    <View key={g.goalId} style={s.weekDetailGoal}>
+                      <View style={s.weekDetailGoalHead}>
+                        <Text style={s.weekDetailGoalName} numberOfLines={1}>{g.name}</Text>
+                        <Text style={s.weekDetailGoalCount}>{g.doneCount}/{g.target}{g.doneCount >= g.target ? ' ✓' : ''}</Text>
+                      </View>
+                      <View style={s.weekDetailDays}>
+                        {g.dayEntries.map(entry => (
+                          <View key={entry.date} style={s.weekDetailDay}>
+                            <Text style={s.weekDetailDayLabel}>{entry.date}</Text>
+                            <View style={[s.weekDetailBadge, entry.status === 'done' && s.weekDetailBadgeDone, (entry.status === 'pass' || entry.status === 'auto_pass') && s.weekDetailBadgePass, entry.status === 'fail' && s.weekDetailBadgeFail, entry.status === 'upcoming' && s.weekDetailBadgeUpcoming]}>
+                              <Text style={[s.weekDetailBadgeText, entry.status === 'done' && { color: '#15803d' }, (entry.status === 'pass' || entry.status === 'auto_pass') && { color: '#d97706' }, entry.status === 'fail' && { color: '#b91c1c' }, entry.status === 'upcoming' && { color: 'rgba(26,26,26,0.35)' }]}>
+                                {entry.status === 'done' ? '인증' : entry.status === 'pass' ? '패스' : entry.status === 'auto_pass' ? '자동패스' : entry.status === 'fail' ? '미달' : '예정'}
+                              </Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           </>
         )}
@@ -433,14 +501,9 @@ export default function MemberStatsScreen() {
                     <View style={[s.goalChip, { backgroundColor: 'rgba(74,222,128,0.1)' }]}>
                       <Text style={[s.goalChipText, { color: '#15803d' }]}>완료 {gs.done}</Text>
                     </View>
-                    {gs.pass > 0 && (
-                      <View style={[s.goalChip, { backgroundColor: 'rgba(251,191,36,0.1)' }]}>
-                        <Text style={[s.goalChipText, { color: '#d97706' }]}>패스 {gs.pass}</Text>
-                      </View>
-                    )}
-                    {gs.fail > 0 && (
-                      <View style={[s.goalChip, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
-                        <Text style={[s.goalChipText, { color: '#b91c1c' }]}>미달 {gs.fail}</Text>
+                    {(gs.pass + gs.fail) > 0 && (
+                      <View style={[s.goalChip, { backgroundColor: 'rgba(239,68,68,0.08)' }]}>
+                        <Text style={[s.goalChipText, { color: '#b91c1c' }]}>패스 {gs.pass + gs.fail}</Text>
                       </View>
                     )}
                   </View>
@@ -519,7 +582,26 @@ const s = StyleSheet.create({
   trendLegendItem: { backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: 8, padding: 8, minWidth: '45%', flex: 1 },
   trendLegendLabel: { fontSize: 12, fontWeight: '700', color: '#1A1A1A' },
   trendLegendRange: { fontSize: 10, color: 'rgba(26,26,26,0.35)', marginTop: 2 },
+  trendLegendDays: { fontSize: 10, fontWeight: '400', color: 'rgba(26,26,26,0.35)' },
   trendLegendVal: { fontSize: 10, color: 'rgba(26,26,26,0.45)', marginTop: 2 },
+  trendLegendItemActive: { borderWidth: 1.5, borderColor: '#FF6B3D' },
+  trendNote: { fontSize: 10, color: 'rgba(26,26,26,0.30)', marginTop: 6, textAlign: 'center', fontStyle: 'italic' },
+
+  weekDetailWrap: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
+  weekDetailTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },
+  weekDetailGoal: { marginBottom: 14 },
+  weekDetailGoalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  weekDetailGoalName: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', flex: 1 },
+  weekDetailGoalCount: { fontSize: 12, fontWeight: '700', color: '#FF6B3D' },
+  weekDetailDays: { gap: 4 },
+  weekDetailDay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(0,0,0,0.015)', borderRadius: 6 },
+  weekDetailDayLabel: { fontSize: 11, color: 'rgba(26,26,26,0.55)', fontWeight: '500' },
+  weekDetailBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  weekDetailBadgeDone: { backgroundColor: 'rgba(74,222,128,0.12)' },
+  weekDetailBadgePass: { backgroundColor: 'rgba(251,191,36,0.12)' },
+  weekDetailBadgeFail: { backgroundColor: 'rgba(239,68,68,0.10)' },
+  weekDetailBadgeUpcoming: { backgroundColor: 'rgba(0,0,0,0.04)' },
+  weekDetailBadgeText: { fontSize: 10, fontWeight: '700' },
 
   spotlightRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   spotlightCard: { flex: 1, borderRadius: 12, padding: 12, alignItems: 'center', gap: 4 },
