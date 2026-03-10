@@ -13,6 +13,7 @@ import MemberProfileModal from '../../components/calendar/MemberProfileModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
 import Button from '../../components/common/Button';
 import dayjs from '../../lib/dayjs';
+import { getCalendarWeekRanges } from '../../components/stats/StatsShared';
 import { COLORS } from '../../constants/defaults';
 
 const STATUS_IMAGES: Record<string, any> = {
@@ -213,31 +214,127 @@ export default function CalendarScreen() {
     // 여기선 제거하여 반응 속도 최적화 (어차피 store가 업데이트됨)
   };
 
+  const { dataStart, dataEnd } = React.useMemo(() => getCalendarWeekRanges(currentMonth), [currentMonth]);
+
+  const renderDay = useCallback(({ date, state, marking }: any) => {
+    // 1. 날짜 텍스트 컬러 결정
+    let textColor = '#1A1A1A'; // 기본 검정
+    const isToday = state === 'today';
+    const isSelected = marking?.selected;
+    const isDisabled = state === 'disabled'; // 달력상 이전/다음 달 날짜
+
+    // 우선순위: 선택됨 > Disabled(회색) > Today > 마킹된 컬러 > 기본
+    if (marking?.textColor) textColor = marking.textColor; // 1. 마킹 (기본보다 우선)
+    if (isToday) textColor = '#FF6B3D'; // 2. 오늘
+    if (isDisabled) textColor = 'rgba(26, 26, 26, 0.20)'; // 3. Disabled (마킹보다 우선 -> 회색 처리)
+    if (isSelected) textColor = marking?.selectedTextColor || '#FF6B3D'; // 4. 선택됨 (최우선)
+
+    return (
+      <TouchableOpacity
+        onPress={() => handleDayPress(date)}
+        activeOpacity={0.7}
+        style={[
+          styles.dayContainer,
+          isSelected && styles.selectedDayContainer
+        ]}
+      >
+        <Text style={[styles.dayText, { color: textColor }]}>
+          {date.day}
+        </Text>
+        {marking?.marked && (
+          <View style={[styles.dot, { backgroundColor: marking.dotColor || '#FF6B3D' }]} />
+        )}
+      </TouchableOpacity>
+    );
+  }, [handleDayPress]);
+
   const calendarMarkedDates = React.useMemo(() => {
     const marks: Record<string, any> = {};
+    
+    // 1. 기본 마킹 (Dots)
     Object.entries(calendarMarkings).forEach(([date, m]) => {
       marks[date] = {
         marked: true,
         dotColor: m.dotColor,
-        selected: date === selectedDate,
-        selectedColor: date === selectedDate
-          ? 'rgba(255, 107, 61, 0.18)'
-          : undefined,
-        selectedTextColor: date === selectedDate ? '#FF6B3D' : undefined,
       };
     });
-    if (selectedDate && !marks[selectedDate]) {
+
+    // 2. 통계 월 기준 범위 (4일 미만 주 처리) 시각화
+    // - 통계 범위에 포함되는 날짜 (Extra Days 포함) -> 활성 컬러
+    const startDt = dayjs(dataStart);
+    const endDt = dayjs(dataEnd);
+    
+    let curr = startDt;
+    while (curr.isBefore(endDt) || curr.isSame(endDt, 'day')) {
+      const dStr = curr.format('YYYY-MM-DD');
+      if (!marks[dStr]) marks[dStr] = {};
+      
+      // 이미 기본 마킹이 있다면 유지하되, 텍스트 컬러만 지정
+      marks[dStr] = {
+        ...marks[dStr],
+        textColor: '#1A1A1A', // 기본: 진하게
+        disabled: false,
+      };
+      curr = curr.add(1, 'day');
+    }
+
+    // - 현재 월의 날짜 중 통계 범위 밖인 날짜 -> 파란색 등 다른 색으로 표시 (이월됨)
+    const monthStart = dayjs(`${currentMonth}-01`);
+    const monthEnd = monthStart.endOf('month');
+    let mCurr = monthStart;
+    while (mCurr.isBefore(monthEnd) || mCurr.isSame(monthEnd, 'day')) {
+      if (mCurr.isBefore(startDt) || mCurr.isAfter(endDt)) {
+        const dStr = mCurr.format('YYYY-MM-DD');
+        if (!marks[dStr]) marks[dStr] = {};
+        marks[dStr] = {
+          ...marks[dStr],
+          textColor: '#3B82F6', // 파란색: 통계 이월됨 표시
+          disabled: false,
+        };
+      }
+      mCurr = mCurr.add(1, 'day');
+    }
+
+    // 3. 선택된 날짜 (Override)
+    if (selectedDate) {
+      if (!marks[selectedDate]) marks[selectedDate] = {};
       marks[selectedDate] = {
+        ...marks[selectedDate],
         selected: true,
         selectedColor: 'rgba(255, 107, 61, 0.18)',
+        selectedTextColor: '#FF6B3D',
       };
     }
     return marks;
-  }, [calendarMarkings, selectedDate]);
+  }, [calendarMarkings, selectedDate, dataStart, dataEnd, currentMonth]);
 
   const selectedMarking = calendarMarkings[selectedDate];
   const formattedDate = dayjs(selectedDate).format('M월 D일 (ddd)');
   const isFuture = dayjs(selectedDate).isAfter(dayjs(), 'day');
+
+  // 선택된 날짜가 통계 범위 밖인지 확인 (이월된 날짜인지)
+  const isExcludedFromStats = React.useMemo(() => {
+    return selectedDate < dataStart || selectedDate > dataEnd;
+  }, [selectedDate, dataStart, dataEnd]);
+
+  // 선택된 날짜가 현재 달력의 월과 다른지 (이전/다음달 날짜)
+  const isOtherMonth = React.useMemo(() => !selectedDate.startsWith(currentMonth), [selectedDate, currentMonth]);
+
+  const statsGuideMessage = React.useMemo(() => {
+    if (isExcludedFromStats) {
+      if (selectedDate < dataStart) {
+        return `💡 이 날짜는 지난달(${dayjs(currentMonth).subtract(1, 'month').format('M월')}) 통계에 합산됩니다.`;
+      }
+      if (selectedDate > dataEnd) {
+        return `💡 이 날짜는 다음달(${dayjs(currentMonth).add(1, 'month').format('M월')}) 통계에 합산됩니다.`;
+      }
+    }
+    // 통계 범위 안이지만 달력상 다른 달인 경우 (회색으로 표시됨)
+    if (isOtherMonth) {
+      return `💡 이 날짜는 이번 달(${dayjs(currentMonth).format('M월')}) 통계에 포함됩니다.`;
+    }
+    return null;
+  }, [isExcludedFromStats, isOtherMonth, selectedDate, dataStart, dataEnd, currentMonth]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -246,6 +343,7 @@ export default function CalendarScreen() {
 
         <Calendar
           firstDay={1}
+          dayComponent={renderDay}
           theme={{
             calendarBackground: '#FFFFFF',
             todayTextColor: '#FF6B3D',
@@ -278,6 +376,14 @@ export default function CalendarScreen() {
         {/* ── 날짜 요약 ── */}
         <View style={styles.dateSummary}>
           <Text style={styles.dateSummaryTitle}>{formattedDate}</Text>
+          
+          {/* 통계 이월 날짜 안내 메시지 */}
+          {statsGuideMessage && (
+            <View style={styles.excludedStatsBox}>
+              <Text style={styles.excludedStatsText}>{statsGuideMessage}</Text>
+            </View>
+          )}
+
           {selectedMarking && selectedMarking.dayStatus === 'future' ? (
             <View>
               <Text style={styles.futureLabel}>예정된 목표 {selectedMarking.totalGoals}개</Text>
@@ -683,5 +789,34 @@ const styles = StyleSheet.create({
   },
   reactionAvatar: {
     width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center',
+  },
+
+  // 통계 이월 안내 메시지
+  excludedStatsBox: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  excludedStatsText: {
+    fontSize: 13,
+    color: '#1E40AF',
+    fontWeight: '600',
+  },
+
+  // 커스텀 데이 렌더링
+  dayContainer: {
+    width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16,
+  },
+  selectedDayContainer: {
+    backgroundColor: 'rgba(255, 107, 61, 0.18)',
+  },
+  dayText: {
+    fontSize: 14, fontWeight: '500',
+  },
+  dot: {
+    width: 4, height: 4, borderRadius: 2, marginTop: 4,
   },
 });
