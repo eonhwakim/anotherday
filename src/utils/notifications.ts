@@ -4,6 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/defaults';
 
 const STORAGE_KEY = 'notification_daily_enabled';
+const GOAL_REMINDER_STORAGE_KEY = 'notification_goal_reminder_enabled';
+const GOAL_REMINDER_HOUR = 21;
+const GOAL_REMINDER_MINUTE = 0;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -54,6 +57,12 @@ const DAILY_MESSAGES: Record<number, string[]> = {
   ],
 };
 
+const GOAL_REMINDER_MESSAGES = [
+  '오늘 아직 인증하지 않은 목표가 있어요!',
+  '자정 전에 인증을 완료해볼까요?',
+  '목표 달성까지 조금만 더 힘내봐요!',
+];
+
 function pickMessage(weekday: number): string {
   const pool = DAILY_MESSAGES[weekday] ?? DAILY_MESSAGES[2];
   return pool[Math.floor(Math.random() * pool.length)];
@@ -76,6 +85,12 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
+async function cancelDailyNotifications(): Promise<void> {
+  for (let wd = 1; wd <= 7; wd++) {
+    await Notifications.cancelScheduledNotificationAsync(`daily-weekday-${wd}`).catch(() => {});
+  }
+}
+
 export async function scheduleDailyNotifications(): Promise<void> {
   const enabled = await getDailyNotificationEnabled();
   if (!enabled) return;
@@ -83,11 +98,12 @@ export async function scheduleDailyNotifications(): Promise<void> {
   const granted = await requestNotificationPermission();
   if (!granted) return;
 
-  await cancelAllNotifications();
+  await cancelDailyNotifications();
 
   const weekdays = [1, 2, 3, 4, 5, 6, 7];
   for (const weekday of weekdays) {
     await Notifications.scheduleNotificationAsync({
+      identifier: `daily-weekday-${weekday}`,
       content: {
         title: 'Anotherday',
         body: pickMessage(weekday),
@@ -118,8 +134,75 @@ export async function setDailyNotificationEnabled(enabled: boolean): Promise<voi
   if (enabled) {
     await scheduleDailyNotifications();
   } else {
-    await cancelAllNotifications();
+    await cancelDailyNotifications();
   }
+}
+
+// ─── 미인증 목표 리마인더 ─────────────────────────────────────
+
+export async function getGoalReminderEnabled(): Promise<boolean> {
+  const val = await AsyncStorage.getItem(GOAL_REMINDER_STORAGE_KEY);
+  return val !== 'false';
+}
+
+export async function setGoalReminderEnabled(enabled: boolean): Promise<void> {
+  await AsyncStorage.setItem(GOAL_REMINDER_STORAGE_KEY, enabled ? 'true' : 'false');
+  if (!enabled) {
+    await cancelGoalReminderNotification();
+  }
+}
+
+export async function cancelGoalReminderNotification(): Promise<void> {
+  await Notifications.cancelScheduledNotificationAsync('goal-reminder').catch(() => {});
+}
+
+/**
+ * 미인증 목표 리마인더를 스케줄링한다.
+ * 오늘 9시(PM)에 아직 인증하지 않은 목표 목록을 알림으로 보낸다.
+ * 이미 9시가 지났거나 모든 목표를 완료한 경우 알림을 취소한다.
+ */
+export async function scheduleGoalReminderNotification(
+  uncompletedGoalNames: string[],
+): Promise<void> {
+  const enabled = await getGoalReminderEnabled();
+  if (!enabled || uncompletedGoalNames.length === 0) {
+    await cancelGoalReminderNotification();
+    return;
+  }
+
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+
+  await cancelGoalReminderNotification();
+
+  const now = new Date();
+  const trigger = new Date();
+  trigger.setHours(GOAL_REMINDER_HOUR, GOAL_REMINDER_MINUTE, 0, 0);
+
+  if (now >= trigger) return;
+
+  const secondsUntil = Math.floor((trigger.getTime() - now.getTime()) / 1000);
+  if (secondsUntil <= 0) return;
+
+  const count = uncompletedGoalNames.length;
+  const goalList = uncompletedGoalNames.slice(0, 3).join(', ');
+  const suffix = count > 3 ? ` 외 ${count - 3}개` : '';
+  const title = GOAL_REMINDER_MESSAGES[Math.floor(Math.random() * GOAL_REMINDER_MESSAGES.length)];
+  const body = `${goalList}${suffix} — 오늘 안에 인증해봐요 💪`;
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: 'goal-reminder',
+    content: {
+      title,
+      body,
+      sound: true,
+      color: COLORS.primary,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: secondsUntil,
+    },
+  });
 }
 
 /** DEV ONLY: 5초 후 테스트 알림 (오늘 요일 메시지) */
@@ -134,6 +217,25 @@ export async function sendTestNotification(): Promise<void> {
     content: {
       title: 'Anotherday (테스트)',
       body: pickMessage(expoWeekday),
+      sound: true,
+      color: COLORS.primary,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: 5,
+    },
+  });
+}
+
+/** DEV ONLY: 5초 후 목표 리마인더 테스트 알림 */
+export async function sendTestGoalReminderNotification(): Promise<void> {
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '아직 인증하지 않은 목표가 있어요!',
+      body: '운동, 독서 — 오늘 안에 인증해봐요 💪',
       sound: true,
       color: COLORS.primary,
     },

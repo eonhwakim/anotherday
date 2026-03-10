@@ -21,6 +21,7 @@ import TodayGoalList from '../../components/home/TodayGoalList';
 import DevGuideModal from '../../components/home/DevGuideModal';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
+import { scheduleGoalReminderNotification } from '../../utils/notifications';
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Stop, Rect, Path, Line, G } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
@@ -122,6 +123,15 @@ export default function HomeScreen() {
     ];
     if (teamId) promises.push(fetchMembers(teamId));
     await Promise.all(promises);
+
+    const progress = useGoalStore.getState().memberProgress;
+    const myProgress = progress.find((p) => p.userId === user.id);
+    if (myProgress) {
+      const uncompleted = myProgress.goalDetails
+        .filter((g) => g.isActive && !g.isDone && !g.isPass)
+        .map((g) => g.goalName);
+      scheduleGoalReminderNotification(uncompleted).catch(() => {});
+    }
   }, [user]);
 
   useFocusEffect(

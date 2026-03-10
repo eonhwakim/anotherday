@@ -13,6 +13,7 @@ import type {
 } from '../types/domain';
 import { MOUNTAIN_THRESHOLDS } from '../constants/defaults';
 import dayjs from '../lib/dayjs';
+import { scheduleGoalReminderNotification } from '../utils/notifications';
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -212,6 +213,16 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     if (error) return false;
     await get().fetchTodayCheckins(userId);
+
+    const progress = get().memberProgress;
+    const myProgress = progress.find((p) => p.userId === userId);
+    if (myProgress) {
+      const uncompleted = myProgress.goalDetails
+        .filter((g) => g.isActive && !g.isDone && !g.isPass && g.goalId !== goalId)
+        .map((g) => g.goalName);
+      scheduleGoalReminderNotification(uncompleted).catch(() => {});
+    }
+
     return true;
   },
 

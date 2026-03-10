@@ -9,20 +9,30 @@ import { Alert } from 'react-native';
 import {
   getDailyNotificationEnabled,
   setDailyNotificationEnabled,
+  getGoalReminderEnabled,
+  setGoalReminderEnabled,
   sendTestNotification,
+  sendTestGoalReminderNotification,
 } from '../../utils/notifications';
 
 export default function AppSettingsScreen() {
   const navigation = useNavigation();
   const [dailyNoti, setDailyNoti] = useState(true);
+  const [goalReminder, setGoalReminder] = useState(true);
 
   useEffect(() => {
     getDailyNotificationEnabled().then(setDailyNoti);
+    getGoalReminderEnabled().then(setGoalReminder);
   }, []);
 
   const handleToggle = async (val: boolean) => {
     setDailyNoti(val);
     await setDailyNotificationEnabled(val);
+  };
+
+  const handleGoalReminderToggle = async (val: boolean) => {
+    setGoalReminder(val);
+    await setGoalReminderEnabled(val);
   };
 
   return (
@@ -54,6 +64,22 @@ export default function AppSettingsScreen() {
           />
         </View>
 
+        <View style={[s.row, { marginTop: 12 }]}>
+          <View style={s.rowLeft}>
+            <Ionicons name="alarm-outline" size={20} color={COLORS.text} />
+            <View style={s.rowText}>
+              <Text style={s.rowTitle}>미인증 목표 리마인더</Text>
+              <Text style={s.rowDesc}>오후 9시에 아직 인증하지 않은 목표를 알려드려요</Text>
+            </View>
+          </View>
+          <Switch
+            value={goalReminder}
+            onValueChange={handleGoalReminderToggle}
+            trackColor={{ false: 'rgba(0,0,0,0.10)', true: 'rgba(255,107,61,0.35)' }}
+            thumbColor={goalReminder ? '#FF6B3D' : '#f4f3f4'}
+          />
+        </View>
+
         {__DEV__ && (
           <TouchableOpacity
             style={s.testBtn}
@@ -63,7 +89,19 @@ export default function AppSettingsScreen() {
             }}
           >
             <Ionicons name="bug-outline" size={16} color="#FF6B3D" />
-            <Text style={s.testBtnText}>테스트 알림 보내기 (5초 후)</Text>
+            <Text style={s.testBtnText}>동기부여 알림 테스트 (5초 후)</Text>
+          </TouchableOpacity>
+        )}
+        {__DEV__ && (
+          <TouchableOpacity
+            style={[s.testBtn, { marginTop: 8 }]}
+            onPress={async () => {
+              await sendTestGoalReminderNotification();
+              Alert.alert('테스트 알림', '5초 후 목표 리마인더 알림이 도착합니다. 앱을 백그라운드로 보내세요!');
+            }}
+          >
+            <Ionicons name="bug-outline" size={16} color="#FF6B3D" />
+            <Text style={s.testBtnText}>목표 리마인더 알림 테스트 (5초 후)</Text>
           </TouchableOpacity>
         )}
       </View>
