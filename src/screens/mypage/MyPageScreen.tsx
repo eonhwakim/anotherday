@@ -314,11 +314,12 @@ export default function MyPageScreen() {
     return myGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
   }, [teamGoals, myGoals, user]);
 
-  // ── 마이페이지 목표설정에 보여줄 목표 (본인이 만든 것만) ──
+  // ── 마이페이지 목표설정에 보여줄 목표 (user_goals에도 존재하는 것만) ──
   const myVisibleGoals = React.useMemo(() => {
     if (!teamGoals || !user) return [];
-    return teamGoals.filter((g) => g.owner_id === user.id);
-  }, [teamGoals, user]);
+    const activeGoalIds = new Set(myGoals.map(ug => ug.goal_id));
+    return teamGoals.filter((g) => g.owner_id === user.id && activeGoalIds.has(g.id));
+  }, [teamGoals, myGoals, user]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

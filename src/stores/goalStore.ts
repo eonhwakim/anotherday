@@ -26,14 +26,6 @@ function getPosition(done: number, total: number, pass: number = 0): MountainPos
   return 'base';
 }
 
-/** 주의 시작 월요일 (dayjs 기준) */
-function getWeekMonday(dateStr: string): string {
-  const d = dayjs(dateStr);
-  const day = d.day();
-  const diff = day === 0 ? 6 : day - 1;
-  return d.subtract(diff, 'day').format('YYYY-MM-DD');
-}
-
 /** 해당 날짜에 이 목표가 유효한지 판별 */
 function isGoalActiveOnDate(ug: any, dateStr: string): boolean {
   if (ug.start_date && dateStr < ug.start_date) return false;
@@ -348,8 +340,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   // ── 멤버 진행상황 (산 애니메이션) ──
   fetchMemberProgress: async (teamId, userId) => {
     const today = dayjs().format('YYYY-MM-DD');
-    const monday = getWeekMonday(today);
-    const sunday = dayjs(monday).add(6, 'day').format('YYYY-MM-DD');
 
     let members: any[] = [];
     if (teamId) {
@@ -384,7 +374,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         .eq('user_id', uid)
         .eq('is_active', true)
         .eq('goal.owner_id', uid);
-      if (teamId) ugQuery.eq('goal.team_id', teamId);
       const { data: userGoalsRaw } = await ugQuery;
       const userGoals = (userGoalsRaw ?? []).map((ug: any) => ({
         goal_id: ug.goal_id,
@@ -394,40 +383,10 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         end_date: ug.end_date,
       }));
 
-      // 이번 주(월~일) done 체크인을 한 번에 조회 (N+1 방지)
-      const weeklyGoalIds = userGoals
-        .filter(ug => ug.frequency === 'weekly_count' && isGoalActiveOnDate(ug, today))
-        .map(ug => ug.goal_id);
-
-      const weekDoneMap = new Map<string, number>();
-      if (weeklyGoalIds.length > 0) {
-        const { data: weekCheckins } = await supabase
-          .from('checkins')
-          .select('goal_id')
-          .eq('user_id', uid)
-          .eq('status', 'done')
-          .gte('date', monday)
-          .lte('date', sunday)
-          .in('goal_id', weeklyGoalIds);
-        (weekCheckins ?? []).forEach((c: any) => {
-          weekDoneMap.set(c.goal_id, (weekDoneMap.get(c.goal_id) ?? 0) + 1);
-        });
-      }
-
       const todayGoalIds: string[] = [];
       for (const ug of userGoals) {
         if (!isGoalActiveOnDate(ug, today)) continue;
-
-        if (ug.frequency === 'daily') {
-          todayGoalIds.push(ug.goal_id);
-        } else if (ug.frequency === 'weekly_count') {
-          const weekDone = weekDoneMap.get(ug.goal_id) ?? 0;
-          if (weekDone < (ug.target_count ?? 1)) {
-            todayGoalIds.push(ug.goal_id);
-          }
-        } else {
-          todayGoalIds.push(ug.goal_id);
-        }
+        todayGoalIds.push(ug.goal_id);
       }
 
       const total = todayGoalIds.length;
@@ -495,7 +454,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     const { data: userGoals } = await supabase
       .from('user_goals')
-      .select('goal_id, frequency, target_count, start_date')
+      .select('goal_id, frequency, target_count, start_date, end_date')
       .eq('user_id', userId)
       .eq('is_active', true);
 
@@ -598,10 +557,10 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       const u = member.user as any;
       const uid = member.user_id || u.id;
 
-      // 활성 목표 (start_date 기준 필터링)
+      // 활성 목표 (start_date, end_date 기준 필터링)
       const { data: userGoals } = await supabase
         .from('user_goals')
-        .select('goal_id, frequency, target_count, start_date')
+        .select('goal_id, frequency, target_count, start_date, end_date')
         .eq('user_id', uid)
         .eq('is_active', true);
 

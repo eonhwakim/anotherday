@@ -133,14 +133,8 @@ export default function CalendarScreen() {
 
   const selectedDateCheckins = React.useMemo(
     () =>
-      (monthlyCheckins || []).filter(
-        (c) =>
-          c.date === selectedDate &&
-          currentTeamUserGoals.some(
-            (g) => g.goal_id === c.goal_id,
-          ),
-      ),
-    [monthlyCheckins, selectedDate, currentTeamUserGoals],
+      (monthlyCheckins || []).filter((c) => c.date === selectedDate),
+    [monthlyCheckins, selectedDate],
   );
 
   const isTodaySelected = selectedDate === dayjs().format('YYYY-MM-DD');
