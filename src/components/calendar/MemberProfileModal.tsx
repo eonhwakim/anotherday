@@ -98,9 +98,8 @@ export default function MemberProfileModal({
     const today = dayjs().format('YYYY-MM-DD');
     const daysInMonth = dayjs(startDate).daysInMonth();
 
-    // 패스 판별 헬퍼 (status='pass' 또는 memo가 '[패스]'로 시작하면 패스)
-    const isPass = (c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]'));
-    const isDone = (c: any) => !isPass(c);
+    const isPass = (c: any) => c.status === 'pass';
+    const isDone = (c: any) => c.status === 'done';
 
     const doneTotal = checkins.filter(isDone).length;
     const passTotal = checkins.filter(isPass).length;

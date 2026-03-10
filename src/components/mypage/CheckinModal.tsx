@@ -211,7 +211,7 @@ export default function CheckinModal({
                     const checkin = checkins.find(
                       (c) => c.goal_id === goal.id,
                     );
-                    const isPass = checkin?.status === 'pass' || checkin?.memo?.startsWith('[패스]');
+                    const isPass = checkin?.status === 'pass';
                     
                     const isWeekly = frequency === 'weekly_count';
                     // 매일 목표: 과거 미인증 = 미달 / 주N회 목표: 과거 미인증 = 자동패스

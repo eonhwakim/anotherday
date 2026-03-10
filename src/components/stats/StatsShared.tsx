@@ -49,8 +49,8 @@ export interface WeeklyPaceGoal {
 
 export const dayjsMax = (a: dayjs.Dayjs, b: dayjs.Dayjs) => a.isAfter(b) ? a : b;
 export const dayjsMin = (a: dayjs.Dayjs, b: dayjs.Dayjs) => a.isBefore(b) ? a : b;
-export const isPassCheckin = (c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]'));
-export const isDoneCheckin = (c: any) => !isPassCheckin(c);
+export const isPassCheckin = (c: any) => c.status === 'pass';
+export const isDoneCheckin = (c: any) => c.status === 'done';
 
 // ─── SVG Area Chart ─────────────────────────────────────────
 

@@ -416,12 +416,12 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
       const doneGoalIds = new Set(
         (todayCheckins ?? [])
-          .filter((c: any) => c.status === 'done' && !(c.memo && c.memo.startsWith('[패스]')))
+          .filter((c: any) => c.status === 'done')
           .map((c: any) => c.goal_id),
       );
       const passGoalIds = new Set(
         (todayCheckins ?? [])
-          .filter((c: any) => c.status === 'pass' || (c.memo && c.memo.startsWith('[패스]')))
+          .filter((c: any) => c.status === 'pass')
           .map((c: any) => c.goal_id),
       );
       const doneCount = doneGoalIds.size;
@@ -489,8 +489,8 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       if (totalGoals === 0) continue;
 
       const dayCheckins = (checkins ?? []).filter((c) => c.date === dateStr);
-      const doneCount = dayCheckins.filter((c) => c.status === 'done' && !(c.memo && (c.memo as string).startsWith('[패스]'))).length;
-      const passCount = dayCheckins.filter((c) => c.status === 'pass' || (c.memo && (c.memo as string).startsWith('[패스]'))).length;
+      const doneCount = dayCheckins.filter((c) => c.status === 'done').length;
+      const passCount = dayCheckins.filter((c) => c.status === 'pass').length;
 
       let dayStatus: 'all_done' | 'mixed' | 'mostly_fail' | 'partial' | 'none' = 'none';
       if (doneCount + passCount >= totalGoals && doneCount > 0) {
@@ -588,8 +588,8 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         .order('created_at');
 
       const typedCheckins = (checkins ?? []) as CheckinWithGoal[];
-      const doneCount = typedCheckins.filter((c) => c.status === 'done' && !(c.memo && (c.memo as string).startsWith('[패스]'))).length;
-      const passCount = typedCheckins.filter((c) => c.status === 'pass' || (c.memo && (c.memo as string).startsWith('[패스]'))).length;
+      const doneCount = typedCheckins.filter((c) => c.status === 'done').length;
+      const passCount = typedCheckins.filter((c) => c.status === 'pass').length;
 
       summaries.push({
         userId: uid,

@@ -64,7 +64,7 @@ export default function CheckinList({
       {combinedList.map((item, idx) => {
         const { checkin, goalName } = item;
         const isDone = !!checkin;
-        const isPass = checkin?.status === 'pass' || checkin?.memo?.startsWith('[패스]');
+        const isPass = checkin?.status === 'pass';
 
         return (
           <View key={`${item.goalId}-${idx}`} style={[styles.item, !isDone && styles.itemPending]}>

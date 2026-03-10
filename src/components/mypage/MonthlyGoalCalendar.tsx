@@ -84,10 +84,10 @@ export default function MonthlyGoalCalendar({
     const dayCheckins = (checkins || []).filter((c) => c.date === dateStr);
 
     const doneCount = dayCheckins.filter((c) =>
-      c.status === 'done' && !(c.memo?.startsWith('[패스]'))
+      c.status === 'done'
     ).length;
     const explicitPassCount = dayCheckins.filter((c) =>
-      c.status === 'pass' || c.memo?.startsWith('[패스]')
+      c.status === 'pass'
     ).length;
 
     // 자동 패스: 주N회 목표 중 체크인 없는 것 (과거 날짜만)
