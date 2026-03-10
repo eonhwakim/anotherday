@@ -529,15 +529,30 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   // ── 월간 체크인 ──
   fetchMonthlyCheckins: async (userId, yearMonth) => {
-    const startDate = `${yearMonth}-01`;
-    const endDate = dayjs(startDate).endOf('month').format('YYYY-MM-DD');
+    const ms = dayjs(`${yearMonth}-01`);
+    const monthEnd = ms.endOf('month');
+    let firstMon = ms;
+    while (firstMon.day() !== 1) firstMon = firstMon.add(1, 'day');
+
+    let fetchStart = `${yearMonth}-01`;
+    let fetchEnd = monthEnd.format('YYYY-MM-DD');
+
+    if (!ms.isSame(firstMon, 'day') && firstMon.diff(ms, 'day') >= 4) {
+      fetchStart = ms.startOf('isoWeek').format('YYYY-MM-DD');
+    }
+
+    const lastMon = monthEnd.startOf('isoWeek');
+    const daysAtEnd = monthEnd.diff(lastMon, 'day') + 1;
+    if (daysAtEnd < 7 && daysAtEnd >= 4) {
+      fetchEnd = lastMon.add(6, 'day').format('YYYY-MM-DD');
+    }
 
     const { data } = await supabase
       .from('checkins')
       .select('*')
       .eq('user_id', userId)
-      .gte('date', startDate)
-      .lte('date', endDate)
+      .gte('date', fetchStart)
+      .lte('date', fetchEnd)
       .order('date');
 
     set({ monthlyCheckins: data ?? [] });

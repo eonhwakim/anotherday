@@ -33,7 +33,6 @@ export interface WeekData {
   rate: number;
   doneCount: number;
   passCount: number;
-  isMerged?: boolean;
 }
 
 export interface WeeklyPaceGoal {
@@ -150,21 +149,46 @@ export function ProgressBar({ rate, height = 8, color = '#FF6B3D', maxRate = 100
 }
 
 // ─── Calendar-style week ranges for a given month ───────────
+// 월요일 기준 Mon-Sun 주 단위.
+// 월초/월말 부분주가 4일 미만이면 인접 월에 편입 (해당 월에서 제외).
+// 이 월이 소유하는 주차는 인접 월 날짜까지 포함하는 완전한 Mon-Sun 범위를 반환.
+// dataStart/dataEnd: 체크인 데이터를 조회해야 하는 전체 날짜 범위.
 
 export function getCalendarWeekRanges(yearMonth: string) {
   const ms = dayjs(`${yearMonth}-01`);
   const monthEnd = ms.endOf('month');
+
   let firstMon = ms;
   while (firstMon.day() !== 1) firstMon = firstMon.add(1, 'day');
 
   const ranges: { s: dayjs.Dayjs; e: dayjs.Dayjs }[] = [];
-  ranges.push({ s: ms, e: firstMon.add(6, 'day') });
-  let cursor = firstMon.add(1, 'week');
+
+  if (!ms.isSame(firstMon, 'day')) {
+    const daysInThisMonth = firstMon.diff(ms, 'day');
+    if (daysInThisMonth >= 4) {
+      const weekMon = ms.startOf('isoWeek');
+      ranges.push({ s: weekMon, e: firstMon.subtract(1, 'day') });
+    }
+  }
+
+  let cursor = firstMon;
   while (cursor.isBefore(monthEnd) || cursor.isSame(monthEnd, 'day')) {
-    ranges.push({ s: cursor, e: cursor.add(6, 'day') });
+    const weekSun = cursor.add(6, 'day');
+    if (weekSun.isBefore(monthEnd) || weekSun.isSame(monthEnd, 'day')) {
+      ranges.push({ s: cursor, e: weekSun });
+    } else {
+      const daysInThisMonth = monthEnd.diff(cursor, 'day') + 1;
+      if (daysInThisMonth >= 4) {
+        ranges.push({ s: cursor, e: weekSun });
+      }
+    }
     cursor = cursor.add(1, 'week');
   }
-  return { ranges, monthEnd };
+
+  const dataStart = ranges.length > 0 ? ranges[0].s.format('YYYY-MM-DD') : `${yearMonth}-01`;
+  const dataEnd = ranges.length > 0 ? ranges[ranges.length - 1].e.format('YYYY-MM-DD') : monthEnd.format('YYYY-MM-DD');
+
+  return { ranges, monthEnd, dataStart, dataEnd };
 }
 
 // ─── Goal-aware week ranges (부분주 합산) ───────────────────
@@ -187,15 +211,14 @@ export function getGoalWeekRanges(
   goalEnd: string,
   targetCount: number,
 ): GoalWeekRange[] {
-  const { ranges, monthEnd } = getCalendarWeekRanges(yearMonth);
+  const { ranges } = getCalendarWeekRanges(yearMonth);
   const gS = dayjs(goalStart);
-  const gE = dayjsMin(dayjs(goalEnd), monthEnd);
-  const todayD = dayjs();
+  const gE = dayjs(goalEnd);
 
   const raw: { s: dayjs.Dayjs; e: dayjs.Dayjs; activeDays: number }[] = [];
   for (const wr of ranges) {
-    const effS = dayjsMax(dayjsMax(wr.s, gS), dayjs(`${yearMonth}-01`));
-    const effE = dayjsMin(dayjsMin(wr.e, gE), monthEnd);
+    const effS = dayjsMax(wr.s, gS);
+    const effE = dayjsMin(wr.e, gE);
     if (effS.isAfter(effE)) continue;
     const activeDays = effE.diff(effS, 'day') + 1;
     raw.push({ s: effS, e: effE, activeDays });

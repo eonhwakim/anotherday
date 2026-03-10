@@ -15,7 +15,7 @@ import {
   GoalStat, WeekData, WeeklyPaceGoal,
   dayjsMax, dayjsMin, isPassCheckin, isDoneCheckin,
   AreaChart, MountainBg, ProgressBar,
-  getCalendarWeekRanges, getTrendInsight,
+  getCalendarWeekRanges, getGoalWeekRanges, getTrendInsight,
 } from '../../components/stats/StatsShared';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -94,7 +94,6 @@ export default function MemberStatsScreen() {
     const totalDone = checkins.filter(isDoneCheckin).length;
     const totalPass = checkins.filter(isPassCheckin).length;
     let autoPass = 0;
-    const dailyGoals = goals.filter(g => g.frequency === 'daily');
     const weeklyGoals = goals.filter(g => g.frequency === 'weekly_count');
     const daysInMonth = dayjs(startDate).daysInMonth();
 
@@ -109,32 +108,20 @@ export default function MemberStatsScreen() {
     }
 
     const allGoalRates: number[] = [];
-    dailyGoals.forEach(ug => {
-      let active = 0, done = 0;
-      for (let d = 1; d <= daysInMonth; d++) {
-        const ds = dayjs(startDate).date(d).format('YYYY-MM-DD');
-        if (ds > today) break;
-        if (ug.start_date && ds < ug.start_date) continue;
-        if (ug.end_date && ds > ug.end_date) continue;
-        active++;
-        const c = checkins.find(ci => ci.goal_id === ug.goal_id && ci.date === ds);
-        if (c && isDoneCheckin(c)) done++;
-      }
-      if (active > 0) allGoalRates.push(done / active * 100);
-    });
-
-    weeklyGoals.forEach(ug => {
-      const target = ug.target_count || 1;
-      let totalTarget = 0, totalDoneG = 0;
-      const { ranges } = getCalendarWeekRanges(yearMonth);
-      ranges.forEach(wr => {
-        const gs = ug.start_date || startDate;
-        const effS = dayjsMax(wr.s, dayjs(gs));
-        const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
-        if (effS.isAfter(effE)) return;
-        totalTarget += target;
+    goals.forEach(ug => {
+      const isDaily = ug.frequency === 'daily';
+      const target = isDaily ? 1 : (ug.target_count || 1);
+      const gs = ug.start_date || startDate;
+      const ge = ug.end_date || monthEnd.format('YYYY-MM-DD');
+      const goalWeeks = getGoalWeekRanges(yearMonth, gs, ge, target);
+      let totalDoneG = 0, totalTarget = 0;
+      goalWeeks.forEach(gw => {
+        const effE = dayjsMin(gw.e, dayjs(today));
+        if (gw.s.isAfter(effE)) return;
+        const activeDays = effE.diff(gw.s, 'day') + 1;
+        totalTarget += isDaily ? activeDays : target;
         totalDoneG += checkins.filter(c =>
-          c.goal_id === ug.goal_id && c.date >= effS.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD')
+          c.goal_id === ug.goal_id && c.date >= gw.s.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD')
         ).filter(isDoneCheckin).length;
       });
       if (totalTarget > 0) allGoalRates.push(totalDoneG / totalTarget * 100);
@@ -180,7 +167,7 @@ export default function MemberStatsScreen() {
 
     ranges.forEach((wr, idx) => {
       const effS = wr.s;
-      const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
+      const effE = dayjsMin(wr.e, dayjs(today));
       if (effS.isAfter(dayjs(today))) return;
 
       let weekDone = 0, weekPass = 0;
@@ -200,12 +187,9 @@ export default function MemberStatsScreen() {
         weekDone += done;
         weekPass += wCk.filter(isPassCheckin).length;
 
-        if (ug.frequency === 'daily') {
-          const days = gE.diff(gS, 'day') + 1;
-          if (days > 0) weekRates.push(done / days * 100);
-        } else {
-          weekRates.push(done / (ug.target_count || 1) * 100);
-        }
+        const activeDays = gE.diff(gS, 'day') + 1;
+        const weekTarget = ug.frequency === 'daily' ? activeDays : (ug.target_count || 1);
+        if (weekTarget > 0) weekRates.push(Math.min(done / weekTarget * 100, 200));
       });
 
       const weekDays = effE.diff(effS, 'day') + 1;
@@ -224,49 +208,48 @@ export default function MemberStatsScreen() {
 
   // ─── Goal Details ─────────────────────────────────────────
   const goalDetails = useMemo(() => {
-    const daysInMonth = dayjs(startDate).daysInMonth();
     const calcStats = (ugList: typeof goals): GoalStat[] => ugList.map(ug => {
-      let done = 0, pass = 0, fail = 0, activeDays = 0;
-      if (ug.frequency === 'daily') {
-        for (let d = 1; d <= daysInMonth; d++) {
-          const ds = dayjs(startDate).date(d).format('YYYY-MM-DD');
-          if (ds > today) break;
-          if (ug.start_date && ds < ug.start_date) continue;
-          if (ug.end_date && ds > ug.end_date) continue;
-          activeDays++;
-          const c = checkins.find(ci => ci.goal_id === ug.goal_id && ci.date === ds);
-          if (c && isDoneCheckin(c)) done++;
-          else if (c && isPassCheckin(c)) { /* legacy */ }
-          else fail++;
-        }
-        const rate = activeDays > 0 ? Math.round(done / activeDays * 100) : 0;
-        return { goalId: ug.goal_id, name: allGoalMap.get(ug.goal_id) ?? '목표', frequency: 'daily' as const, targetCount: null, startDate: ug.start_date || null, done, pass: 0, fail, rate };
-      } else {
-        const target = ug.target_count || 1;
-        let totalTarget = 0;
-        const { ranges } = getCalendarWeekRanges(yearMonth);
-        ranges.forEach(wr => {
-          const gs = ug.start_date || startDate;
-          const effS = dayjsMax(wr.s, dayjs(gs));
-          const effE = dayjsMin(dayjsMin(wr.e, monthEnd), dayjs(today));
-          if (effS.isAfter(effE)) return;
-          const wCk = checkins.filter(c => c.goal_id === ug.goal_id && c.date >= effS.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD'));
-          done += wCk.filter(isDoneCheckin).length;
+      let done = 0, pass = 0, fail = 0;
+      const isDaily = ug.frequency === 'daily';
+      const target = isDaily ? 1 : (ug.target_count || 1);
+      const gs = ug.start_date || startDate;
+      const ge = ug.end_date || monthEnd.format('YYYY-MM-DD');
+      const goalWeeks = getGoalWeekRanges(yearMonth, gs, ge, target);
+      let totalTarget = 0;
+
+      goalWeeks.forEach(gw => {
+        const effE = dayjsMin(gw.e, dayjs(today));
+        if (gw.s.isAfter(effE)) return;
+
+        const wCk = checkins.filter(c =>
+          c.goal_id === ug.goal_id && c.date >= gw.s.format('YYYY-MM-DD') && c.date <= effE.format('YYYY-MM-DD')
+        );
+        const weekDone = wCk.filter(isDoneCheckin).length;
+        done += weekDone;
+
+        const activeDays = effE.diff(gw.s, 'day') + 1;
+        const weekTarget = isDaily ? activeDays : target;
+        totalTarget += weekTarget;
+
+        if (!isDaily) {
           const ep = wCk.filter(isPassCheckin).length;
-          const wd = effE.diff(effS, 'day') + 1;
-          pass += ep + Math.max(0, wd - wCk.filter(isDoneCheckin).length - ep);
-          totalTarget += target;
-          const weekOver = wr.e.format('YYYY-MM-DD') <= today;
-          if (weekOver) fail += Math.max(0, target - wCk.filter(isDoneCheckin).length);
-        });
-        const rate = totalTarget > 0 ? Math.round(done / totalTarget * 100) : 0;
-        return { goalId: ug.goal_id, name: allGoalMap.get(ug.goal_id) ?? '목표', frequency: 'weekly_count' as const, targetCount: ug.target_count, startDate: ug.start_date || null, done, pass, fail, rate };
-      }
+          pass += ep + Math.max(0, activeDays - weekDone - ep);
+        }
+
+        const weekOver = gw.e.format('YYYY-MM-DD') <= today;
+        if (weekOver) fail += Math.max(0, weekTarget - weekDone);
+      });
+
+      const rate = totalTarget > 0 ? Math.round(done / totalTarget * 100) : 0;
+      return {
+        goalId: ug.goal_id, name: allGoalMap.get(ug.goal_id) ?? '목표',
+        frequency: ug.frequency as 'daily' | 'weekly_count',
+        targetCount: isDaily ? null : ug.target_count,
+        startDate: ug.start_date || null, done, pass, fail, rate,
+      };
     });
 
-    const daily = calcStats(goals.filter(g => g.frequency === 'daily'));
-    const weekly = calcStats(goals.filter(g => g.frequency === 'weekly_count'));
-    const all = [...daily, ...weekly].sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
+    const all = calcStats(goals).sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
     const best = all.length > 0 ? all.reduce((a, b) => a.rate >= b.rate ? a : b) : null;
     const worst = all.filter(g => g.fail > 0).length > 0 ? all.filter(g => g.fail > 0).reduce((a, b) => a.fail >= b.fail ? a : b) : null;
     return { all, best, worst };
@@ -415,7 +398,7 @@ export default function MemberStatsScreen() {
                 ))}
               </View>
               {trendData.some(w => w.days !== 7) && (
-                <Text style={s.trendNote}>* 첫째 주와 마지막 주는 7일이 아닐 수 있어요</Text>
+                <Text style={s.trendNote}>* 4일 미만의 짧은 주는 인접 월에 포함됩니다</Text>
               )}
               {weekDetail && weekDetail.length > 0 && (
                 <View style={s.weekDetailWrap}>
@@ -585,7 +568,7 @@ const s = StyleSheet.create({
   trendLegendDays: { fontSize: 10, fontWeight: '400', color: 'rgba(26,26,26,0.35)' },
   trendLegendVal: { fontSize: 10, color: 'rgba(26,26,26,0.45)', marginTop: 2 },
   trendLegendItemActive: { borderWidth: 1.5, borderColor: '#FF6B3D' },
-  trendNote: { fontSize: 10, color: 'rgba(26,26,26,0.30)', marginTop: 6, textAlign: 'center', fontStyle: 'italic' },
+  trendNote: { fontSize: 10, color: 'red', marginTop: 12, textAlign: 'center', fontStyle: 'italic' },
 
   weekDetailWrap: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
   weekDetailTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },
