@@ -3,8 +3,11 @@
 > **"혼자 하면 작심삼일, 함께 하면 정상까지."**
 >
 > 팀원들과 함께 목표를 달성하며 산을 오르는 게이미피케이션 습관 형성 플랫폼
+> 
+> [앱스토어 링크](https://apps.apple.com/kr/app/%EC%96%B4%EB%82%98%EB%8D%94%EB%8D%B0%EC%9D%B4/id6759189268)
 
 <br/>
+
 
 ## 📱 프로젝트 소개
 
@@ -33,11 +36,10 @@
 | *팀원들의 현재 위치 시각화* | *성공/실패/부분달성 분석* | *주 N회 / 매일 목표 설정* |
 
 
-<img src="https://github.com/user-attachments/assets/d764eede-65e9-4a74-a4b1-d3f007b8fe42" width="350" height="750" />&nbsp;&nbsp;
-<img src="https://github.com/user-attachments/assets/2ce33b12-1f8a-465a-beb9-15dbdf859da4" width="350" height="750" />&nbsp;&nbsp;
-<img src="https://github.com/user-attachments/assets/153b1b4e-5973-4bd4-b3f8-3c4c5eeeb185" width="350" height="750" />&nbsp;&nbsp;
-<img src="https://github.com/user-attachments/assets/c8e0d52f-03d9-4404-9c37-927445eeb9e0" width="350" height="750" />&nbsp;&nbsp;
-<img src="https://github.com/user-attachments/assets/2eda47f3-a664-4690-a32f-7ce1f5f06df4" width="350" height="750" />
+<img src="https://github.com/user-attachments/assets/a4daa6b0-fc4a-4359-bb0d-80398536bc11" width="350" height="750" />&nbsp;&nbsp;
+<img src="https://github.com/user-attachments/assets/52e5c773-d7b2-4ca6-8e35-35bcd51efa38" width="350" height="750" />&nbsp;&nbsp;
+<img src="https://github.com/user-attachments/assets/f6f294ad-6142-4ebd-a033-9dba50dfc63e" width="350" height="750" />&nbsp;&nbsp;
+<img src="https://github.com/user-attachments/assets/46372094-9d2e-4d89-b877-bfd21ca8de6b" width="350" height="750" />&nbsp;&nbsp;
 
 
 
@@ -125,4 +127,7 @@ npx expo start
 
 ## 📝 Retrospective (회고)
 
-이 프로젝트를 통해 **"데이터 모델링의 중요성"**과 **"사용자 경험 중심의 상태 관리"**에 대해 깊이 고민할 수 있었습니다. 특히 Supabase와 Zustand를 결합하여 실시간성을 보장하면서도 클라이언트의 성능을 최적화하는 과정에서 많은 성장을 이루었습니다. 앞으로 푸시 알림 기능과 소셜 기능을 더 고도화할 예정입니다.
+이 프로젝트를 통해 "데이터 모델링의 중요성"과 "사용자 경험 중심의 상태 관리"에 대해 깊이 고민할 수 있었습니다. 특히 Supabase와 Zustand를 결합하여 실시간성을 보장하면서도 클라이언트의 성능을 최적화하는 과정에서 많은 성장을 이루었습니다. 앞으로 기능을 더 고도화할 예정입니다.
+
+## 업데이트 기능
+- 푸시 알림 기능
