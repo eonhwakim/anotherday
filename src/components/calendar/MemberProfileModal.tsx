@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/defaults';
 import { useGoalStore } from '../../stores/goalStore';
+import { useStatsStore } from '../../stores/statsStore';
 import { useTeamStore } from '../../stores/teamStore';
 import dayjs from '../../lib/dayjs';
 import { supabase } from '../../lib/supabaseClient';
@@ -33,7 +34,8 @@ export default function MemberProfileModal({
 }: MemberProfileModalProps) {
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
   const [loading, setLoading] = useState(false);
-  const { teamGoals, fetchMonthlyCheckins, fetchMyGoals, fetchTeamGoals } = useGoalStore();
+  const { teamGoals, fetchMyGoals, fetchTeamGoals } = useGoalStore();
+  const { fetchMonthlyCheckins } = useStatsStore();
   const { currentTeam } = useTeamStore();
   
   const [monthlyCheckins, setMonthlyCheckins] = useState<any[]>([]);
@@ -66,9 +68,8 @@ export default function MemberProfileModal({
       ]) as any;
       
       // Get data from store after fetching
-      const store = useGoalStore.getState();
-      setMonthlyCheckins(store.monthlyCheckins || []);
-      setMyGoals(store.myGoals || []);
+      setMonthlyCheckins(useStatsStore.getState().monthlyCheckins || []);
+      setMyGoals(useGoalStore.getState().myGoals || []);
 
       if (userData && userData.data) {
         setUserInfo(userData.data);

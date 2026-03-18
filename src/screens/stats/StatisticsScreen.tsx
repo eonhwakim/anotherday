@@ -12,6 +12,7 @@ import { AppTabParamList, RootStackParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
+import { useStatsStore } from '../../stores/statsStore';
 import { supabase } from '../../lib/supabaseClient';
 import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
@@ -37,7 +38,8 @@ export default function StatisticsScreen() {
   const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const { user } = useAuthStore();
   const { teams, currentTeam, fetchTeams, selectTeam } = useTeamStore();
-  const { teamGoals, myGoals, monthlyCheckins, fetchTeamGoals, fetchMyGoals, fetchMonthlyCheckins } = useGoalStore();
+  const { teamGoals, myGoals, fetchTeamGoals, fetchMyGoals } = useGoalStore();
+  const { monthlyCheckins, fetchMonthlyCheckins } = useStatsStore();
 
   const scrollRef = useRef<ScrollView>(null);
   const lastTapRef = useRef(0);

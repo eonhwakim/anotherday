@@ -16,6 +16,7 @@ import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
+import { useStatsStore } from '../../stores/statsStore';
 import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalList';
 import DevGuideModal from '../../components/home/DevGuideModal';
@@ -29,10 +30,8 @@ const { width } = Dimensions.get('window');
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam, fetchTeams, fetchMembers } = useTeamStore();
-  const {
-    myGoals, teamGoals, todayCheckins, memberProgress,
-    fetchTeamGoals, fetchTodayCheckins, fetchMemberProgress, fetchMyGoals,
-  } = useGoalStore();
+  const { myGoals, teamGoals, todayCheckins, fetchTeamGoals, fetchTodayCheckins, fetchMyGoals } = useGoalStore();
+  const { memberProgress, fetchMemberProgress } = useStatsStore();
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
@@ -124,7 +123,7 @@ export default function HomeScreen() {
     if (teamId) promises.push(fetchMembers(teamId));
     await Promise.all(promises);
 
-    const progress = useGoalStore.getState().memberProgress;
+    const progress = useStatsStore.getState().memberProgress;
     const myProgress = progress.find((p) => p.userId === user.id);
     if (myProgress) {
       const uncompleted = myProgress.goalDetails

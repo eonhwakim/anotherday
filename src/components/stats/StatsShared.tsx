@@ -140,10 +140,15 @@ export function MountainBg({ width, height }: { width: number; height: number })
 // ─── Progress Bar ───────────────────────────────────────────
 
 export function ProgressBar({ rate, height = 8, color = '#FF6B3D', maxRate = 100 }: { rate: number; height?: number; color?: string; maxRate?: number }) {
-  const pct = Math.min(rate / maxRate * 100, 100);
+  // maxRate가 지정되어 있더라도, rate가 더 크면 그것을 기준으로 삼아 꽉 찬 바를 보여주되,
+  // 시각적으로는 100%를 넘었다는 것을 표현하기 위해 width는 100%로 제한하고
+  // 색상이나 추가적인 인디케이터로 초과 달성을 표현하는 것이 일반적입니다.
+  // 여기서는 단순히 width를 100%로 캡핑합니다.
+  const pct = Math.min(Math.max(0, rate), 100); 
+  
   return (
     <View style={{ height, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: height / 2, flex: 1, overflow: 'hidden' }}>
-      <View style={{ width: `${pct}%` as any, height: '100%', backgroundColor: color, borderRadius: height / 2 }} />
+      <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color, borderRadius: height / 2 }} />
     </View>
   );
 }

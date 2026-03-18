@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabaseClient';
 import { RootStackParamList } from '../../types/navigation';
 import { useGoalStore } from '../../stores/goalStore';
+import { useStatsStore } from '../../stores/statsStore';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
 import {
@@ -27,7 +28,8 @@ export default function MemberStatsScreen() {
   const route = useRoute<MemberStatsRouteProp>();
   const { userId, teamId, nickname } = route.params;
 
-  const { teamGoals, myGoals, monthlyCheckins, fetchTeamGoals, fetchMyGoals, fetchMonthlyCheckins } = useGoalStore();
+  const { teamGoals, myGoals, fetchTeamGoals, fetchMyGoals } = useGoalStore();
+  const { monthlyCheckins, fetchMonthlyCheckins } = useStatsStore();
 
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
   const [resolution, setResolution] = useState('');

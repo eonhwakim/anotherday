@@ -8,6 +8,7 @@ import { AppTabParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
+import { useStatsStore } from '../../stores/statsStore';
 import { useTeamStore } from '../../stores/teamStore';
 import MemberProfileModal from '../../components/calendar/MemberProfileModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
@@ -27,21 +28,18 @@ const STATUS_IMAGES: Record<string, any> = {
 export default function CalendarScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam } = useTeamStore();
+  const { teamGoals, myGoals, fetchTeamGoals, fetchMyGoals } = useGoalStore();
   const {
-    teamGoals,
-    myGoals,
     monthlyCheckins,
     calendarMarkings,
     memberDateCheckins,
     fetchCalendarMarkings,
     fetchCheckinsForDate,
     fetchMemberDateCheckins,
-    fetchTeamGoals,
-    fetchMyGoals,
     fetchMonthlyCheckins,
     fetchMemberProgress,
     toggleReaction,
-  } = useGoalStore();
+  } = useStatsStore();
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
