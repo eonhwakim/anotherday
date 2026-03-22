@@ -252,6 +252,64 @@ export function getGoalWeekRanges(
   }));
 }
 
+// ─── Week Achievement Calculator ────────────────────────────
+
+export interface WeekAchievement {
+  totalGoals: number;
+  failedGoals: number;
+  isAllClear: boolean;
+  isEnded: boolean;
+  isFuture: boolean;
+}
+
+/**
+ * 한 주(weekStart 기준 ISO week)의 목표 달성 여부를 계산합니다.
+ * checkins: 해당 유저의 전체(혹은 이 달) 체크인 — 함수 내에서 주 범위로 필터링
+ * userGoals: 해당 유저의 활성 user_goals
+ */
+export function calcWeekAchievement(
+  weekStart: string,
+  checkins: { goal_id: string; status: string; date: string }[],
+  userGoals: { goal_id: string; frequency: string; target_count: number | null; start_date: string | null; end_date: string | null }[],
+): WeekAchievement {
+  const wEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
+  const today = dayjs().format('YYYY-MM-DD');
+  const isEnded = wEnd < today;
+  const isFuture = weekStart > today;
+
+  const weekDoneCheckins = checkins.filter(c => c.status === 'done' && c.date >= weekStart && c.date <= wEnd);
+
+  const activeGoals = userGoals.filter(ug => {
+    if (ug.start_date && ug.start_date > wEnd) return false;
+    if (ug.end_date && ug.end_date < weekStart) return false;
+    return true;
+  });
+
+  let totalGoals = 0;
+  let failedGoals = 0;
+
+  activeGoals.forEach(ug => {
+    const isDaily = ug.frequency === 'daily';
+    let target = isDaily ? 7 : (ug.target_count || 1);
+
+    if (isDaily) {
+      const effS = dayjsMax(dayjs(weekStart), dayjs(ug.start_date || weekStart));
+      const effE = dayjsMin(dayjs(wEnd), dayjs(ug.end_date || wEnd));
+      if (effS.isAfter(effE)) target = 0;
+      else target = effE.diff(effS, 'day') + 1;
+    }
+
+    if (target > 0) {
+      totalGoals++;
+      const doneCount = weekDoneCheckins.filter(c => c.goal_id === ug.goal_id).length;
+      if (doneCount < target) failedGoals++;
+    }
+  });
+
+  const isAllClear = totalGoals > 0 && failedGoals === 0;
+  return { totalGoals, failedGoals, isAllClear, isEnded, isFuture };
+}
+
 // ─── Trend Insight Message ──────────────────────────────────
 
 export function getTrendInsight(trendData: WeekData[]): string {

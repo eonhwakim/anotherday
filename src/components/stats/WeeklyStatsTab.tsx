@@ -1,0 +1,324 @@
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../../lib/supabaseClient';
+import { COLORS } from '../../constants/defaults';
+import dayjs from '../../lib/dayjs';
+import { dayjsMax, dayjsMin } from './StatsShared';
+import { useAuthStore } from '../../stores/authStore';
+import { useTeamStore } from '../../stores/teamStore';
+import { useGoalStore } from '../../stores/goalStore';
+
+export default function WeeklyStatsTab() {
+  const { user } = useAuthStore();
+  const { currentTeam } = useTeamStore();
+  const { teamGoals, myGoals } = useGoalStore();
+
+  const [weekStart, setWeekStart] = useState(dayjs().startOf('isoWeek').format('YYYY-MM-DD'));
+  const [weeklyTeamData, setWeeklyTeamData] = useState<any[]>([]);
+  const [weeklyCheckins, setWeeklyCheckins] = useState<any[]>([]);
+
+  const allGoalMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (teamGoals ?? []).forEach(g => m.set(g.id, g.name));
+    return m;
+  }, [teamGoals]);
+
+  const fetchWeeklyData = useCallback(async () => {
+    if (!user || !currentTeam) return;
+    try {
+      const wEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
+
+      // 1. 팀 멤버 가져오기
+      const { data: members } = await supabase
+        .from('team_members')
+        .select('user_id, users(nickname, profile_image_url)')
+        .eq('team_id', currentTeam.id);
+      
+      const memberIds = (members ?? []).map((m: any) => m.user_id);
+
+      if (memberIds.length > 0) {
+        // 2. 이번 주 팀원들의 체크인 가져오기
+        const { data: teamCheckins } = await supabase
+          .from('checkins')
+          .select('user_id, goal_id, status, date')
+          .in('user_id', memberIds)
+          .gte('date', weekStart)
+          .lte('date', wEnd);
+        
+        setWeeklyCheckins(teamCheckins ?? []);
+
+        // 3. 팀원들의 목표(user_goals) 가져오기
+        const { data: teamUserGoals } = await supabase
+          .from('user_goals')
+          .select('user_id, goal_id, frequency, target_count, start_date, end_date')
+          .in('user_id', memberIds)
+          .eq('is_active', true);
+
+        // 4. 팀원별 올클리어 / 미달 계산
+        const processed = (members ?? []).map((m: any) => {
+          const uid = m.user_id;
+          const uCheckins = (teamCheckins ?? []).filter((c: any) => c.user_id === uid && c.status === 'done');
+          const uGoals = (teamUserGoals ?? []).filter((g: any) => g.user_id === uid);
+
+          // 유효한 목표 필터링 (이번 주에 겹치는지)
+          const activeGoals = uGoals.filter((ug: any) => {
+            if (ug.start_date && ug.start_date > wEnd) return false;
+            if (ug.end_date && ug.end_date < weekStart) return false;
+            return true;
+          });
+
+          let totalGoals = 0;
+          let failedGoals = 0;
+
+          activeGoals.forEach((ug: any) => {
+            const isDaily = ug.frequency === 'daily';
+            let target = isDaily ? 7 : (ug.target_count || 1);
+            
+            if (isDaily) {
+              let effS = dayjsMax(dayjs(weekStart), dayjs(ug.start_date || weekStart));
+              let effE = dayjsMin(dayjs(wEnd), dayjs(ug.end_date || wEnd));
+              if (effS.isAfter(effE)) target = 0;
+              else target = effE.diff(effS, 'day') + 1;
+            }
+
+            if (target > 0) {
+              totalGoals++;
+              const doneCount = uCheckins.filter((c: any) => c.goal_id === ug.goal_id).length;
+              if (doneCount < target) {
+                failedGoals++;
+              }
+            }
+          });
+
+          const isAllClear = totalGoals > 0 && failedGoals === 0;
+
+          return {
+            userId: uid,
+            nickname: m.users?.nickname || '알 수 없음',
+            doneCount: uCheckins.length,
+            isMe: uid === user.id,
+            totalGoals,
+            failedGoals,
+            isAllClear
+          };
+        }).sort((a, b) => {
+          // 1순위: 올클리어 여부
+          if (a.isAllClear && !b.isAllClear) return -1;
+          if (!a.isAllClear && b.isAllClear) return 1;
+          // 2순위: 미달 개수 적은 순
+          if (a.failedGoals !== b.failedGoals) return a.failedGoals - b.failedGoals;
+          // 3순위: 인증 횟수 많은 순
+          if (b.doneCount !== a.doneCount) return b.doneCount - a.doneCount;
+          // 4순위: 나를 위로
+          if (a.isMe) return -1;
+          if (b.isMe) return 1;
+          return 0;
+        });
+
+        setWeeklyTeamData(processed);
+      } else {
+        setWeeklyTeamData([]);
+        setWeeklyCheckins([]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [user, currentTeam, weekStart]);
+
+  React.useEffect(() => {
+    fetchWeeklyData();
+  }, [weekStart, fetchWeeklyData]);
+
+  const weekLabel = useMemo(() => {
+    const s = dayjs(weekStart);
+    const e = s.add(6, 'day');
+    const month = s.month() + 1;
+    const weekOfMonth = Math.ceil(s.date() / 7);
+    return `${month}월 ${weekOfMonth}주차 (${s.format('M.D')} ~ ${e.format('M.D')})`;
+  }, [weekStart]);
+
+  const myWeeklyGoals = useMemo(() => {
+    if (!myGoals || !user) return [];
+    const wEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
+    
+    const activeGoals = myGoals.filter(ug => {
+      if (ug.start_date && ug.start_date > wEnd) return false;
+      if (ug.end_date && ug.end_date < weekStart) return false;
+      return true;
+    });
+
+    const myCks = weeklyCheckins.filter(c => c.user_id === user.id);
+
+    return activeGoals.map(ug => {
+      const isDaily = ug.frequency === 'daily';
+      let target = isDaily ? 7 : (ug.target_count || 1);
+      
+      if (isDaily) {
+        let effS = dayjsMax(dayjs(weekStart), dayjs(ug.start_date || weekStart));
+        let effE = dayjsMin(dayjs(wEnd), dayjs(ug.end_date || wEnd));
+        if (effS.isAfter(effE)) target = 0;
+        else target = effE.diff(effS, 'day') + 1;
+      }
+
+      const doneCks = myCks.filter(c => c.goal_id === ug.goal_id && c.status === 'done');
+      const doneCount = doneCks.length;
+      const isAchieved = target > 0 && doneCount >= target;
+
+      return {
+        goalId: ug.goal_id,
+        name: allGoalMap.get(ug.goal_id) ?? '목표',
+        target,
+        doneCount,
+        isAchieved,
+        isDaily
+      };
+    }).filter(g => g.target > 0);
+  }, [myGoals, user, weekStart, weeklyCheckins, allGoalMap]);
+
+  const isAllClear = myWeeklyGoals.length > 0 && myWeeklyGoals.every(g => g.isAchieved);
+
+  const isWeekEnded = dayjs(weekStart).endOf('isoWeek').isBefore(dayjs(), 'day');
+
+  return (
+    <>
+      {/* ── 주 선택 ── */}
+      <View style={s.monthRow}>
+        <TouchableOpacity style={s.monthBtn} onPress={() => setWeekStart(p => dayjs(p).subtract(1, 'week').format('YYYY-MM-DD'))}>
+          <Ionicons name="chevron-back" size={22} color={COLORS.primaryLight} />
+        </TouchableOpacity>
+        <Text style={s.monthLabel}>{weekLabel}</Text>
+        <TouchableOpacity style={s.monthBtn} onPress={() => setWeekStart(p => dayjs(p).add(1, 'week').format('YYYY-MM-DD'))}>
+          <Ionicons name="chevron-forward" size={22} color={COLORS.primaryLight} />
+        </TouchableOpacity>
+      </View>
+
+      {/* ═══ 나의 주간 목표 ═══ */}
+      <Text style={s.sectionTitle}>나의 주간 목표</Text>
+      <View style={s.card}>
+        {isAllClear ? (
+          <View style={s.allClearBox}>
+            <Text style={s.allClearEmoji}>🏆</Text>
+            <Text style={s.allClearTitle}>이번 주 올클리어 달성!</Text>
+            <Text style={s.allClearSub}>모든 목표를 완벽하게 해냈어요</Text>
+          </View>
+        ) : null}
+
+        {myWeeklyGoals.length === 0 ? (
+          <Text style={s.emptySmall}>이번 주 진행 중인 목표가 없어요</Text>
+        ) : (
+          <View style={s.weeklyGoalList}>
+            {myWeeklyGoals.map(g => (
+              <View key={g.goalId} style={s.weeklyGoalItem}>
+                <View style={s.weeklyGoalInfo}>
+                  <Text style={s.weeklyGoalName}>{g.name}</Text>
+                  <Text style={s.weeklyGoalTarget}>{g.isDaily ? '매일' : `주 ${g.target}회`}</Text>
+                </View>
+                <View style={s.weeklyGoalStatus}>
+                  <Text style={[s.weeklyGoalCount, g.isAchieved && { color: '#15803d' }]}>
+                    <Text style={g.doneCount > g.target ? { color: '#FF6B3D' } : undefined}>{g.doneCount}</Text> / {g.target}
+                  </Text>
+                  {g.isAchieved && <Ionicons name="checkmark-circle" size={20} color={'#4ADE80'} />}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* ═══ 팀원들의 주간 현황 ═══ */}
+      {currentTeam && (
+        <>
+          <Text style={s.sectionTitle}>팀원들의 주간 현황</Text>
+          <View style={s.card}>
+            {weeklyTeamData.length === 0 ? (
+              <Text style={s.emptySmall}>팀원 데이터가 없습니다</Text>
+            ) : (
+              <View style={s.teamMemberList}>
+                {weeklyTeamData.map((m, idx) => (
+                  <View key={m.userId} style={s.teamMemberItem}>
+                    <View style={s.teamMemberRank}>
+                      <Text style={s.teamMemberRankText}>{idx + 1}</Text>
+                    </View>
+                    <View style={s.teamMemberNameBox}>
+                      <Text style={[s.teamMemberName, m.isMe && s.teamMemberNameMe]}>
+                        {m.nickname} {m.isMe && '(나)'}
+                      </Text>
+                      <Text style={s.teamMemberSubText}>총 목표 {m.totalGoals}개</Text>
+                    </View>
+                    <View style={s.teamMemberScore}>
+                      {m.totalGoals === 0 ? (
+                        <Text style={s.teamMemberScoreTextGray}>목표 없음</Text>
+                      ) : m.isAllClear ? (
+                        <View style={s.teamMemberBadgeClear}>
+                          <Text style={s.teamMemberBadgeTextClear}>🏆 올클리어</Text>
+                        </View>
+                      ) : !isWeekEnded ? (
+                        <View style={s.teamMemberBadgeProgress}>
+                          <Text style={[s.teamMemberBadgeTextProgress, { color: 'rgba(26,26,26,0.45)' }]}>아직 진행중</Text>
+                        </View>
+                      ) : (
+                        <View style={s.teamMemberBadgeProgress}>
+                          <Text style={s.teamMemberBadgeTextProgress}>
+                            <Text style={{ color: '#15803d' }}>{m.totalGoals - m.failedGoals}개 완료</Text>
+                            <Text style={{ color: 'rgba(26,26,26,0.2)' }}> | </Text>
+                            <Text style={{ color: '#b91c1c' }}>{m.failedGoals}개 미달</Text>
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </>
+      )}
+    </>
+  );
+}
+
+const s = StyleSheet.create({
+  // Month Selector (reused for Week Selector)
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16, gap: 16 },
+  monthBtn: { padding: 8 },
+  monthLabel: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', minWidth: 120, textAlign: 'center' },
+
+  // Section
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginBottom: 4, marginTop: 28 },
+
+  // Card
+  card: { backgroundColor: '#FFF', marginHorizontal: 16, padding: 18, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)', marginTop: 8, shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
+
+  // Empty
+  emptySmall: { fontSize: 13, color: 'rgba(26,26,26,0.30)', textAlign: 'center', paddingVertical: 16 },
+
+  // Weekly UI
+  allClearBox: { backgroundColor: 'rgba(74,222,128,0.1)', borderRadius: 12, padding: 20, alignItems: 'center', marginBottom: 16 },
+  allClearEmoji: { fontSize: 32, marginBottom: 8 },
+  allClearTitle: { fontSize: 16, fontWeight: '800', color: '#15803d', marginBottom: 4 },
+  allClearSub: { fontSize: 12, color: '#166534' },
+
+  weeklyGoalList: { gap: 12 },
+  weeklyGoalItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F9FAFB', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  weeklyGoalInfo: { flex: 1 },
+  weeklyGoalName: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
+  weeklyGoalTarget: { fontSize: 11, color: 'rgba(26,26,26,0.5)' },
+  weeklyGoalStatus: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  weeklyGoalCount: { fontSize: 15, fontWeight: '800', color: '#1A1A1A' },
+
+  teamMemberList: { gap: 10 },
+  teamMemberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.03)' },
+  teamMemberRank: { width: 28, alignItems: 'center' },
+  teamMemberRankText: { fontSize: 14, fontWeight: '700', color: 'rgba(26,26,26,0.4)' },
+  teamMemberNameBox: { flex: 1, paddingHorizontal: 8 },
+  teamMemberName: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', marginBottom: 2 },
+  teamMemberNameMe: { color: '#FF6B3D', fontWeight: '800' },
+  teamMemberSubText: { fontSize: 11, color: 'rgba(26,26,26,0.45)' },
+  teamMemberScore: { alignItems: 'flex-end' },
+  teamMemberBadgeClear: { backgroundColor: 'rgba(74,222,128,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  teamMemberBadgeTextClear: { fontSize: 12, fontWeight: '800', color: '#15803d' },
+  teamMemberBadgeProgress: { backgroundColor: 'rgba(26,26,26,0.03)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
+  teamMemberBadgeTextProgress: { fontSize: 11, fontWeight: '700' },
+  teamMemberScoreTextGray: { fontSize: 12, fontWeight: '500', color: 'rgba(26,26,26,0.4)' },
+});
