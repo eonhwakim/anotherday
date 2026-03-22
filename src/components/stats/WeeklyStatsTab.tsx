@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabaseClient';
 import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
-import { dayjsMax, dayjsMin } from './StatsShared';
+import { dayjsMax, dayjsMin, getCalendarWeekRanges } from './StatsShared';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
@@ -130,12 +130,26 @@ export default function WeeklyStatsTab() {
     fetchWeeklyData();
   }, [weekStart, fetchWeeklyData]);
 
-  const weekLabel = useMemo(() => {
+  const weekLabelParts = useMemo(() => {
     const s = dayjs(weekStart);
     const e = s.add(6, 'day');
-    const month = s.month() + 1;
-    const weekOfMonth = Math.ceil(s.date() / 7);
-    return `${month}월 ${weekOfMonth}주차 (${s.format('M.D')} ~ ${e.format('M.D')})`;
+
+    // 이 주가 속한 월 결정: 주 내 시작월 날짜가 4일 미만이면 다음 달에 편입
+    const endOfStartMonth = s.endOf('month');
+    const daysInStartMonth = Math.min(endOfStartMonth.diff(s, 'day') + 1, 7);
+    const ownerMonth = daysInStartMonth >= 4 ? s : e;
+    const monthStr = ownerMonth.format('YYYY-MM');
+
+    // 해당 월의 캘린더 주차 배열에서 이 weekStart의 인덱스를 찾음
+    const { ranges } = getCalendarWeekRanges(monthStr);
+    const idx = ranges.findIndex(r => r.s.format('YYYY-MM-DD') === weekStart);
+    const weekOfMonth = idx >= 0 ? idx + 1 : 1;
+
+    const monthNum = ownerMonth.month() + 1;
+    return {
+      week: `${monthNum}월 ${weekOfMonth}주차`,
+      range: `${s.format('M.D')} ~ ${e.format('M.D')}`,
+    };
   }, [weekStart]);
 
   const myWeeklyGoals = useMemo(() => {
@@ -187,7 +201,10 @@ export default function WeeklyStatsTab() {
         <TouchableOpacity style={s.monthBtn} onPress={() => setWeekStart(p => dayjs(p).subtract(1, 'week').format('YYYY-MM-DD'))}>
           <Ionicons name="chevron-back" size={22} color={COLORS.primaryLight} />
         </TouchableOpacity>
-        <Text style={s.monthLabel}>{weekLabel}</Text>
+        <View style={s.weekLabelBox}>
+          <Text style={s.weekLabelMain}>{weekLabelParts.week}</Text>
+          <Text style={s.weekLabelSub}>{weekLabelParts.range}</Text>
+        </View>
         <TouchableOpacity style={s.monthBtn} onPress={() => setWeekStart(p => dayjs(p).add(1, 'week').format('YYYY-MM-DD'))}>
           <Ionicons name="chevron-forward" size={22} color={COLORS.primaryLight} />
         </TouchableOpacity>
@@ -215,10 +232,14 @@ export default function WeeklyStatsTab() {
                   <Text style={s.weeklyGoalTarget}>{g.isDaily ? '매일' : `주 ${g.target}회`}</Text>
                 </View>
                 <View style={s.weeklyGoalStatus}>
-                  <Text style={[s.weeklyGoalCount, g.isAchieved && { color: '#15803d' }]}>
-                    <Text style={g.doneCount > g.target ? { color: '#FF6B3D' } : undefined}>{g.doneCount}</Text> / {g.target}
+                  <Text style={s.weeklyGoalCount}>
+                    <Text style={g.doneCount > g.target ? { color: '#FF6B3D' } : g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }}>{g.doneCount}</Text>
+                    <Text style={{ color: '#888' }}> / {g.target}</Text>
                   </Text>
-                  {g.isAchieved && <Ionicons name="checkmark-circle" size={20} color={'#4ADE80'} />}
+                  {g.isAchieved
+                    ? <Ionicons name="checkmark-circle" size={20} color={'#4ADE80'} />
+                    : <Ionicons name="close-circle" size={20} color={'#EF4444'} />
+                  }
                 </View>
               </View>
             ))}
@@ -283,6 +304,9 @@ const s = StyleSheet.create({
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16, gap: 16 },
   monthBtn: { padding: 8 },
   monthLabel: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', minWidth: 120, textAlign: 'center' },
+  weekLabelBox: { alignItems: 'center', minWidth: 140 },
+  weekLabelMain: { fontSize: 17, fontWeight: '800', color: '#1A1A1A', letterSpacing: -0.3 },
+  weekLabelSub: { fontSize: 12, color: '#888', marginTop: 2 },
 
   // Section
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginBottom: 4, marginTop: 28 },

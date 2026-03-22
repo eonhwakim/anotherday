@@ -17,6 +17,7 @@ interface GoalState {
   fetchMyGoals: (userId: string) => Promise<void>;
   fetchLastMonthGoals: (userId: string) => Promise<void>;
   copyGoalsFromLastMonth: (userId: string) => Promise<void>;
+  extendGoalsForNewMonth: (userId: string, newMonthStr: string) => Promise<void>;
   fetchTodayCheckins: (userId: string) => Promise<void>;
   createCheckin: (params: {
     userId: string;
@@ -89,6 +90,29 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
     await get().fetchMyGoals(userId);
     set({ lastMonthGoals: [] });
+  },
+
+  // ── 새 달 목표 연장 ──
+  extendGoalsForNewMonth: async (userId, newMonthStr) => {
+    const newMonthEnd = dayjs(`${newMonthStr}-01`).endOf('month').format('YYYY-MM-DD');
+    const prevMonthStr = dayjs(`${newMonthStr}-01`).subtract(1, 'month').format('YYYY-MM');
+    const prevMonthStart = dayjs(`${prevMonthStr}-01`).startOf('month').format('YYYY-MM-DD');
+    const prevMonthEnd = dayjs(`${prevMonthStr}-01`).endOf('month').format('YYYY-MM-DD');
+
+    // 이전 달에 끝나는 활성 목표만 연장 (종료일 없는 목표는 이미 무기한)
+    const { data: targets } = await supabase
+      .from('user_goals')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .gte('end_date', prevMonthStart)
+      .lte('end_date', prevMonthEnd);
+
+    if (!targets || targets.length === 0) return;
+
+    const ids = targets.map((g: any) => g.id);
+    await supabase.from('user_goals').update({ end_date: newMonthEnd }).in('id', ids);
+    await get().fetchMyGoals(userId);
   },
 
   // ── 팀 목표 로드 ──

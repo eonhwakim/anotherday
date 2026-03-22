@@ -68,7 +68,7 @@ export default function StatisticsScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const lastTapRef = useRef(0);
 
-  const [activeTab, setActiveTab] = useState<'monthly' | 'weekly'>('monthly');
+  const [activeTab, setActiveTab] = useState<'monthly' | 'weekly'>('weekly');
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
 
   const [myRate, setMyRate] = useState<number | null>(null);
@@ -282,16 +282,16 @@ export default function StatisticsScreen() {
         {/* ── 탭 전환 ── */}
         <View style={s.tabRow}>
           <TouchableOpacity
-            style={[s.tabBtn, activeTab === 'monthly' && s.tabBtnActive]}
-            onPress={() => setActiveTab('monthly')}
-          >
-            <Text style={[s.tabText, activeTab === 'monthly' && s.tabTextActive]}>월간 요약</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
             style={[s.tabBtn, activeTab === 'weekly' && s.tabBtnActive]}
             onPress={() => setActiveTab('weekly')}
           >
             <Text style={[s.tabText, activeTab === 'weekly' && s.tabTextActive]}>주간 현황</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.tabBtn, activeTab === 'monthly' && s.tabBtnActive]}
+            onPress={() => setActiveTab('monthly')}
+          >
+            <Text style={[s.tabText, activeTab === 'monthly' && s.tabTextActive]}>월간 요약</Text>
           </TouchableOpacity>
         </View>
 

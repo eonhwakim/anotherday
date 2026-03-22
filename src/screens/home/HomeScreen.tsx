@@ -20,9 +20,11 @@ import { useStatsStore } from '../../stores/statsStore';
 import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalList';
 import DevGuideModal from '../../components/home/DevGuideModal';
+import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
+import { getCalendarWeekRanges } from '../../components/stats/StatsShared';
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Stop, Rect, Path, Line, G } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
@@ -30,7 +32,7 @@ const { width } = Dimensions.get('window');
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam, fetchTeams, fetchMembers } = useTeamStore();
-  const { myGoals, teamGoals, todayCheckins, fetchTeamGoals, fetchTodayCheckins, fetchMyGoals } = useGoalStore();
+  const { myGoals, teamGoals, todayCheckins, fetchTeamGoals, fetchTodayCheckins, fetchMyGoals, extendGoalsForNewMonth } = useGoalStore();
   const { memberProgress, fetchMemberProgress } = useStatsStore();
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
@@ -55,6 +57,8 @@ export default function HomeScreen() {
   const [timePeriod, setTimePeriod] = React.useState<'DAY' | 'SUNSET' | 'NIGHT'>('DAY');
   const [isManualOverride, setIsManualOverride] = React.useState(false);
   const [showGuideModal, setShowGuideModal] = React.useState(false);
+  const [showMonthlyPrompt, setShowMonthlyPrompt] = React.useState(false);
+  const [promptNewMonth, setPromptNewMonth] = React.useState<string>('');
 
   // ── 안내 모달 체크 (유저 정보 로드 완료 시) ──
   React.useEffect(() => {
@@ -78,6 +82,57 @@ export default function HomeScreen() {
     
     checkGuide();
   }, [user]);
+
+  // ── 새 달 1주차 시작일 감지 ──
+  React.useEffect(() => {
+    if (!user) return;
+
+    const checkMonthlyPrompt = async () => {
+      try {
+        const today = dayjs();
+        const todayStr = today.format('YYYY-MM-DD');
+
+        // 이번 달과 다음 달의 1주차 시작일 확인 (주차 편입 규칙 적용)
+        const candidates = [
+          today.format('YYYY-MM'),
+          today.add(1, 'month').format('YYYY-MM'),
+        ];
+
+        let matchedMonth: string | null = null;
+        for (const monthStr of candidates) {
+          const { ranges } = getCalendarWeekRanges(monthStr);
+          if (ranges.length > 0 && ranges[0].s.format('YYYY-MM-DD') === todayStr) {
+            matchedMonth = monthStr;
+            break;
+          }
+        }
+
+        if (!matchedMonth) return;
+
+        const storageKey = `monthly_goal_prompt_v1_${matchedMonth}`;
+        const alreadyShown = await AsyncStorage.getItem(storageKey);
+        if (alreadyShown) return;
+
+        await AsyncStorage.setItem(storageKey, 'shown');
+        setPromptNewMonth(matchedMonth);
+        setTimeout(() => setShowMonthlyPrompt(true), 800);
+      } catch (e) {
+        console.error('[MonthlyPrompt] Error:', e);
+      }
+    };
+
+    checkMonthlyPrompt();
+  }, [user]);
+
+  const handleMonthlyPromptContinue = async () => {
+    if (!user || !promptNewMonth) return;
+    setShowMonthlyPrompt(false);
+    await extendGoalsForNewMonth(user.id, promptNewMonth);
+  };
+
+  const handleMonthlyPromptNewPlan = () => {
+    setShowMonthlyPrompt(false);
+  };
 
   const handleCloseGuide = async (savePreference: boolean) => {
     try {
@@ -177,6 +232,15 @@ export default function HomeScreen() {
       <DevGuideModal
         visible={showGuideModal}
         onClose={handleCloseGuide}
+      />
+
+      <MonthlyGoalPromptModal
+        visible={showMonthlyPrompt}
+        newMonthStr={promptNewMonth}
+        activeGoals={myGoals}
+        goalNames={new Map(teamGoals.map(g => [g.id, g.name]))}
+        onContinue={handleMonthlyPromptContinue}
+        onNewPlan={handleMonthlyPromptNewPlan}
       />
 
       {/* ── 배경 ── */}
