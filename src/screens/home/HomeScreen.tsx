@@ -66,7 +66,7 @@ export default function HomeScreen() {
 
     const checkGuide = async () => {
       try {
-        const key = 'hasSeenDevGuide_v1';
+        const key = 'hasSeenDevGuide_v2';
         const hasSeen = await AsyncStorage.getItem(key);
         
         if (!hasSeen) {
@@ -495,23 +495,6 @@ function CyberFrame({ children }: { children: React.ReactNode }) {
               <Stop offset="65%"  stopColor={METAL.silverLight}  stopOpacity="0.28" />
               <Stop offset="100%" stopColor={METAL.silverBright} stopOpacity="0.45" />
             </LinearGradient>
-            {/* 코너 그라디언트 */}
-            <LinearGradient id="cTL" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0%"   stopColor={METAL.silverBright} />
-              <Stop offset="100%" stopColor={METAL.silverFrost} />
-            </LinearGradient>
-            <LinearGradient id="cTR" x1="1" y1="0" x2="0" y2="1">
-              <Stop offset="0%"   stopColor={METAL.silverLight} />
-              <Stop offset="100%" stopColor={METAL.silverDim} />
-            </LinearGradient>
-            <LinearGradient id="cBL" x1="0" y1="1" x2="1" y2="0">
-              <Stop offset="0%"   stopColor={METAL.silverFrost} />
-              <Stop offset="100%" stopColor={METAL.silverBright} />
-            </LinearGradient>
-            <LinearGradient id="cBR" x1="1" y1="1" x2="0" y2="0">
-              <Stop offset="0%"   stopColor={METAL.silverLight} />
-              <Stop offset="100%" stopColor={METAL.silver} />
-            </LinearGradient>
           </Defs>
 
           {/* 글래스 배경 */}
@@ -549,11 +532,6 @@ function CyberFrame({ children }: { children: React.ReactNode }) {
           <Path d={`M ${size.w - R} ${size.h - 1} Q ${size.w - 1} ${size.h - 1} ${size.w - 1} ${size.h - R}`} stroke="url(#cBR)" strokeWidth={SW} fill="none" />
           <Line x1={size.w - 1} y1={size.h - R - C} x2={size.w - 1} y2={size.h - R} stroke="url(#cBR)" strokeWidth={SW} />
 
-          {/* 코너 글로우 점 */}
-          <Circle cx={2} cy={2 + R}            r={2.5} fill={METAL.silverBright} opacity={0.8} />
-          <Circle cx={size.w - 2} cy={2 + R}   r={2.5} fill={METAL.silverLight} opacity={0.8} />
-          <Circle cx={2} cy={size.h - 2 - R}   r={2.5} fill={METAL.silverFrost} opacity={0.8} />
-          <Circle cx={size.w - 2} cy={size.h - 2 - R} r={2.5} fill={METAL.silverBright} opacity={0.8} />
         </Svg>
       )}
 
@@ -696,10 +674,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   greeting: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#FFFFFF',
     fontWeight: '600',
     marginBottom: 2,
+    marginLeft: 10,
   },
   greetingDay: {
     color: '#4F4F4F',

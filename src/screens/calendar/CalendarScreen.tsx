@@ -10,20 +10,12 @@ import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
 import { useTeamStore } from '../../stores/teamStore';
-import MemberProfileModal from '../../components/calendar/MemberProfileModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
 import Button from '../../components/common/Button';
 import dayjs from '../../lib/dayjs';
 import { getCalendarWeekRanges } from '../../components/stats/StatsShared';
 import { COLORS } from '../../constants/defaults';
 
-const STATUS_IMAGES: Record<string, any> = {
-  all_done: require('../../../assets/wow.png'),
-  mixed: require('../../../assets/boom.png'),
-  mostly_fail: require('../../../assets/oops.png'),
-  partial: require('../../../assets/bang.png'),
-  none: null,
-};
 
 export default function CalendarScreen() {
   const user = useAuthStore((s) => s.user);
@@ -215,6 +207,21 @@ export default function CalendarScreen() {
   const { dataStart, dataEnd } = React.useMemo(() => getCalendarWeekRanges(currentMonth), [currentMonth]);
 
   const renderDay = useCallback(({ date, state, marking }: any) => {
+    // 주차(Row) 계산 (통계 기준 dataStart 활용)
+    const diffDays = dayjs(date.dateString).diff(dayjs(dataStart), 'day');
+    const weekNum = Math.floor(diffDays / 7) + 1;
+    
+    // 통계 범위 내에 있는 날짜인지 확인
+    const isExcluded = date.dateString < dataStart || date.dateString > dataEnd;
+    
+    // 지브라 패턴: 통계 범위 내의 홀수/짝수 주차에 각각 다른 배경색 적용
+    const isEvenWeek = !isExcluded && (weekNum % 2 === 0);
+    const isOddWeek = !isExcluded && (weekNum % 2 === 1);
+    
+    // 월요일이면서 통계 범위 내일 때만 주차 라벨 표시
+    const isMonday = dayjs(date.dateString).day() === 1;
+    const showWeekLabel = isMonday && !isExcluded;
+
     // 1. 날짜 텍스트 컬러 결정
     let textColor = '#1A1A1A'; // 기본 검정
     const isToday = state === 'today';
@@ -228,23 +235,33 @@ export default function CalendarScreen() {
     if (isSelected) textColor = marking?.selectedTextColor || '#FF6B3D'; // 4. 선택됨 (최우선)
 
     return (
-      <TouchableOpacity
-        onPress={() => handleDayPress(date)}
-        activeOpacity={0.7}
-        style={[
-          styles.dayContainer,
-          isSelected && styles.selectedDayContainer
-        ]}
-      >
-        <Text style={[styles.dayText, { color: textColor }]}>
-          {date.day}
-        </Text>
-        {marking?.marked && (
-          <View style={[styles.dot, { backgroundColor: marking.dotColor || '#FF6B3D' }]} />
+      <View style={[
+        styles.dayCellWrapper, 
+        isEvenWeek && styles.zebraStripeEven,
+        isOddWeek && styles.zebraStripeOdd
+      ]}>
+        {showWeekLabel && (
+          <Text style={styles.weekNumberLabel}>{weekNum}주</Text>
         )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => handleDayPress(date)}
+          activeOpacity={0.7}
+          style={[
+            styles.dayContainer,
+            isToday && !isSelected && styles.todayContainer,
+            isSelected && styles.selectedDayContainer
+          ]}
+        >
+          <Text style={[styles.dayText, { color: textColor }]}>
+            {date.day}
+          </Text>
+          {marking?.marked && (
+            <View style={[styles.dot, { backgroundColor: marking.dotColor || '#FF6B3D' }]} />
+          )}
+        </TouchableOpacity>
+      </View>
     );
-  }, [handleDayPress]);
+  }, [handleDayPress, dataStart, dataEnd]);
 
   const calendarMarkedDates = React.useMemo(() => {
     const marks: Record<string, any> = {};
@@ -373,7 +390,30 @@ export default function CalendarScreen() {
 
         {/* ── 날짜 요약 ── */}
         <View style={styles.dateSummary}>
-          <Text style={styles.dateSummaryTitle}>{formattedDate}</Text>
+          <View style={styles.dateSummaryHeader}>
+            <Text style={styles.dateSummaryTitle}>{formattedDate}</Text>
+            
+            {selectedMarking && selectedMarking.dayStatus !== 'future' && (
+              <View style={styles.scoreContainer}>
+                <View style={styles.scoreBadge}>
+                  <View style={styles.scoreLabelRow}>
+                    <Text style={styles.scoreLabelText}>완료</Text>
+                    <Text style={styles.scoreLabelText}>총목표</Text>
+                  </View>
+                  <View style={styles.scoreValueRow}>
+                    <Text style={styles.scoreDoneText}>{selectedMarking.doneCount ?? 0}</Text>
+                    <Text style={styles.scoreSlash}>/</Text>
+                    <Text style={styles.scoreTotalText}>{selectedMarking.totalGoals ?? 0}</Text>
+                  </View>
+                </View>
+                {selectedMarking.totalGoals && selectedMarking.totalGoals > 0 && (
+                  <Text style={styles.percentText}>
+                    {Math.round(((selectedMarking.doneCount ?? 0) / ((selectedMarking.totalGoals ?? 1) || 1)) * 100)}%
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
           
           {/* 통계 이월 날짜 안내 메시지 */}
           {statsGuideMessage && (
@@ -397,25 +437,6 @@ export default function CalendarScreen() {
             </View>
           ) : selectedMarking ? (
             <View>
-              <View style={styles.statusRow}>
-                {STATUS_IMAGES[selectedMarking.dayStatus ?? 'none'] && (
-                  <Image
-                    source={STATUS_IMAGES[selectedMarking.dayStatus ?? 'none']}
-                    style={styles.statusImage}
-                    resizeMode="contain"
-                  />
-                )}
-                <Text style={styles.statusText}>
-                  {(selectedMarking.passCount ?? 0) > 0 && `${selectedMarking.passCount}패스 · `}
-                  {selectedMarking.doneCount ?? 0}완료
-                  {' / '}{selectedMarking.totalGoals ?? 0}개 목표
-                </Text>
-                {selectedMarking.totalGoals && selectedMarking.totalGoals > 0 && (
-                  <Text style={styles.percentText}>
-                    {Math.round(((selectedMarking.doneCount ?? 0) / ((selectedMarking.totalGoals ?? 1) || 1)) * 100)}%
-                  </Text>
-                )}
-              </View>
               {(selectedMarking.goalNames ?? []).length > 0 && (
                 <View style={styles.goalNameChips}>
                   {(selectedMarking.goalNames ?? []).map((name, i) => (
@@ -460,10 +481,20 @@ export default function CalendarScreen() {
                     )}
                   </View>
                   <Text style={styles.memberName}>{member.nickname}</Text>
-                  <Text style={styles.memberStat}>
-                    {member.passCount > 0 && `${member.passCount} 패스 `}
-                    {member.doneCount} 완료 / {member.totalGoals}
-                  </Text>
+                  
+                  <View style={styles.scoreContainer}>
+                    <View>
+                      <View style={styles.scoreLabelRow}>
+                        <Text style={styles.scoreLabelText}>완료</Text>
+                        <Text style={styles.scoreLabelText}>총목표</Text>
+                      </View>
+                      <View style={styles.scoreValueRow}>
+                        <Text style={styles.scoreTotalText}>{member.doneCount}</Text>
+                        <Text style={styles.scoreSlash}>/</Text>
+                        <Text style={styles.scoreTotalText}>{member.totalGoals}</Text>
+                      </View>
+                    </View>
+                  </View>
                 </TouchableOpacity>
 
                 {/* 체크인 목록 */}
@@ -586,17 +617,6 @@ export default function CalendarScreen() {
         onClose={() => setCheckinModalVisible(false)}
         onCheckinDone={handleCheckinDone}
       />
-
-      {/* ── 멤버 프로필 모달 ── */}
-      {selectedMember && (
-        <MemberProfileModal
-          visible={!!selectedMember}
-          userId={selectedMember.userId}
-          nickname={selectedMember.nickname}
-          profileImageUrl={selectedMember.profileImageUrl}
-          onClose={() => setSelectedMember(null)}
-        />
-      )}
     </SafeAreaView>
   );
 }
@@ -634,18 +654,62 @@ const styles = StyleSheet.create({
     shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 1,
   },
+  dateSummaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
   dateSummaryTitle: {
-    fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 6,
+    fontSize: 15, fontWeight: '700', color: '#1A1A1A'
   },
-  statusRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+  scoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
   },
-  statusImage: { width: 32, height: 32 },
-  statusText: {
-    fontSize: 13, fontWeight: '600', color: 'rgba(26,26,26,0.55)', flex: 1,
+  scoreBadge: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 61, 0.05)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  scoreLabelRow: {
+    flexDirection: 'row',
+    width: '100%',
+    marginBottom: 2,
+    gap: 4,
+  },
+  scoreLabelText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'rgba(255, 107, 61, 0.7)',
+  },
+  scoreValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+  },
+  scoreDoneText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FF6B3D',
+  },
+  scoreSlash: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: 'rgba(255, 107, 61, 0.4)',
+    marginHorizontal: 4,
+  },
+  scoreTotalText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'rgba(26, 26, 26, 0.6)',
   },
   percentText: {
-    fontSize: 15, fontWeight: '800', color: '#FF6B3D',
+    fontSize: 28, fontWeight: '800', color: '#FF6B3D', maxWidth: 72, textAlign: 'right',
   },
   noDataText: {
     fontSize: 13, color: 'rgba(26,26,26,0.30)', fontWeight: '500',
@@ -696,9 +760,6 @@ const styles = StyleSheet.create({
   memberAvatarImg: { width: 28, height: 28, borderRadius: 14 },
   memberName: {
     fontSize: 14, fontWeight: '700', color: '#1A1A1A', flex: 1,
-  },
-  memberStat: {
-    fontSize: 12, fontWeight: '600', color: 'rgba(26,26,26,0.40)',
   },
   memberEmpty: {
     fontSize: 13, color: 'rgba(26,26,26,0.25)', textAlign: 'center', paddingVertical: 8,
@@ -805,8 +866,33 @@ const styles = StyleSheet.create({
   },
 
   // 커스텀 데이 렌더링
+  dayCellWrapper: {
+    width: 51,
+    height: 44,
+    marginHorizontal: -4, // 셀 간 간격을 없애고 일자 가로줄을 만들기 위함
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zebraStripeEven: {
+    backgroundColor: 'rgba(255, 107, 61, 0.04)', // 짝수 주차: 아주 연한 오렌지
+  },
+  zebraStripeOdd: {
+    backgroundColor: 'rgba(0, 0, 0, 0.02)', // 홀수 주차: 아주 연한 회색
+  },
+  weekNumberLabel: {
+    position: 'absolute',
+    top: 2,
+    left: 6,
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255, 107, 61, 0.6)',
+  },
   dayContainer: {
     width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16,
+  },
+  todayContainer: {
+    borderWidth: 1.5,
+    borderColor: '#FF6B3D',
   },
   selectedDayContainer: {
     backgroundColor: 'rgba(255, 107, 61, 0.18)',

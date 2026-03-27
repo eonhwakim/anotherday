@@ -205,7 +205,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
       markings[dateStr] = {
         marked: true,
-        dotColor: dayStatus === 'all_done' ? '#4ADE80' : dayStatus === 'mixed' ? '#FBBF24' : '#EF4444',
+        dotColor: (dayStatus === 'all_done' || dayStatus === 'mixed') ? '#4ADE80' : '#EF4444',
         checkinCount: doneCount + passCount,
         dayStatus,
         doneCount,

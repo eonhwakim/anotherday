@@ -233,12 +233,14 @@ export default function WeeklyStatsTab() {
                 </View>
                 <View style={s.weeklyGoalStatus}>
                   <Text style={s.weeklyGoalCount}>
-                    <Text style={g.doneCount > g.target ? { color: '#FF6B3D' } : g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }}>{g.doneCount}</Text>
+                    <Text style={ g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }}>{g.doneCount}</Text>
                     <Text style={{ color: '#888' }}> / {g.target}</Text>
                   </Text>
                   {g.isAchieved
                     ? <Ionicons name="checkmark-circle" size={20} color={'#4ADE80'} />
-                    : <Ionicons name="close-circle" size={20} color={'#EF4444'} />
+                    : isWeekEnded
+                      ? <Ionicons name="close-circle" size={20} color={'#EF4444'} />
+                      : ''
                   }
                 </View>
               </View>
@@ -283,7 +285,7 @@ export default function WeeklyStatsTab() {
                           <Text style={s.teamMemberBadgeTextProgress}>
                             <Text style={{ color: '#15803d' }}>{m.totalGoals - m.failedGoals}개 완료</Text>
                             <Text style={{ color: 'rgba(26,26,26,0.2)' }}> | </Text>
-                            <Text style={{ color: '#b91c1c' }}>{m.failedGoals}개 미달</Text>
+                            <Text style={{ color: '#EF4444' }}>{m.failedGoals}개 미달</Text>
                           </Text>
                         </View>
                       )}

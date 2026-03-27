@@ -53,7 +53,7 @@ export default function AppSettingsScreen() {
             <Ionicons name="notifications-outline" size={20} color={COLORS.text} />
             <View style={s.rowText}>
               <Text style={s.rowTitle}>매일 아침 동기부여 알림</Text>
-              <Text style={s.rowDesc}>매일 오전 8시, 요일별 등반 응원 메시지를 보내드려요</Text>
+              <Text style={s.rowDesc}>매일 오전 8시, 요일별 응원 메시지를 보내드려요</Text>
             </View>
           </View>
           <Switch

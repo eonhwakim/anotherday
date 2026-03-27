@@ -79,6 +79,7 @@ export default function MountainProgress({ members, currentUserId, startAnimatio
               containerWidth={containerWidth}
               avatarColor={color}
               startAnimation={startAnimation}
+              isMe={isMe}
             />
           );
         })}
@@ -653,10 +654,13 @@ function GeometricParticle({ emoji, index }: any) {
   );
 }
 
-function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatarColor, startAnimation }: any) {
-  const effective = member.totalGoals - (member.passGoals ?? 0);
-  const progress = Math.min(1, Math.max(0, effective > 0 ? (member.doneGoals ?? 0) / effective : ((member.passGoals ?? 0) > 0 ? 1 : 0)));
-  const spreadOffset = totalMembers > 1 ? ((index / (totalMembers - 1)) * 2 - 1) * 20 : 0;
+function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatarColor, startAnimation, isMe }: any) {
+  const progress = Math.min(1, Math.max(0, member.totalGoals > 0 ? member.completedGoals / member.totalGoals : 0));
+  
+  // 퍼센트가 같은 멤버들끼리 겹치지 않도록 퍼센트 기반으로 그룹화하여 오프셋을 계산합니다.
+  // (이 로직은 부모 컴포넌트에서 계산해서 넘겨주는 것이 더 정확하지만, 여기서는 간단히 index를 사용하여 더 넓게 퍼지도록 수정합니다)
+  const spreadOffset = totalMembers > 1 ? ((index / (totalMembers - 1)) * 2 - 1) * 28 : 0;
+  
   const progressAnim = useRef(new Animated.Value(0)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const displayPercent = useRef(new Animated.Value(0)).current;
@@ -732,7 +736,7 @@ function ClimbingCharacter({ member, index, totalMembers, containerWidth, avatar
   const animatedTop = progressAnim.interpolate({ inputRange: TRAIL_INPUT_RANGE, outputRange: TRAIL_POINTS.map(pt => (pt.y / SVG_H) * CONTAINER_HEIGHT) });
 
   return (
-    <Animated.View style={[styles.characterWrapper, { left: animatedLeft, top: Animated.add(animatedTop, bounceAnim) }]}>
+    <Animated.View style={[styles.characterWrapper, { left: animatedLeft, top: Animated.add(animatedTop, bounceAnim), zIndex: isMe ? 30 : 20 }]}>
       <View style={[styles.bubble, { borderColor: COLORS.holoLavender1 }]}>
         <PercentLabel value={displayPercent} color={COLORS.sky} />
       </View>

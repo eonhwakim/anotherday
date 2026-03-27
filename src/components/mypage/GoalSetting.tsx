@@ -320,7 +320,7 @@ export default function GoalSetting({
         if (registeredGoals.length === 0) {
           return (
             <View style={styles.emptyBox}>
-              <Ionicons name="bulb-outline" size={28} color={COLORS.textSecondary} />
+              <Ionicons name="bulb-outline" size={24} color={COLORS.textSecondary} />
               <Text style={styles.emptyText}>
                 아직 등록된 목표가 없어요{'\n'}위에서 새 목표를 추가해보세요!
               </Text>
@@ -481,9 +481,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(26,26,26,0.06)',
   },
-  goalRowContent: { flex: 1 },
+  goalRowContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 },
   goalRowName: { fontSize: 15, fontWeight: '600', color: '#1A1A1A' },
-  goalRowFreq: { fontSize: 12, color: 'rgba(26,26,26,0.45)', marginTop: 2 },
+  goalRowFreq: { fontSize: 12, color: 'rgba(26,26,26,0.45)', marginTop: 1 },
 
   recommendSection: { marginBottom: 16 },
   recommendTitle: { fontSize: 12, color: '#E8960A', fontWeight: '600', marginBottom: 8 },

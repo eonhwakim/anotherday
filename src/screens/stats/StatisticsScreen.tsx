@@ -317,7 +317,7 @@ export default function StatisticsScreen() {
                 {myRate === null ? (
                   <Text style={s.rateEmpty}>집계 중</Text>
                 ) : (
-                  <Text style={[s.rateBig, { color: rateColor(myRate) }]}>
+                  <Text style={[s.rateBig, { color: '#FF6B3D' }]}>
                     {myRate}%{myRate === 100 ? ' 🏆' : ''}
                   </Text>
                 )}
@@ -330,8 +330,10 @@ export default function StatisticsScreen() {
                   {myGoalDetails.map(g => (
                     <View key={g.goalId} style={s.goalRow}>
                       <View style={s.goalInfo}>
-                        <Text style={s.goalName}>{g.name}</Text>
-                        <Text style={s.goalFreq}>{freqLabel(g.frequency, g.targetCount)}</Text>
+                        <View style={s.myGoalChip}>
+                          <Text style={s.myGoalChipText}>{g.name}</Text>
+                          <Text style={s.myGoalChipFreq}> · {freqLabel(g.frequency, g.targetCount)}</Text>
+                        </View>
                       </View>
                       {g.rate === null ? (
                         <Text style={s.goalRateGray}>진행 중</Text>
@@ -388,7 +390,7 @@ export default function StatisticsScreen() {
                       {m.rate === null ? (
                         <Text style={s.rateEmpty}>집계 중</Text>
                       ) : (
-                        <Text style={[s.rateMedium, { color: rateColor(m.rate) }]}>
+                        <Text style={[s.rateMedium, { color: '#FF6B3D' }]}>
                           {m.rate}%{m.rate === 100 ? ' 🏆' : ''}
                         </Text>
                       )}
@@ -512,9 +514,10 @@ const s = StyleSheet.create({
 
   // Goal rows (my detailed view)
   goalRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  goalInfo: { flex: 1 },
-  goalName: { fontSize: 14, fontWeight: '600', color: '#1A1A1A' },
-  goalFreq: { fontSize: 11, color: 'rgba(26,26,26,0.45)', marginTop: 1 },
+  goalInfo: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  myGoalChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,107,61,0.06)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  myGoalChipText: { fontSize: 13, fontWeight: '600', color: '#1A1A1A' },
+  myGoalChipFreq: { fontSize: 12, color: 'rgba(26,26,26,0.45)' },
   goalRateWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   goalRate: { fontSize: 14, fontWeight: '800' },
   goalRateGray: { fontSize: 12, color: 'rgba(26,26,26,0.35)', fontWeight: '500' },
@@ -524,6 +527,7 @@ const s = StyleSheet.create({
   goalChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,107,61,0.06)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   goalChipText: { fontSize: 12, fontWeight: '600', color: '#1A1A1A' },
   goalChipFreq: { fontSize: 11, color: 'rgba(26,26,26,0.45)' },
+  goalChipRate: { fontSize: 11, fontWeight: '700' },
 
   // Review (한마디 / 회고)
   reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },

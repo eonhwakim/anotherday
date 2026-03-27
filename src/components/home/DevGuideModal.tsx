@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     width: '100%',
-    // paddingTop: 20,
+    paddingTop: 16,
     // paddingHorizontal: 24,
     // paddingBottom: 16,
     borderWidth: 1,
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 10,
   },
   guideCheckboxActive: {
     backgroundColor: '#FF6B3D',
