@@ -629,11 +629,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, letterSpacing: -0.5,
   },
   calendar: {
-    marginHorizontal: 12, borderRadius: 12,
+    marginHorizontal: 12, borderRadius: 4,
     borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
     overflow: 'hidden',
     shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
+    shadowOpacity: 1, shadowRadius: 4, elevation: 3,
   },
   checkinButtonWrap: {
     marginHorizontal: 12,
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
   dateSummary: {
     marginHorizontal: 12, marginTop: 12, padding: 14,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)', borderRadius: 12,
+    borderRadius: 4,
     shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 1,
   },
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
   },
   memberCard: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)', borderRadius: 12,
+    borderRadius: 4,
     padding: 12, marginBottom: 10,
     shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 1,

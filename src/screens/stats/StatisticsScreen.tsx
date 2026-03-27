@@ -478,8 +478,8 @@ const s = StyleSheet.create({
   screenTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginTop: 8, marginBottom: 16 },
 
   // Tabs
-  tabRow: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 16, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 12, padding: 4 },
-  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+  tabRow: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 16, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 4, padding: 4 },
+  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 4 },
   tabBtnActive: { backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   tabText: { fontSize: 14, fontWeight: '600', color: 'rgba(26,26,26,0.5)' },
   tabTextActive: { color: '#1A1A1A', fontWeight: '700' },
@@ -493,7 +493,7 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginBottom: 4, marginTop: 28 },
 
   // Member card (shared for me + each team member)
-  memberCard: { backgroundColor: '#FFF', marginHorizontal: 16, marginTop: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)', shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, overflow: 'hidden' },
+  memberCard: { backgroundColor: '#FFF', marginHorizontal: 16, marginTop: 8, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)', shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, overflow: 'hidden' },
 
   // Rate row at top of each card
   cardRateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 18 },
@@ -536,8 +536,8 @@ const s = StyleSheet.create({
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 16, padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 4, padding: 20 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginBottom: 16, textAlign: 'center' },
-  modalInput: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 12, fontSize: 15, color: '#1A1A1A', minHeight: 120, marginBottom: 20, textAlignVertical: 'top' },
+  modalInput: { backgroundColor: '#F9FAFB', borderRadius: 4, padding: 12, fontSize: 15, color: '#1A1A1A', minHeight: 120, marginBottom: 20, textAlignVertical: 'top' },
   modalBtns: { flexDirection: 'row', gap: 12 },
 });

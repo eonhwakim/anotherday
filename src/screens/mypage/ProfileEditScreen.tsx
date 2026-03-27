@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   genderBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 61, 0.12)',
     alignItems: 'center',

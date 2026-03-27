@@ -116,11 +116,11 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
   content: { flex: 1, padding: 16 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: 'rgba(26,26,26,0.45)', marginBottom: 12, marginTop: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)' },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 16, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)' },
   rowLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1, marginRight: 12 },
   rowText: { flex: 1 },
   rowTitle: { fontSize: 15, fontWeight: '600', color: '#1A1A1A', marginBottom: 4 },
   rowDesc: { fontSize: 12, color: 'rgba(26,26,26,0.45)', lineHeight: 17 },
-  testBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,107,61,0.25)', borderStyle: 'dashed' },
+  testBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, padding: 12, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,107,61,0.25)', borderStyle: 'dashed' },
   testBtnText: { fontSize: 13, fontWeight: '600', color: '#FF6B3D' },
 });

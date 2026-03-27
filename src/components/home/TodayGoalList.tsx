@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 61, 0.12)',
-    borderRadius: 10,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 10,
     shadowColor: '#FF6B3D',

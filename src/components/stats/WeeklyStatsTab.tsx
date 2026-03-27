@@ -314,26 +314,26 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginBottom: 4, marginTop: 28 },
 
   // Card
-  card: { backgroundColor: '#FFF', marginHorizontal: 16, padding: 18, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)', marginTop: 8, shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
+  card: { backgroundColor: '#FFF', marginHorizontal: 16, padding: 14, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)', marginTop: 8, shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
 
   // Empty
   emptySmall: { fontSize: 13, color: 'rgba(26,26,26,0.30)', textAlign: 'center', paddingVertical: 16 },
 
   // Weekly UI
-  allClearBox: { backgroundColor: 'rgba(74,222,128,0.1)', borderRadius: 12, padding: 20, alignItems: 'center', marginBottom: 16 },
+  allClearBox: { backgroundColor: 'rgba(74,222,128,0.1)', borderRadius: 4, padding: 20, alignItems: 'center', marginBottom: 16 },
   allClearEmoji: { fontSize: 32, marginBottom: 8 },
   allClearTitle: { fontSize: 16, fontWeight: '800', color: '#15803d', marginBottom: 4 },
   allClearSub: { fontSize: 12, color: '#166534' },
 
   weeklyGoalList: { gap: 12 },
-  weeklyGoalItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F9FAFB', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  weeklyGoalItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F9FAFB', padding: 10, borderRadius: 4 },
   weeklyGoalInfo: { flex: 1 },
   weeklyGoalName: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
   weeklyGoalTarget: { fontSize: 11, color: 'rgba(26,26,26,0.5)' },
   weeklyGoalStatus: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   weeklyGoalCount: { fontSize: 15, fontWeight: '800', color: '#1A1A1A' },
 
-  teamMemberList: { gap: 10 },
+  teamMemberList: { gap: 4 },
   teamMemberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.03)' },
   teamMemberRank: { width: 28, alignItems: 'center' },
   teamMemberRankText: { fontSize: 14, fontWeight: '700', color: 'rgba(26,26,26,0.4)' },

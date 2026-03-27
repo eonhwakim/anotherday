@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.glass,
     borderWidth: 1,
     borderColor: COLORS.glassBorder,
-    borderRadius: 8,
+    borderRadius: 4,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,

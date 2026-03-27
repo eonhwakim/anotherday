@@ -140,9 +140,7 @@ export default function GoalSetting({
     <View style={styles.card}>
       {/* 헤더 */}
       <View style={styles.titleRow}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="flag" size={18} color="#FF6B3D" />
-        </View>
+        <Ionicons name="flag" size={18} color="#FF6B3D" />
         <Text style={styles.title}>목표 설정</Text>
       </View>
       <Text style={styles.subtitle}>
@@ -222,13 +220,17 @@ export default function GoalSetting({
           </View>
         </View>
       )} */}
+      {/* <View style={styles.dividerSection} /> */}
 
       {/* ── 새 목표 입력 & 1. 자동완성 ── */}
-      <View style={{ zIndex: 10 }}>
+      <View style={{ zIndex: 10 }}> 
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>루틴 추가</Text>
+        </View>
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
-            placeholder="새 목표 (예: 운동 30분)"
+            placeholder="루틴 (예: 운동 30분)"
             placeholderTextColor="rgba(26,26,26,0.30)"
             value={newGoal}
             onChangeText={(text) => {
@@ -369,25 +371,18 @@ export default function GoalSetting({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 16, padding: 24, borderRadius: 12, marginBottom: 16,
-    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
-    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 12, elevation: 3,
+    marginHorizontal: 16, padding: 24, borderRadius: 4, marginBottom: 16,
+
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
-  iconCircle: {
-    width: 34, height: 34, borderRadius: 8,
-    backgroundColor: 'rgba(255, 107, 61, 0.08)', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.18)',
-    alignItems: 'center', justifyContent: 'center',
-  },
   title: { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
   subtitle: { fontSize: 13, color: 'rgba(26,26,26,0.50)', marginBottom: 20, lineHeight: 20, fontWeight: '500' },
 
-  resolutionSection: { marginBottom: 24 },
+  resolutionSection: { marginBottom: 18 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
   resolutionBox: {
-    backgroundColor: '#FFFAF7', padding: 14, borderRadius: 8,
+    backgroundColor: '#FFFAF7', padding: 14, borderRadius: 4,
     borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10,
   },
@@ -396,7 +391,7 @@ const styles = StyleSheet.create({
   placeholderText: { color: 'rgba(26,26,26,0.30)' },
   resolutionEditBox: { gap: 8 },
   resolutionInput: {
-    backgroundColor: '#FFFAF7', padding: 12, borderRadius: 8,
+    backgroundColor: '#FFFAF7', padding: 12, borderRadius: 4,
     borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.30)',
     fontSize: 14, color: '#1A1A1A',
   },
@@ -407,19 +402,19 @@ const styles = StyleSheet.create({
   },
   resolutionCancelText: { fontSize: 13, color: 'rgba(26,26,26,0.6)', fontWeight: '600' },
   resolutionSaveBtn: {
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 4,
     backgroundColor: '#FF6B3D', minWidth: 60, alignItems: 'center',
   },
   resolutionSaveText: { fontSize: 13, color: '#fff', fontWeight: '600' },
-
+  dividerSection: { paddingVertical: 8, borderTopWidth: 1, borderTopColor: 'rgba(255, 107, 61, 0.12)' },
   inputRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   input: {
     flex: 1, backgroundColor: '#FFFAF7',
-    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)', borderRadius: 8,
-    paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: '#1A1A1A', fontWeight: '500',
+    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)', borderRadius: 4,
+    paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, color: '#1A1A1A', fontWeight: '500',
   },
   addBtn: {
-    width: 52, height: 52, borderRadius: 8,
+    width: 52, height: 52, borderRadius: 4,
     backgroundColor: '#FF6B3D', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.30)',
     alignItems: 'center', justifyContent: 'center',
   },
@@ -428,7 +423,7 @@ const styles = StyleSheet.create({
   freqRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   freqBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: 10, borderRadius: 8,
+    paddingVertical: 10, borderRadius: 4,
     backgroundColor: '#FFFAF7', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
   },
   freqBtnActive: { backgroundColor: 'rgba(255, 107, 61, 0.08)', borderColor: 'rgba(255, 107, 61, 0.25)' },
