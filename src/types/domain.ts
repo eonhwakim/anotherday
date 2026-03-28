@@ -110,7 +110,7 @@ export interface CheckinWithGoal extends Checkin {
 export interface MonthlyResolution {
   id: string;
   user_id: string;
-  team_id: string;
+  team_id: string | null;
   year_month: string; // 'YYYY-MM'
   content: string;
   created_at: string;

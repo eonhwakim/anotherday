@@ -13,6 +13,7 @@ import TeamProfileEditScreen from '../screens/team/TeamProfileEditScreen';
 import MemberStatsScreen from '../screens/team/MemberStatsScreen';
 import ProfileEditScreen from '../screens/mypage/ProfileEditScreen';
 import AppSettingsScreen from '../screens/mypage/AppSettingsScreen';
+import AddRoutineScreen from '../screens/mypage/AddRoutineScreen';
 import { COLORS } from '../constants/defaults';
 import { scheduleDailyNotifications } from '../utils/notifications';
 
@@ -68,6 +69,7 @@ export default function RootNavigator() {
             <Stack.Screen name="TeamProfileEdit" component={TeamProfileEditScreen} />
             <Stack.Screen name="MemberStats" component={MemberStatsScreen} />
             <Stack.Screen name="AppSettings" component={AppSettingsScreen} />
+            <Stack.Screen name="AddRoutine" component={AddRoutineScreen} />
           </>
         )}
       </Stack.Navigator>

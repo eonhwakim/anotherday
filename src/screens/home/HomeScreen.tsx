@@ -6,6 +6,7 @@ import {
   ScrollView,
   RefreshControl,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,11 +22,13 @@ import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalList';
 import DevGuideModal from '../../components/home/DevGuideModal';
 import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
+import CheckinModal from '../../components/mypage/CheckinModal';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
 import { getCalendarWeekRanges } from '../../components/stats/StatsShared';
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Stop, Rect, Path, Line, G } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -59,6 +62,55 @@ export default function HomeScreen() {
   const [showGuideModal, setShowGuideModal] = React.useState(false);
   const [showMonthlyPrompt, setShowMonthlyPrompt] = React.useState(false);
   const [promptNewMonth, setPromptNewMonth] = React.useState<string>('');
+  const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
+
+  // ── 현재 팀에 해당하는 나의 목표만 필터링 (인증 모달용) ──
+  const currentTeamUserGoals = React.useMemo(() => {
+    if (!teamGoals || teamGoals.length === 0) return [];
+    if (!myGoals || !user) return [];
+    const myOwnedGoalIds = new Set(
+      teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
+    );
+    return myGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
+  }, [teamGoals, myGoals, user]);
+
+  // ── 인증 모달용: 활성+비활성 모두 포함 (패스 토글 가능)
+  const goalsForCheckinModal = React.useMemo(() => {
+    const ugSource = currentTeamUserGoals;
+    const myOwnedGoalIds = new Set(
+      (teamGoals || []).filter((g) => g.owner_id === user?.id).map((g) => g.id),
+    );
+    const todayStr = dayjs().format('YYYY-MM-DD');
+    const weekStart = dayjs().startOf('isoWeek').format('YYYY-MM-DD');
+    const weekEnd = dayjs().endOf('isoWeek').format('YYYY-MM-DD');
+    
+    // monthlyCheckins 대신 todayCheckins를 활용하여 대략적인 주간 완료 수 계산 (정확한 주간 카운트가 필요하다면 statsStore의 monthlyCheckins를 가져와야 함)
+    // 여기서는 홈 화면이므로 주간 카운트 표시는 생략하거나 0으로 처리 (CheckinModal 내에서 처리됨)
+    
+    return (teamGoals || [])
+      .filter((g) => myOwnedGoalIds.has(g.id))
+      .filter((g) => {
+        const ug = ugSource.find((u) => u.goal_id === g.id);
+        if (!ug) return false;
+        if (ug.start_date && todayStr < ug.start_date) return false;
+        return true;
+      })
+      .map((g) => {
+        const ug = ugSource.find((u) => u.goal_id === g.id);
+        return {
+          goal: g,
+          frequency: (ug?.frequency ?? 'daily') as 'daily' | 'weekly_count',
+          isExcluded: ug ? !ug.is_active : false,
+          targetCount: ug?.target_count ?? null,
+          weeklyDoneCount: 0, // 홈 화면 플로팅 버튼에서는 주간 카운트 생략
+        };
+      });
+  }, [teamGoals, currentTeamUserGoals, user]);
+
+  const handleCheckinDone = async () => {
+    if (!user) return;
+    await loadData();
+  };
 
   // ── 안내 모달 체크 (유저 정보 로드 완료 시) ──
   React.useEffect(() => {
@@ -314,7 +366,27 @@ export default function HomeScreen() {
             <View style={{ height: 80 }} />
           </View>
         </ScrollView>
+
+        {/* ── 플로팅 인증하기 버튼 ── */}
+        <TouchableOpacity 
+          style={styles.floatingButton}
+          onPress={() => setCheckinModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="camera" size={24} color="#FFFFFF" />
+          <Text style={styles.floatingButtonText}>인증하기</Text>
+        </TouchableOpacity>
       </SafeAreaView>
+
+      {/* ── 인증 체크인 모달 ── */}
+      <CheckinModal
+        visible={checkinModalVisible}
+        date={dayjs().format('YYYY-MM-DD')}
+        goalsWithFrequency={goalsForCheckinModal}
+        checkins={todayCheckins}
+        onClose={() => setCheckinModalVisible(false)}
+        onCheckinDone={handleCheckinDone}
+      />
     </View>
   );
 }
@@ -718,5 +790,29 @@ const styles = StyleSheet.create({
   goalSection: {
     paddingHorizontal: 24,
     paddingTop: 20,
+  },
+  
+  // ── 플로팅 버튼 ──
+  floatingButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    backgroundColor: '#FF6B3D',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    gap: 8,
+  },
+  floatingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

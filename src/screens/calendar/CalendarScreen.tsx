@@ -354,8 +354,6 @@ export default function CalendarScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView ref={scrollRef} style={styles.scroll}>
-        <Text style={styles.screenTitle}>캘린더</Text>
-
         <Calendar
           firstDay={1}
           dayComponent={renderDay}
@@ -378,15 +376,6 @@ export default function CalendarScreen() {
           onDayPress={handleDayPress}
           onMonthChange={handleMonthChange}
         />
-
-        {/* ── 인증하기 버튼 ── */}
-        <View style={styles.checkinButtonWrap}>
-          <Button
-            title={isTodaySelected ? '인증하기' : '기록 보기'}
-            onPress={handleCheckinPress}
-            variant={isTodaySelected ? 'primary' : 'outline'}
-          />
-        </View>
 
         {/* ── 날짜 요약 ── */}
         <View style={styles.dateSummary}>
@@ -575,8 +564,18 @@ export default function CalendarScreen() {
           </View>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* ── 플로팅 기록 보기 버튼 ── */}
+      <TouchableOpacity 
+        style={styles.floatingButton}
+        onPress={handleCheckinPress}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="list" size={24} color="#FFFFFF" />
+        <Text style={styles.floatingButtonText}>기록 보기</Text>
+      </TouchableOpacity>
 
       {/* ── 사진 확대 모달 ── */}
       <Modal visible={!!photoModal} transparent animationType="fade" onRequestClose={() => setPhotoModal(null)}>
@@ -624,20 +623,15 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#FFFAF7' },
   scroll: { flex: 1 },
-  screenTitle: {
-    fontSize: 24, fontWeight: '800', color: '#1A1A1A',
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, letterSpacing: -0.5,
-  },
   calendar: {
-    marginHorizontal: 12, borderRadius: 4,
-    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
-    overflow: 'hidden',
-    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1, shadowRadius: 4, elevation: 3,
-  },
-  checkinButtonWrap: {
-    marginHorizontal: 12,
     marginTop: 12,
+    marginHorizontal: 12, 
+    borderRadius: 22,
+    borderWidth: 1, 
+    borderColor: 'rgba(255, 107, 61, 0.12)',
+    overflow: 'hidden',
+    boxShadow: '0px 0px 2px rgb(173, 169, 168)',
+
   },
   checkinButtonHint: {
     fontSize: 12,
@@ -902,5 +896,29 @@ const styles = StyleSheet.create({
   },
   dot: {
     width: 4, height: 4, borderRadius: 2, marginTop: 4,
+  },
+  
+  // ── 플로팅 버튼 ──
+  floatingButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    backgroundColor: '#FF6B3D',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    gap: 8,
+  },
+  floatingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

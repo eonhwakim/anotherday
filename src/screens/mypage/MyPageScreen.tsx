@@ -69,26 +69,35 @@ export default function MyPageScreen() {
   const [teamLoading, setTeamLoading] = useState(false);
 
   const [monthlyResolution, setMonthlyResolution] = useState('');
+  const [fabMenuVisible, setFabMenuVisible] = useState(false);
+  const [resolutionModalVisible, setResolutionModalVisible] = useState(false);
+  const [resolutionInput, setResolutionInput] = useState('');
 
   const loadResolution = useCallback(async () => {
-    if (!user || !currentTeam) {
+    // fetchTeams 직후 등 리렌더 전에 호출될 수 있으므로 스토어에서 읽음
+    const u = useAuthStore.getState().user;
+    const team = useTeamStore.getState().currentTeam;
+    if (!u) {
       setMonthlyResolution('');
+      setResolutionInput('');
       return;
     }
     const yearMonth = dayjs().format('YYYY-MM');
     try {
-      const { data } = await supabase
+      let q = supabase
         .from('monthly_resolutions')
         .select('content')
-        .eq('user_id', user.id)
-        .eq('team_id', currentTeam.id)
-        .eq('year_month', yearMonth)
-        .maybeSingle();
-      setMonthlyResolution(data?.content || '');
+        .eq('user_id', u.id)
+        .eq('year_month', yearMonth);
+      q = team ? q.eq('team_id', team.id) : q.is('team_id', null);
+      const { data } = await q.maybeSingle();
+      const content = data?.content || '';
+      setMonthlyResolution(content);
+      setResolutionInput(content);
     } catch (e) {
       console.error(e);
     }
-  }, [user, currentTeam]);
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -165,7 +174,7 @@ export default function MyPageScreen() {
       if (frequency === 'weekly_count') {
         Alert.alert(
           `주 ${targetCount ?? 'N'}회 목표 등록 완료`,
-          '오늘 할 계획이 아니라면 등록된 목표에서 탭하여 비활성화해주세요.\n활성화된 상태에서 주간 목표 횟수를 채우지 못하면 미달로 카운팅됩니다.',
+          '오늘 할 계획이 아니라면 패스 인증을 하면 산을 오를 수 있어요. (미달로 카운팅됩니다.)',
         );
       }
     }
@@ -178,24 +187,45 @@ export default function MyPageScreen() {
     await removeTeamGoal(activeTeam?.id ?? '', user.id, goalId);
   };
 
-  const handleUpdateResolution = async (text: string) => {
-    if (!user || !currentTeam) return;
+  const handleUpdateResolution = async (text: string): Promise<boolean> => {
+    const u = useAuthStore.getState().user;
+    const team = useTeamStore.getState().currentTeam;
+    if (!u) return false;
     const yearMonth = dayjs().format('YYYY-MM');
     try {
-      const { error } = await supabase
+      let sel = supabase
         .from('monthly_resolutions')
-        .upsert({
-          user_id: user.id,
-          team_id: currentTeam.id,
+        .select('id')
+        .eq('user_id', u.id)
+        .eq('year_month', yearMonth);
+      sel = team ? sel.eq('team_id', team.id) : sel.is('team_id', null);
+      const { data: row, error: selErr } = await sel.maybeSingle();
+      if (selErr) throw selErr;
+
+      if (row) {
+        const { error } = await supabase
+          .from('monthly_resolutions')
+          .update({ content: text })
+          .eq('id', row.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('monthly_resolutions').insert({
+          user_id: u.id,
+          team_id: team?.id ?? null,
           year_month: yearMonth,
           content: text,
-        }, { onConflict: 'user_id, team_id, year_month' });
-        
-      if (error) throw error;
+        });
+        if (error) throw error;
+      }
+
       setMonthlyResolution(text);
+      setResolutionInput(text);
+      await loadResolution();
+      return true;
     } catch (e) {
       console.error(e);
-      throw e; // GoalSetting 컴포넌트에서 에러 처리
+      Alert.alert('저장 실패', '한마디 저장 중 오류가 발생했습니다.');
+      return false;
     }
   };
 
@@ -368,22 +398,6 @@ export default function MyPageScreen() {
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.cardTitle}>소속 팀</Text>
-            <View style={styles.teamActions}>
-              <TouchableOpacity 
-                style={styles.teamActionBtn} 
-                onPress={() => handleOpenTeamModal('create')}
-              >
-                <Ionicons name="add-circle-outline" size={18} color={COLORS.primaryLight} />
-                <Text style={styles.teamActionText}>팀 생성</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.teamActionBtn}
-                onPress={() => handleOpenTeamModal('join')}
-              >
-                <Ionicons name="enter-outline" size={18} color={COLORS.primaryLight} />
-                <Text style={styles.teamActionText}>팀 참가</Text>
-              </TouchableOpacity>
-            </View>
           </View>
 
           
@@ -467,7 +481,6 @@ export default function MyPageScreen() {
           onAdd={handleAddGoal}
           onRemove={handleRemoveGoal}
           monthlyResolution={monthlyResolution}
-          onUpdateResolution={handleUpdateResolution}
         />
 
         {/* ── 계정 관리 ── */}
@@ -484,8 +497,129 @@ export default function MyPageScreen() {
 
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* ── 플로팅 버튼 (+) ── */}
+      {!fabMenuVisible && (
+        <TouchableOpacity 
+          style={styles.floatingButton}
+          onPress={() => setFabMenuVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
+
+      {/* ── FAB 메뉴 모달 ── */}
+      <Modal
+        visible={fabMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFabMenuVisible(false)}
+      >
+        <View style={styles.fabOverlay}>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFill} 
+            activeOpacity={1} 
+            onPress={() => setFabMenuVisible(false)}
+          />
+          
+          <View style={styles.fabMenuContainer}>
+            <View style={styles.fabMenuSection}>
+              <TouchableOpacity 
+                style={styles.fabMenuItem}
+                onPress={() => { setFabMenuVisible(false); handleOpenTeamModal('create'); }}
+              >
+                <Ionicons name="add-circle-outline" size={20} color="#1A1A1A" />
+                <Text style={styles.fabMenuText}>팀 생성</Text>
+              </TouchableOpacity>
+              <View style={styles.fabMenuDivider} />
+              <TouchableOpacity 
+                style={styles.fabMenuItem}
+                onPress={() => { setFabMenuVisible(false); handleOpenTeamModal('join'); }}
+              >
+                <Ionicons name="enter-outline" size={20} color="#1A1A1A" />
+                <Text style={styles.fabMenuText}>팀 참가</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.fabMenuSection}>
+              <TouchableOpacity 
+                style={styles.fabMenuItem}
+                onPress={() => { 
+                  setFabMenuVisible(false); 
+                  setResolutionInput(monthlyResolution);
+                  setResolutionModalVisible(true); 
+                }}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#1A1A1A" />
+                <Text style={styles.fabMenuText}>한마디 추가</Text>
+              </TouchableOpacity>
+              <View style={styles.fabMenuDivider} />
+              <TouchableOpacity 
+                style={styles.fabMenuItem}
+                onPress={() => { 
+                  setFabMenuVisible(false); 
+                  navigation.navigate('AddRoutine');
+                }}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#1A1A1A" />
+                <Text style={styles.fabMenuText}>루틴 추가</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 모달 내부에도 동일한 X 버튼을 배치하여 어두운 배경 위로 올라오게 함 */}
+          <TouchableOpacity 
+            style={[styles.floatingButton, styles.floatingButtonClose]}
+            onPress={() => setFabMenuVisible(false)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={28} color="#1A1A1A" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* ── 한마디 추가 모달 ── */}
+      <Modal
+        visible={resolutionModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setResolutionModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>이번 달 한마디</Text>
+            <Input
+              placeholder="이번 달의 다짐이나 목표를 적어보세요"
+              value={resolutionInput}
+              onChangeText={setResolutionInput}
+              autoFocus
+              maxLength={50}
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                title="취소"
+                variant="secondary"
+                onPress={() => setResolutionModalVisible(false)}
+                style={styles.cancelBtn}
+              />
+              <Button
+                title="저장"
+                onPress={async () => {
+                  const ok = await handleUpdateResolution(resolutionInput);
+                  if (ok) setResolutionModalVisible(false);
+                }}
+                style={styles.confirmBtn}
+              />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* ── 팀 생성/참가 모달 ── */}
       <Modal
@@ -790,5 +924,70 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     color: 'rgba(26,26,26,0.45)',
+  },
+
+  // ── 플로팅 버튼 ──
+  floatingButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF6B3D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 100,
+  },
+  floatingButtonClose: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    // 모달 안에서 위치를 잡기 위해 명시적으로 지정
+    bottom: 110,
+    right: 20,
+  },
+  
+  // ── FAB 메뉴 모달 ──
+  fabOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  fabMenuContainer: {
+    position: 'absolute',
+    right: 20,
+    bottom: 180, // 플로팅 버튼 위로 뜨도록
+    width: 200,
+  },
+  fabMenuSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  fabMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  fabMenuText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  fabMenuDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
 });
