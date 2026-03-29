@@ -691,11 +691,11 @@ const styles = StyleSheet.create({
   memberCard: {
     flex: 1,
     width: '100%',
-    marginTop: 0,
+    marginTop: 4,
   },
   memberCardContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     width: '100%',
   },
   memberHeader: {
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   memberName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: 'rgba(26,26,26,0.55)',
     flex: 1,
@@ -732,8 +732,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.8)',
     borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.54)',
   },
   goalChipDone: {
@@ -749,11 +749,11 @@ const styles = StyleSheet.create({
   goalChipIcon: {
     marginRight: 3,
     color: '#ffffffff',
-    fontWeight: '800',
+    fontWeight: '700',
   },
   goalChipText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '500',
     color: 'rgba(26, 26, 26, 0.50)',
     maxWidth: 120,
   },
