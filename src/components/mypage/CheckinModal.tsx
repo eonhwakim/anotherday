@@ -23,7 +23,7 @@ import dayjs from '../../lib/dayjs';
 import CyberFrame from '../ui/CyberFrame';
 
 // Android에서 BlurView의 렌더링 문제를 방지하기 위한 임시 방편 (기본 뷰로 대체)
-const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
+const SafeBlurView = Platform.OS === 'android' ? View : View;
 
 interface GoalWithFrequency {
   goal: Goal;
