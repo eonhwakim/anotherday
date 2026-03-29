@@ -19,6 +19,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { COLORS } from '../../constants/defaults';
 import { TeamMemberWithUser } from '../../types/domain';
+import CyberFrame from '../../components/ui/CyberFrame';
 
 type TeamMemberScreenRouteProp = RouteProp<RootStackParamList, 'TeamMember'>;
 
@@ -140,7 +141,6 @@ export default function TeamMemberScreen() {
           <>
             {/* 팀 프로필 카드 (프로필 수정처럼) */}
             <TouchableOpacity
-              style={styles.teamProfileCard}
               onPress={() => {
                 if (myRole === 'leader') {
                   navigation.navigate('TeamProfileEdit', { teamId });
@@ -149,10 +149,12 @@ export default function TeamMemberScreen() {
               activeOpacity={myRole === 'leader' ? 0.7 : 1}
               disabled={myRole !== 'leader'}
             >
-              <View style={styles.teamProfileRow}>
+              <CyberFrame style={styles.teamProfileFrame} contentStyle={styles.teamProfileRow} glassOnly={false}>
                 <View style={styles.teamAvatarWrap}>
+                  {/* @ts-ignore */}
                   {currentTeamInfo?.profile_image_url ? (
                     <Image
+                      // @ts-ignore
                       source={{ uri: currentTeamInfo.profile_image_url }}
                       style={styles.teamAvatar}
                     />
@@ -171,13 +173,13 @@ export default function TeamMemberScreen() {
                 {myRole === 'leader' && (
                   <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
                 )}
-              </View>
+              </CyberFrame>
             </TouchableOpacity>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>팀 멤버 ({members.length})</Text>
               {members.map((member) => (
-                <View key={member.id} style={styles.memberCard}>
+                <CyberFrame key={member.id} style={styles.memberCardFrame} contentStyle={styles.memberCardContent} glassOnly={false}>
                   <View style={styles.memberRow}>
                     <View style={styles.memberProfile}>
                       {member.user.profile_image_url ? (
@@ -200,8 +202,10 @@ export default function TeamMemberScreen() {
                             </View>
                           )}
                         </View>
+                        {/* @ts-ignore */}
                         {(member.user.name || member.user.gender || member.user.age) && (
                           <Text style={styles.memberDetail}>
+                            {/* @ts-ignore */}
                             {[member.user.name, member.user.gender, member.user.age ? `${member.user.age}세` : null]
                               .filter(Boolean)
                               .join(' / ')}
@@ -210,7 +214,7 @@ export default function TeamMemberScreen() {
                       </View>
                     </View>
                   </View>
-                </View>
+                </CyberFrame>
               ))}
             </View>
 
@@ -218,14 +222,18 @@ export default function TeamMemberScreen() {
               <View style={styles.dangerZone}>
                 <View style={styles.dangerDivider} />
                 {myRole === 'leader' ? (
-                  <TouchableOpacity style={styles.dangerBtn} onPress={handleDeleteTeam}>
-                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                    <Text style={styles.dangerBtnText}>팀 삭제</Text>
+                  <TouchableOpacity onPress={handleDeleteTeam}>
+                    <CyberFrame style={styles.dangerFrame} contentStyle={styles.dangerBtn} glassOnly={false}>
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                      <Text style={styles.dangerBtnText}>팀 삭제</Text>
+                    </CyberFrame>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={styles.dangerBtn} onPress={handleLeaveTeam}>
-                    <Ionicons name="exit-outline" size={16} color="#EF4444" />
-                    <Text style={styles.dangerBtnText}>팀 탈퇴</Text>
+                  <TouchableOpacity onPress={handleLeaveTeam}>
+                    <CyberFrame style={styles.dangerFrame} contentStyle={styles.dangerBtn} glassOnly={false}>
+                      <Ionicons name="exit-outline" size={16} color="#EF4444" />
+                      <Text style={styles.dangerBtnText}>팀 탈퇴</Text>
+                    </CyberFrame>
                   </TouchableOpacity>
                 )}
               </View>
@@ -242,7 +250,7 @@ export default function TeamMemberScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FFFAF7',
+    backgroundColor: '#FFFFFF', // 흰색 배경으로 통일
   },
   header: {
     flexDirection: 'row',
@@ -251,7 +259,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 107, 61, 0.10)',
+    borderBottomColor: 'rgba(132, 128, 128, 0.1)',
   },
   backBtn: {
     padding: 4,
@@ -265,18 +273,15 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  teamProfileCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+  teamProfileFrame: {
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.12)',
+    borderRadius: 16,
   },
   teamProfileRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+    padding: 20,
   },
   teamAvatarWrap: {},
   teamAvatar: {
@@ -311,18 +316,12 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     marginBottom: 12,
   },
-  memberCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+  memberCardFrame: {
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.12)',
-    shadowColor: '#FF6B3D',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    borderRadius: 12,
+  },
+  memberCardContent: {
+    padding: 12,
   },
   memberRow: {
     flexDirection: 'row',
@@ -382,28 +381,27 @@ const styles = StyleSheet.create({
   dangerZone: {
     marginTop: 8,
     marginBottom: 8,
-    alignItems: 'center',
   },
   dangerDivider: {
     width: '100%',
     height: 1,
-    backgroundColor: 'rgba(239,68,68,0.15)',
+    backgroundColor: 'rgba(132, 128, 128, 0.1)',
     marginBottom: 16,
+  },
+  dangerFrame: {
+    borderRadius: 12,
   },
   dangerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.3)',
-    backgroundColor: 'rgba(239,68,68,0.06)',
   },
   dangerBtnText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#EF4444',
   },
 });

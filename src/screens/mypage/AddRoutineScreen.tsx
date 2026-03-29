@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,6 +19,8 @@ import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { COLORS } from '../../constants/defaults';
 import type { GoalFrequency } from '../../types/domain';
+import CyberFrame from '../../components/ui/CyberFrame';
+import Input from '../../components/common/Input';
 
 export default function AddRoutineScreen() {
   const navigation = useNavigation();
@@ -90,66 +91,79 @@ export default function AddRoutineScreen() {
             </View>
 
             <View style={styles.content}>
-              <Text style={styles.label}>어떤 루틴을 추가할까요?</Text>
-              
               {/* ── 입력창 ── */}
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="루틴 (예: 운동 30분)"
-                  placeholderTextColor="rgba(26,26,26,0.30)"
-                  value={newGoal}
-                  onChangeText={setNewGoal}
-                  returnKeyType="done"
-                  onSubmitEditing={handleAdd}
-                  maxLength={30}
-                  autoFocus
-                />
-              </View>
+              <CyberFrame style={styles.sectionFrame} contentStyle={styles.sectionContent} glassOnly={false}>
+                <Text style={styles.label}>어떤 루틴을 추가할까요?</Text>
+                <View style={styles.inputRow}>
+                  <Input
+                    placeholder="루틴 (예: 운동 30분)"
+                    value={newGoal}
+                    onChangeText={setNewGoal}
+                    returnKeyType="done"
+                    onSubmitEditing={handleAdd}
+                    maxLength={30}
+                    autoFocus
+                  />
+                </View>
+              </CyberFrame>
 
               {/* ── 주기 설정 ── */}
-              <View style={styles.freqSection}>
+              <CyberFrame style={styles.sectionFrame} contentStyle={styles.sectionContent} glassOnly={false}>
                 <Text style={styles.label}>실천 주기</Text>
                 <View style={styles.freqRow}>
                   <TouchableOpacity
-                    style={[styles.freqBtn, frequency === 'daily' && styles.freqBtnActive]}
+                    style={{ flex: 1 }}
                     onPress={() => setFrequency('daily')}
+                    activeOpacity={0.7}
                   >
-                    <Text style={[styles.freqBtnText, frequency === 'daily' && styles.freqBtnTextActive]}>
-                      매일
-                    </Text>
+                    <CyberFrame 
+                      style={[styles.freqBtnFrame, frequency === 'daily' && styles.activeFreqBtnFrame]}
+                      contentStyle={styles.freqBtnContent}
+                      glassOnly={true}
+                    >
+                      <Text style={[styles.freqBtnText, frequency === 'daily' && styles.freqBtnTextActive]}>
+                        매일
+                      </Text>
+                    </CyberFrame>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.freqBtn, frequency === 'weekly_count' && styles.freqBtnActive]}
+                    style={{ flex: 1 }}
                     onPress={() => setFrequency('weekly_count')}
+                    activeOpacity={0.7}
                   >
-                    <Text style={[styles.freqBtnText, frequency === 'weekly_count' && styles.freqBtnTextActive]}>
-                      주 N회
-                    </Text>
+                    <CyberFrame 
+                      style={[styles.freqBtnFrame, frequency === 'weekly_count' && styles.activeFreqBtnFrame]}
+                      contentStyle={styles.freqBtnContent}
+                      glassOnly={true}
+                    >
+                      <Text style={[styles.freqBtnText, frequency === 'weekly_count' && styles.freqBtnTextActive]}>
+                        주 N회
+                      </Text>
+                    </CyberFrame>
                   </TouchableOpacity>
                 </View>
 
                 {frequency === 'weekly_count' && (
-                  <View style={styles.targetCountRow}>
+                  <CyberFrame style={styles.targetCountFrame} contentStyle={styles.targetCountContent} glassOnly={true}>
                     <Text style={styles.targetCountLabel}>일주일에 몇 번 할까요?</Text>
                     <View style={styles.counterWrap}>
                       <TouchableOpacity
                         style={styles.counterBtn}
                         onPress={() => setTargetCount(Math.max(1, targetCount - 1))}
                       >
-                        <Ionicons name="remove" size={20} color="#1A1A1A" />
+                        <Ionicons name="remove" size={20} color={COLORS.textSecondary} />
                       </TouchableOpacity>
                       <Text style={styles.counterValue}>{`${targetCount}회`}</Text>
                       <TouchableOpacity
                         style={styles.counterBtn}
                         onPress={() => setTargetCount(Math.min(6, targetCount + 1))}
                       >
-                        <Ionicons name="add" size={20} color="#1A1A1A" />
+                        <Ionicons name="add" size={20} color={COLORS.textSecondary} />
                       </TouchableOpacity>
                     </View>
-                  </View>
+                  </CyberFrame>
                 )}
-              </View>
+              </CyberFrame>
             </View>
 
             {/* ── 하단 추가 버튼 ── */}
@@ -176,7 +190,7 @@ export default function AddRoutineScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FFFAF7',
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
@@ -190,8 +204,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   backBtn: {
     padding: 8,
@@ -204,55 +216,48 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 24,
+    padding: 16,
+  },
+  sectionFrame: {
+    marginBottom: 16,
+    borderRadius: 16,
+  },
+  sectionContent: {
+    padding: 20,
   },
   label: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1A1A1A',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: '#1A1A1A',
-    shadowColor: '#FF6B3D',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  freqSection: {
-    marginBottom: 24,
+    marginBottom: 0,
   },
   freqRow: {
     flexDirection: 'row',
     gap: 12,
     marginBottom: 16,
   },
-  freqBtn: {
-    flex: 1,
-    paddingVertical: 14,
+  freqBtnFrame: {
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(26,26,26,0.1)',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
   },
-  freqBtnActive: {
-    borderColor: '#FF6B3D',
-    backgroundColor: 'rgba(255, 107, 61, 0.08)',
+  activeFreqBtnFrame: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderTopColor: 'rgba(255, 255, 255, 1)',
+    borderLeftColor: 'rgba(229, 229, 229, 1)',
+    borderBottomColor: 'rgba(255, 135, 61, 0.22)',
+    borderWidth: 0.6,
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 1, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    overflow: 'visible',
+  },
+  freqBtnContent: {
+    alignItems: 'center',
+    paddingVertical: 14,
   },
   freqBtnText: {
     fontSize: 15,
@@ -263,15 +268,14 @@ const styles = StyleSheet.create({
     color: '#FF6B3D',
     fontWeight: '700',
   },
-  targetCountRow: {
+  targetCountFrame: {
+    borderRadius: 12,
+  },
+  targetCountContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(26,26,26,0.05)',
   },
   targetCountLabel: {
     fontSize: 15,

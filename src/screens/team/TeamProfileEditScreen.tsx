@@ -19,6 +19,8 @@ import { useTeamStore } from '../../stores/teamStore';
 import { updateTeamProfile, uploadTeamProfileImage } from '../../services/teamService';
 import { COLORS } from '../../constants/defaults';
 import Input from '../../components/common/Input';
+import Button from '../../components/common/Button';
+import CyberFrame from '../../components/ui/CyberFrame';
 import { RootStackParamList } from '../../types/navigation';
 
 type TeamProfileEditRouteProp = RouteProp<RootStackParamList, 'TeamProfileEdit'>;
@@ -129,26 +131,22 @@ export default function TeamProfileEditScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.form}>
+          <CyberFrame style={styles.formFrame} contentStyle={styles.form} glassOnly={false}>
             <Input
               label="팀 이름"
               value={name}
               onChangeText={setName}
               placeholder="팀 이름을 입력하세요"
             />
-          </View>
+          </CyberFrame>
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
+          <Button
+            title="저장하기"
             onPress={handleSave}
-            disabled={loading}
-          >
-            <Text style={styles.saveBtnText}>
-              {loading ? '저장 중...' : '저장하기'}
-            </Text>
-          </TouchableOpacity>
+            loading={loading}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -156,7 +154,7 @@ export default function TeamProfileEditScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFAF7' },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   scroll: { flex: 1 },
   header: {
     flexDirection: 'row',
@@ -165,7 +163,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 107, 61, 0.10)',
+    borderBottomColor: 'rgba(55, 53, 53, 0.1)',
   },
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
@@ -188,14 +186,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  form: { paddingHorizontal: 16, paddingBottom: 24 },
-  footer: { padding: 16, paddingBottom: 32 },
-  saveBtn: {
-    backgroundColor: '#FF6B3D',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+  formFrame: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
   },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  form: { paddingHorizontal: 16, paddingVertical: 20 },
+  footer: { 
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+  },
 });

@@ -18,6 +18,7 @@ import { pickProfileImage, uploadProfileImage, updateProfile } from '../../servi
 import { COLORS } from '../../constants/defaults';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import CyberFrame from '../../components/ui/CyberFrame';
 
 export default function ProfileEditScreen() {
   const navigation = useNavigation();
@@ -157,7 +158,7 @@ export default function ProfileEditScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.form}>
+          <CyberFrame style={styles.formFrame} contentStyle={styles.form} glassOnly={false}>
             <Input
               label="닉네임"
               value={nickname}
@@ -174,21 +175,31 @@ export default function ProfileEditScreen() {
 
             <Text style={styles.label}>성별</Text>
             <View style={styles.genderContainer}>
-              {['남성', '여성'].map((g) => (
-                <TouchableOpacity
-                  key={g}
-                  style={[
-                    styles.genderBtn,
-                    gender === g && styles.genderBtnActive
-                  ]}
-                  onPress={() => setGender(g)}
-                >
-                  <Text style={[
-                    styles.genderText,
-                    gender === g && styles.genderTextActive
-                  ]}>{g}</Text>
-                </TouchableOpacity>
-              ))}
+              {['남성', '여성'].map((g) => {
+                const isActive = gender === g;
+                return (
+                  <TouchableOpacity
+                    key={g}
+                    style={{ flex: 1 }}
+                    activeOpacity={0.7}
+                    onPress={() => setGender(g)}
+                  >
+                    <CyberFrame 
+                      style={[
+                        styles.genderBtnFrame,
+                        isActive && styles.genderBtnFrameActive
+                      ]} 
+                      contentStyle={styles.genderBtnContent}
+                      glassOnly={true}
+                    >
+                      <Text style={[
+                        styles.genderText,
+                        isActive && styles.genderTextActive
+                      ]}>{g}</Text>
+                    </CyberFrame>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <Input
@@ -198,16 +209,21 @@ export default function ProfileEditScreen() {
               placeholder="나이를 입력하세요"
               keyboardType="number-pad"
             />
+          </CyberFrame>
 
-            <View style={styles.divider} />
-            
-            <TouchableOpacity 
-              style={styles.deleteAccountBtn} 
-              onPress={handleDeleteAccount}
-            >
-              <Text style={styles.deleteAccountText}>계정 삭제 (Delete Account)</Text>
+          <CyberFrame style={styles.dangerFrame} contentStyle={styles.dangerContent} glassOnly={false}>
+            <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
+              <View style={styles.accountRowLeft}>
+                <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                <Text style={[styles.accountRowText, { color: COLORS.error }]}>탈퇴하기</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.error} />
             </TouchableOpacity>
-          </View>
+          </CyberFrame>
+
+          <Text style={styles.accountDeleteHint}>
+            탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
+          </Text>
         </ScrollView>
 
         <View style={styles.footer}>
@@ -225,7 +241,7 @@ export default function ProfileEditScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FFFAF7',
+    backgroundColor: '#FFFFFF', // 흰색 배경으로 통일
   },
   scroll: {
     flex: 1,
@@ -237,7 +253,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 107, 61, 0.10)',
+    borderBottomColor: 'rgba(55, 53, 53, 0.1)',
   },
   backBtn: {
     padding: 4,
@@ -279,15 +295,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
+  formFrame: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+  },
   form: {
-    padding: 16,
-    gap: 8,
+    padding: 20,
+    gap: 12,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
     color: 'rgba(26,26,26,0.50)',
-    marginBottom: 8,
+    marginBottom: 4,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
@@ -296,45 +317,73 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 16,
   },
-  genderBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.12)',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+  genderBtnFrame: {
+    borderRadius: 12,
   },
-  genderBtnActive: {
-    borderColor: 'rgba(255, 107, 61, 0.30)',
-    backgroundColor: 'rgba(255, 107, 61, 0.06)',
+  genderBtnContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  genderBtnFrameActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)', 
+    borderTopColor: 'rgba(255, 255, 255, 1)',     
+    borderLeftColor: 'rgba(229, 229, 229, 1)',
+    borderBottomColor: 'rgba(255, 135, 61, 0.22)',
+    borderWidth: 0.6,
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 1, height: 1 },        
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    overflow: 'visible',
   },
   genderText: {
     fontSize: 14,
     color: 'rgba(26,26,26,0.40)',
+    fontWeight: '600',
   },
   genderTextActive: {
     color: '#FF6B3D',
     fontWeight: '700',
   },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 107, 61, 0.10)',
-    marginVertical: 24,
+  dangerFrame: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 16,
   },
-  deleteAccountBtn: {
+  dangerContent: {
+    paddingHorizontal: 0,
+    paddingVertical: 8,
+  },
+  accountRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  deleteAccountText: {
-    color: '#EF4444',
-    fontSize: 13,
-    textDecorationLine: 'underline',
+  accountRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  accountRowText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1A1A1A',
+  },
+  accountDeleteHint: {
+    fontSize: 12,
+    color: 'rgba(26,26,26,0.35)',
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 40,
+    paddingHorizontal: 16,
   },
   footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 107, 61, 0.08)',
-    backgroundColor: '#FFFAF7',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24, // 하단 여백 추가
   },
 });

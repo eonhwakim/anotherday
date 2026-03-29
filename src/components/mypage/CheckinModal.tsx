@@ -12,6 +12,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, Checkin } from '../../types/domain';
 import { useGoalStore } from '../../stores/goalStore';
@@ -19,6 +20,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { takePhoto, uploadCheckinPhoto } from '../../services/checkinService';
 import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
+import CyberFrame from '../ui/CyberFrame';
 
 interface GoalWithFrequency {
   goal: Goal;
@@ -172,7 +174,7 @@ export default function CheckinModal({
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={styles.overlayBg} />
         </TouchableWithoutFeedback>
-        <View style={styles.sheet}>
+        <BlurView intensity={30} tint="light" style={styles.sheet}>
           {/* 핸들 바 */}
           <View style={styles.handleBar} />
 
@@ -226,13 +228,16 @@ export default function CheckinModal({
                       : '';
 
                     return (
-                      <View
+                      <CyberFrame
                         key={goal.id}
+                        glassOnly={true}
                         style={[
-                          styles.goalRow,
-                          done && styles.goalRowDone,
+                          styles.goalFrame,
+                          done && !isPass && styles.goalRowDone,
+                          isPass && styles.goalRowPass,
                           isMissed && styles.goalRowMissed,
                         ]}
+                        contentStyle={styles.goalFrameContent}
                       >
                         <View style={styles.goalInfo}>
                           <Ionicons
@@ -279,14 +284,11 @@ export default function CheckinModal({
                         {/* 상태 표시 / 액션 버튼 */}
                         {done || isPass ? (
                           <View style={styles.actionRow}>
-                            <Text
-                              style={[
-                                styles.statusBadge,
-                                isPass ? styles.badgePass : styles.badgeSuccess,
-                              ]}
-                            >
-                              {isPass ? '패스함' : '성공'}
-                            </Text>
+                            {isPass ? (
+                              <Text style={[styles.statusBadge, styles.badgePass]}>패스</Text>
+                            ) : (
+                              <Text style={[styles.statusBadge, styles.badgeSuccess]}>성공</Text>
+                            )}
                             {isToday && isWeekly && isPass && (
                               <TouchableOpacity
                                 style={styles.passBtn}
@@ -309,7 +311,7 @@ export default function CheckinModal({
                               style={styles.successBtn}
                               onPress={() => handleSuccess(goal.id)}
                             >
-                              <Ionicons name="camera" size={15} color="#FFFFFF" />
+                              <Ionicons name="camera" size={16} color="#FF6B3D" />
                               <Text style={styles.successBtnText}>성공</Text>
                             </TouchableOpacity>
                             {isWeekly && (
@@ -317,20 +319,20 @@ export default function CheckinModal({
                                 style={styles.passBtn}
                                 onPress={() => handlePassToggle(goal.id)}
                               >
-                                <Ionicons name="close-circle-outline" size={15} color={COLORS.warning} />
+                                <Ionicons name="close-circle-outline" size={16} color="#E8960A" />
                                 <Text style={styles.passBtnText}>패스</Text>
                               </TouchableOpacity>
                             )}
                           </View>
                         ) : null}
-                      </View>
+                      </CyberFrame>
                     );
                   })}
                 </>
               )}
             </ScrollView>
           )}
-        </View>
+        </BlurView>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -346,25 +348,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheet: {
-    backgroundColor: '#FFFAF7',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: 34,
     maxHeight: '75%',
     borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: 'rgba(255, 107, 61, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.9)',
     shadowColor: '#FF6B3D',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.10,
     shadowRadius: 20,
     elevation: 8,
+    overflow: 'hidden',
   },
   handleBar: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255, 107, 61, 0.20)',
+    backgroundColor: 'rgba(255, 90, 61, 0.2)',
     alignSelf: 'center',
     marginTop: 12,
     marginBottom: 8,
@@ -375,8 +378,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 107, 61, 0.08)',
   },
   headerTitle: {
     fontSize: 17,
@@ -405,20 +406,35 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
 
-  goalRow: {
+  goalFrame: {
+    marginBottom: 12,
+    marginTop: 0,
+  },
+  goalFrameContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.10)',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
+
   goalRowDone: {
-    backgroundColor: 'rgba(239,68,68,0.08)',
-    borderColor: 'rgba(239,68,68,0.18)',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)', // 투명도를 좀 더 낮춰 유리 느낌 강화
+    borderColor: 'rgba(255, 232, 199, 0.9)',
+    shadowColor: '#ff5b2aff',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  goalRowPass: {
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+    borderColor: 'rgba(255, 232, 199, 0.9)',
+    shadowColor: '#FFB547',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 4,
   },
   goalInfo: {
     flexDirection: 'row',
@@ -434,47 +450,37 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   goalName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1A1A1A',
   },
   freqLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: 'rgba(26,26,26,0.5)',
   },
   goalNameDone: {
     color: 'rgba(26,26,26,0.45)',
   },
   statusBadge: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.12)',
     alignSelf: 'center',
   },
   badgeSuccess: {
-    backgroundColor: 'rgba(239, 122, 68, 0.08)',
     color: '#FF6B3D',
-    borderColor: 'rgba(239,68,68,0.18)',
   },
   badgePass: {
-    backgroundColor: 'rgba(255,181,71,0.10)',
     color: '#E8960A',
-    borderColor: 'rgba(255,181,71,0.20)',
   },
   badgeMissed: {
-    backgroundColor: 'rgba(239,68,68,0.08)',
     color: '#EF4444',
-    borderColor: 'rgba(239,68,68,0.18)',
   },
   badgeFuture: {
-    backgroundColor: 'rgba(255, 107, 61, 0.08)',
     color: 'rgba(255, 107, 61, 0.65)',
-    borderColor: 'rgba(255, 107, 61, 0.15)',
   },
   readOnlyBanner: {
     flexDirection: 'row',
@@ -492,8 +498,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   goalRowMissed: {
-    backgroundColor: 'rgba(239,68,68,0.04)',
-    borderColor: 'rgba(239,68,68,0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderWidth: 1.5,
   },
   goalNameMissed: {
     color: 'rgba(26,26,26,0.35)',
@@ -507,30 +514,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FF6B3D',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.45)', // 투명도 부여
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)', // 빛나는 테두리
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20, // 둥근 형태
+    shadowColor: '#FF6B3D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   successBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FF6B3D', // 글씨 색상 브랜드 컬러로
   },
   passBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.15)',
-    backgroundColor: 'rgba(255, 107, 61, 0.04)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#FFB547',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   passBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(26,26,26,0.50)',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#E8960A',
   },
 });

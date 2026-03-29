@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/defaults';
 import { Alert } from 'react-native';
+import CyberFrame from '../../components/ui/CyberFrame';
 import {
   getDailyNotificationEnabled,
   setDailyNotificationEnabled,
@@ -48,7 +49,7 @@ export default function AppSettingsScreen() {
       <View style={s.content}>
         <Text style={s.sectionTitle}>알림</Text>
 
-        <View style={s.row}>
+        <CyberFrame style={s.rowFrame} contentStyle={s.row} glassOnly={false}>
           <View style={s.rowLeft}>
             <Ionicons name="notifications-outline" size={20} color={COLORS.text} />
             <View style={s.rowText}>
@@ -62,9 +63,9 @@ export default function AppSettingsScreen() {
             trackColor={{ false: 'rgba(0,0,0,0.10)', true: 'rgba(255,107,61,0.35)' }}
             thumbColor={dailyNoti ? '#FF6B3D' : '#f4f3f4'}
           />
-        </View>
+        </CyberFrame>
 
-        <View style={[s.row, { marginTop: 12 }]}>
+        <CyberFrame style={s.rowFrame} contentStyle={s.row} glassOnly={false}>
           <View style={s.rowLeft}>
             <Ionicons name="alarm-outline" size={20} color={COLORS.text} />
             <View style={s.rowText}>
@@ -78,7 +79,7 @@ export default function AppSettingsScreen() {
             trackColor={{ false: 'rgba(0,0,0,0.10)', true: 'rgba(255,107,61,0.35)' }}
             thumbColor={goalReminder ? '#FF6B3D' : '#f4f3f4'}
           />
-        </View>
+        </CyberFrame>
 
         {__DEV__ && (
           <TouchableOpacity
@@ -110,17 +111,18 @@ export default function AppSettingsScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8F6F4' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,107,61,0.10)' },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(55,53,53,0.10)' },
   backBtn: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
   content: { flex: 1, padding: 16 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: 'rgba(26,26,26,0.45)', marginBottom: 12, marginTop: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 16, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)' },
+  rowFrame: { marginBottom: 12, borderRadius: 16 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
   rowLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1, marginRight: 12 },
   rowText: { flex: 1 },
   rowTitle: { fontSize: 15, fontWeight: '600', color: '#1A1A1A', marginBottom: 4 },
   rowDesc: { fontSize: 12, color: 'rgba(26,26,26,0.45)', lineHeight: 17 },
-  testBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, padding: 12, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,107,61,0.25)', borderStyle: 'dashed' },
+  testBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, padding: 12, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.25)', borderStyle: 'dashed' },
   testBtnText: { fontSize: 13, fontWeight: '600', color: '#FF6B3D' },
 });

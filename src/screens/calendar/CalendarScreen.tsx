@@ -6,6 +6,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { AppTabParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import CyberFrame from '../../components/ui/CyberFrame';
 import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
@@ -352,39 +354,42 @@ export default function CalendarScreen() {
   }, [isExcludedFromStats, isOtherMonth, selectedDate, dataStart, dataEnd, currentMonth]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView ref={scrollRef} style={styles.scroll}>
-        <Calendar
-          firstDay={1}
-          dayComponent={renderDay}
-          theme={{
-            calendarBackground: '#FFFFFF',
-            todayTextColor: '#FF6B3D',
-            selectedDayBackgroundColor: 'rgba(255, 107, 61, 0.18)',
-            selectedDayTextColor: '#FF6B3D',
-            arrowColor: '#FF6B3D',
-            monthTextColor: '#1A1A1A',
-            dayTextColor: 'rgba(26, 26, 26, 0.80)',
-            textDisabledColor: 'rgba(26, 26, 26, 0.20)',
-            textDayFontWeight: '500',
-            textMonthFontWeight: '700',
-            textDayHeaderFontWeight: '500',
-            textSectionTitleColor: 'rgba(26, 26, 26, 0.40)',
-          }}
-          style={styles.calendar}
-          markedDates={calendarMarkedDates}
-          onDayPress={handleDayPress}
-          onMonthChange={handleMonthChange}
-        />
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <ScrollView ref={scrollRef} style={styles.scroll}>
+        <CyberFrame style={styles.calendarContainer} contentStyle={styles.calendarContent}>
+          <Calendar
+            firstDay={1}
+            dayComponent={renderDay}
+            theme={{
+              calendarBackground: 'transparent',
+              todayTextColor: '#FF6B3D',
+              selectedDayBackgroundColor: 'rgba(255, 107, 61, 0.18)',
+              selectedDayTextColor: '#FF6B3D',
+              arrowColor: '#FF6B3D',
+              monthTextColor: '#1A1A1A',
+              dayTextColor: 'rgba(26, 26, 26, 0.80)',
+              textDisabledColor: 'rgba(26, 26, 26, 0.20)',
+              textDayFontWeight: '500',
+              textMonthFontWeight: '700',
+              textDayHeaderFontWeight: '500',
+              textSectionTitleColor: 'rgba(26, 26, 26, 0.40)'
+            }}
+            style={styles.calendar}
+            markedDates={calendarMarkedDates}
+            onDayPress={handleDayPress}
+            onMonthChange={handleMonthChange}
+          />
+        </CyberFrame>
 
         {/* ── 날짜 요약 ── */}
-        <View style={styles.dateSummary}>
+        <CyberFrame style={styles.dateSummaryFrame} contentStyle={styles.dateSummaryContent}>
           <View style={styles.dateSummaryHeader}>
             <Text style={styles.dateSummaryTitle}>{formattedDate}</Text>
             
             {selectedMarking && selectedMarking.dayStatus !== 'future' && (
               <View style={styles.scoreContainer}>
-                <View style={styles.scoreBadge}>
+                {/* <View style={styles.scoreBadge}>
                   <View style={styles.scoreLabelRow}>
                     <Text style={styles.scoreLabelText}>완료</Text>
                     <Text style={styles.scoreLabelText}>총목표</Text>
@@ -394,7 +399,18 @@ export default function CalendarScreen() {
                     <Text style={styles.scoreSlash}>/</Text>
                     <Text style={styles.scoreTotalText}>{selectedMarking.totalGoals ?? 0}</Text>
                   </View>
-                </View>
+                </View> */}
+                <CyberFrame glassOnly={true} style={styles.scoreBadgeWrapper} contentStyle={styles.scoreBadgeContent}>
+                  <View style={styles.scoreLabelRow}>
+                    <Text style={styles.scoreLabelText}>완료</Text>
+                    <Text style={styles.scoreLabelText}>총목표</Text>
+                  </View>
+                  <View style={styles.scoreValueRow}>
+                    <Text style={styles.scoreDoneText}>{selectedMarking.doneCount ?? 0}</Text>
+                    <Text style={styles.scoreSlash}>/</Text>
+                    <Text style={styles.scoreTotalText}>{selectedMarking.totalGoals ?? 0}</Text>
+                  </View>
+                </CyberFrame>
                 {selectedMarking.totalGoals && selectedMarking.totalGoals > 0 && (
                   <Text style={styles.percentText}>
                     {Math.round(((selectedMarking.doneCount ?? 0) / ((selectedMarking.totalGoals ?? 1) || 1)) * 100)}%
@@ -441,7 +457,7 @@ export default function CalendarScreen() {
               {isFuture ? '아직 오지 않은 날이에요' : '기록 없음'}
             </Text>
           )}
-        </View>
+        </CyberFrame>
 
         {/* ── 팀 멤버별 체크인 상세 ── */}
         {memberDateCheckins.length > 0 && (
@@ -450,7 +466,7 @@ export default function CalendarScreen() {
               {currentTeam ? `${currentTeam.name} 멤버` : '내 기록'}
             </Text>
             {memberDateCheckins.map((member) => (
-              <View key={member.userId} style={styles.memberCard}>
+              <CyberFrame key={member.userId} style={styles.memberCardFrame} contentStyle={styles.memberCardContent}>
                 {/* 멤버 헤더 */}
                 <TouchableOpacity 
                   style={styles.memberHeader}
@@ -559,7 +575,7 @@ export default function CalendarScreen() {
                     </View>
                   );
                 })}
-              </View>
+              </CyberFrame>
             ))}
           </View>
         )}
@@ -569,12 +585,19 @@ export default function CalendarScreen() {
 
       {/* ── 플로팅 기록 보기 버튼 ── */}
       <TouchableOpacity 
-        style={styles.floatingButton}
+        style={styles.floatingButtonWrapper}
         onPress={handleCheckinPress}
         activeOpacity={0.8}
       >
-        <Ionicons name="list" size={24} color="#FFFFFF" />
-        <Text style={styles.floatingButtonText}>기록 보기</Text>
+        <Image 
+          source={require('../../../assets/floating-btn.png')} 
+          style={styles.floatingButtonImage} 
+          resizeMode="stretch" 
+        />
+        <View style={styles.floatingButtonContent}>
+          <Ionicons name="list" size={24} color="#FFFFFF" />
+          <Text style={styles.floatingButtonText}>기록 보기</Text>
+        </View>
       </TouchableOpacity>
 
       {/* ── 사진 확대 모달 ── */}
@@ -617,21 +640,25 @@ export default function CalendarScreen() {
         onCheckinDone={handleCheckinDone}
       />
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFAF7' },
+  container: { flex: 1, backgroundColor: '#ffffffff' },
+  safe: { flex: 1, backgroundColor: 'transparent' }, // 배경 이미지가 보이도록 투명하게 설정
   scroll: { flex: 1 },
-  calendar: {
+  calendarContainer: {
     marginTop: 12,
     marginHorizontal: 12, 
-    borderRadius: 22,
-    borderWidth: 1, 
-    borderColor: 'rgba(255, 107, 61, 0.12)',
-    overflow: 'hidden',
-    boxShadow: '0px 0px 2px rgb(173, 169, 168)',
-
+    marginBottom: 8,
+  },
+  calendarContent: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  calendar: {
+    backgroundColor: 'transparent',
   },
   checkinButtonHint: {
     fontSize: 12,
@@ -641,12 +668,13 @@ const styles = StyleSheet.create({
   },
 
   // ── 날짜 요약 ──
-  dateSummary: {
-    marginHorizontal: 12, marginTop: 12, padding: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 4,
-    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 1,
+  dateSummaryFrame: {
+    marginHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  dateSummaryContent: {
+    padding: 14,
   },
   dateSummaryHeader: {
     flexDirection: 'row',
@@ -670,6 +698,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
+  scoreBadgeWrapper: {
+    borderRadius: 12, // 점수 뱃지에 맞게 조금 덜 둥글게 조정
+  },
+  scoreBadgeContent: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
   scoreLabelRow: {
     flexDirection: 'row',
     width: '100%',
@@ -677,7 +712,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   scoreLabelText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
     color: 'rgba(255, 107, 61, 0.7)',
   },
@@ -703,7 +738,7 @@ const styles = StyleSheet.create({
     color: 'rgba(26, 26, 26, 0.6)',
   },
   percentText: {
-    fontSize: 28, fontWeight: '800', color: '#FF6B3D', maxWidth: 72, textAlign: 'right',
+    fontSize: 24, fontWeight: '800', color: '#FF6B3D', maxWidth: 72, textAlign: 'right',
   },
   noDataText: {
     fontSize: 13, color: 'rgba(26,26,26,0.30)', fontWeight: '500',
@@ -734,12 +769,11 @@ const styles = StyleSheet.create({
     fontSize: 14, fontWeight: '700', color: 'rgba(26,26,26,0.45)',
     marginBottom: 10, letterSpacing: 0.3,
   },
-  memberCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 4,
-    padding: 12, marginBottom: 10,
-    shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 1,
+  memberCardFrame: {
+    marginBottom: 10,
+  },
+  memberCardContent: {
+    padding: 12,
   },
   memberHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8,
@@ -756,7 +790,7 @@ const styles = StyleSheet.create({
     fontSize: 14, fontWeight: '700', color: '#1A1A1A', flex: 1,
   },
   memberEmpty: {
-    fontSize: 13, color: 'rgba(26,26,26,0.25)', textAlign: 'center', paddingVertical: 8,
+    fontSize: 13, color: 'rgba(26,26,26,0.45)', textAlign: 'center', paddingVertical: 8,
   },
 
   // ── 체크인 행 ──
@@ -862,16 +896,16 @@ const styles = StyleSheet.create({
   // 커스텀 데이 렌더링
   dayCellWrapper: {
     width: 51,
-    height: 44,
+    height: 42,
     marginHorizontal: -4, // 셀 간 간격을 없애고 일자 가로줄을 만들기 위함
     alignItems: 'center',
     justifyContent: 'center',
   },
   zebraStripeEven: {
-    backgroundColor: 'rgba(255, 107, 61, 0.04)', // 짝수 주차: 아주 연한 오렌지
+    // backgroundColor: 'rgba(79, 79, 78, 0.02)', // 짝수 주차: 아주 연한 오렌지
   },
   zebraStripeOdd: {
-    backgroundColor: 'rgba(0, 0, 0, 0.02)', // 홀수 주차: 아주 연한 회색
+    // backgroundColor: 'rgba(70, 68, 68, 0.03)', // 홀수 주차: 아주 연한 회색
   },
   weekNumberLabel: {
     position: 'absolute',
@@ -899,22 +933,27 @@ const styles = StyleSheet.create({
   },
   
   // ── 플로팅 버튼 ──
-  floatingButton: {
+  floatingButtonWrapper: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
-    backgroundColor: '#FF6B3D',
+    right: 10,
+    bottom: 26,
+    width: 140, // 버튼 이미지 비율에 맞춰 적절한 너비 설정
+    height: 52, // 높이 설정
+    justifyContent: 'center',
+  },
+  floatingButtonImage: {
+    position: 'absolute',
+    width: 140,
+    height: 65,
+  },
+  floatingButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    shadowColor: '#FF6B3D',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    justifyContent: 'center',
     gap: 8,
+    width: '100%',
+    height: '100%',
+    paddingHorizontal: 20,
   },
   floatingButtonText: {
     color: '#FFFFFF',
