@@ -7,6 +7,7 @@ import {
   TextInputProps,
 } from 'react-native';
 import { COLORS } from '../../constants/defaults';
+import CyberFrame from '../ui/CyberFrame';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -19,13 +20,19 @@ export default function Input({ label, error, success, rightElement, style, ...p
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <View style={styles.inputWrapper}>
+      <CyberFrame
+        style={[
+          styles.inputWrapper,
+          error ? styles.inputWrapperError : null,
+          success ? styles.inputWrapperSuccess : null,
+        ]}
+        contentStyle={styles.inputContent}
+        glassOnly={true}
+      >
         <TextInput
           style={[
             styles.input,
             rightElement ? styles.inputWithRightElement : null,
-            error ? styles.inputError : null,
-            success ? styles.inputSuccess : null,
             style,
           ]}
           placeholderTextColor={COLORS.textMuted}
@@ -36,7 +43,7 @@ export default function Input({ label, error, success, rightElement, style, ...p
             {rightElement}
           </View>
         )}
-      </View>
+      </CyberFrame>
       {error && <Text style={styles.error}>{error}</Text>}
       {!error && success && <Text style={styles.success}>{success}</Text>}
     </View>
@@ -48,7 +55,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   inputWrapper: {
-    position: 'relative',
+    borderRadius: 12,
+  },
+  inputContent: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   label: {
     fontSize: 13,
@@ -59,10 +70,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.glassBorder,
-    borderRadius: 4,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
@@ -79,10 +86,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  inputError: {
+  inputWrapperError: {
     borderColor: COLORS.error,
   },
-  inputSuccess: {
+  inputWrapperSuccess: {
     borderColor: '#4ADE80',
   },
   error: {

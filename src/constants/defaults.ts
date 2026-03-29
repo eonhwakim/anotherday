@@ -28,7 +28,8 @@ export const COLORS = {
   secondary: '#FF6B3D',
   secondaryDark: '#E85A2C',
 
-  background: '#FFFAF7',
+  // background: '#FFFAF7',
+  background: 'rgba(255, 255, 255, 0.45)',
   surface: '#FFFFFF',
   surfaceLight: '#FFF2EC',
 
@@ -40,6 +41,7 @@ export const COLORS = {
   borderLight: 'rgba(255, 107, 61, 0.18)',
 
   success: '#FF6B3D',
+  done: '#22C55E',
   warning: '#FFB547',
   error: '#EF4444',
 
