@@ -411,11 +411,11 @@ export default function CalendarScreen() {
                     <Text style={styles.scoreTotalText}>{selectedMarking.totalGoals ?? 0}</Text>
                   </View>
                 </CyberFrame>
-                {selectedMarking.totalGoals && selectedMarking.totalGoals > 0 && (
+                {/* {selectedMarking.totalGoals && selectedMarking.totalGoals > 0 && (
                   <Text style={styles.percentText}>
                     {Math.round(((selectedMarking.doneCount ?? 0) / ((selectedMarking.totalGoals ?? 1) || 1)) * 100)}%
                   </Text>
-                )}
+                )} */}
               </View>
             )}
           </View>
