@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, UserGoal, GoalFrequency } from '../../types/domain';
 import { COLORS } from '../../constants/defaults';
+import CyberFrame from '../ui/CyberFrame';
 
 interface GoalSettingProps {
   teamGoals: Goal[];
@@ -119,10 +120,10 @@ export default function GoalSetting({
   };
 
   return (
-    <View style={styles.card}>
+    <CyberFrame style={styles.cardFrame} contentStyle={styles.cardContent} glassOnly={false}>
       {/* 헤더 */}
       <View style={styles.titleRow}>
-        <Ionicons name="flag" size={18} color="#FF6B3D" />
+        {/* <Ionicons name="flag" size={18} color="#FF6B3D" /> */}
         <Text style={styles.title}>목표 설정</Text>
       </View>
       <Text style={styles.subtitle}>
@@ -135,11 +136,11 @@ export default function GoalSetting({
           <Text style={styles.sectionTitle}>이번 달 한마디</Text>
         </View>
         
-        <View style={styles.resolutionBox}>
+        <CyberFrame style={[styles.resolutionFrame, styles.brightGlass]} contentStyle={styles.resolutionBox} glassOnly={true}>
           <Text style={[styles.resolutionText, !monthlyResolution && styles.placeholderText]}>
             {monthlyResolution ? monthlyResolution : '이번 달의 다짐이나 목표를 적어보세요.'}
           </Text>
-        </View>
+        </CyberFrame>
       </View>
 
       {/* ── 2. 인기 태그 (추천 목표) ── */}
@@ -176,32 +177,35 @@ export default function GoalSetting({
         }
         return (
           <>
-            <Text style={styles.sectionLabel}>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
               등록된 목표 (길게 누름: 삭제)
-            </Text>
-            <Text style={styles.hintLabel}>
-              주 N회 목표는 캘린더 → 인증하기에서 패스로 오늘 제외할 수 있어요
-            </Text>
+              </Text>
+              <Text style={styles.hintLabel}>
+                주 N회 목표는 → 패스로 인증하면 오늘 제외할 수 있어요
+              </Text>
+            </View>
             <View style={styles.goalList}>
               {registeredGoals.map((goal, index) => {
                 const ug = getMyGoal(goal.id);
                 return (
                   <TouchableOpacity
                     key={goal.id}
-                    style={styles.goalRow}
                     onLongPress={() => handleLongPress(goal)}
                     activeOpacity={0.7}
                     delayLongPress={500}
                   >
-                    <View style={styles.goalNumIcon}>
-                      <Text style={styles.goalNumText}>{index + 1}</Text>
-                    </View>
-                    <View style={styles.goalRowContent}>
-                      <Text style={styles.goalRowName}>{goal.name}</Text>
-                      {ug && (
-                        <Text style={styles.goalRowFreq}>{freqLabel(ug)}</Text>
-                      )}
-                    </View>
+                    <CyberFrame style={[styles.goalRowFrame, styles.brightGlass]} contentStyle={styles.goalRowContentBox} glassOnly={true}>
+                      <View style={styles.goalNumIcon}>
+                        <Text style={styles.goalNumText}>{index + 1}</Text>
+                      </View>
+                      <View style={styles.goalRowContent}>
+                        <Text style={styles.goalRowName}>{goal.name}</Text>
+                        {ug && (
+                          <Text style={styles.goalRowFreq}>{freqLabel(ug)}</Text>
+                        )}
+                      </View>
+                    </CyberFrame>
                   </TouchableOpacity>
                 );
               })}
@@ -209,27 +213,43 @@ export default function GoalSetting({
           </>
         );
       })()}
-    </View>
+    </CyberFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16, padding: 24, borderRadius: 4, marginBottom: 16,
-
+  cardFrame: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+  },
+  cardContent: {
+    padding: 24,
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   title: { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
-  subtitle: { fontSize: 13, color: 'rgba(26,26,26,0.50)', marginBottom: 20, lineHeight: 20, fontWeight: '500' },
+  subtitle: { fontSize: 12, color: 'rgba(26,26,26,0.50)', marginBottom: 24, lineHeight: 20, fontWeight: '400' },
+
+  // 밝은 글래스모피즘 오버라이드 스타일
+  brightGlass: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: 'rgba(255, 255, 255, 1)',
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
 
   resolutionSection: { marginBottom: 18 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
+  resolutionFrame: { borderRadius: 12 },
   resolutionBox: {
-    backgroundColor: '#FFFAF7', padding: 14, borderRadius: 4,
-    borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)',
+    padding: 14,
   },
+  section: { marginTop: 12 },
   resolutionText: { fontSize: 14, color: '#1A1A1A' },
   placeholderText: { color: 'rgba(26,26,26,0.30)' },
   dividerSection: { paddingVertical: 8, borderTopWidth: 1, borderTopColor: 'rgba(255, 107, 61, 0.12)' },
@@ -275,9 +295,8 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 14, color: 'rgba(26,26,26,0.45)', textAlign: 'center', lineHeight: 22, fontWeight: '500' },
 
-  sectionLabel: { fontSize: 12, color: 'rgba(26,26,26,0.45)', marginBottom: 8, fontWeight: '600', letterSpacing: 0.3 },
-  hintLabel: { fontSize: 11, color: 'rgba(26,26,26,0.40)', marginBottom: 12, lineHeight: 16 },
-  goalList: { gap: 0 },
+  hintLabel: { fontSize: 12, color: 'rgba(26,26,26,0.40)', marginTop:6 ,marginBottom: 12, lineHeight: 16 },
+  goalList: { gap: 10 },
   goalNumIcon: {
     width: 18,
     height: 18,
@@ -293,18 +312,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: 'white',
   },
-  goalRow: {
+  goalRowFrame: {
+    borderRadius: 12,
+  },
+  goalRowContentBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 14,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(26,26,26,0.06)',
+    paddingHorizontal: 16,
   },
   goalRowContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 },
   goalRowName: { fontSize: 15, fontWeight: '600', color: '#1A1A1A' },
-  goalRowFreq: { fontSize: 12, color: 'rgba(26,26,26,0.45)', marginTop: 1 },
+  goalRowFreq: { fontSize: 13, color: 'rgba(26,26,26,0.45)', marginTop: 1 },
 
   recommendSection: { marginBottom: 16 },
   recommendTitle: { fontSize: 12, color: '#E8960A', fontWeight: '600', marginBottom: 8 },

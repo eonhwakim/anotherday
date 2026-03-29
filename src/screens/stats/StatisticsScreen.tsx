@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
+  Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -16,6 +16,8 @@ import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
 import Button from '../../components/common/Button';
 import WeeklyStatsTab from '../../components/stats/WeeklyStatsTab';
+import CyberFrame from '../../components/ui/CyberFrame';
+import ReviewModal from '../../components/stats/ReviewModal';
 import { getCalendarWeekRanges, calcWeekAchievement } from '../../components/stats/StatsShared';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -44,14 +46,6 @@ interface MemberDetail {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
-
-function rateColor(rate: number | null): string {
-  if (rate === null) return 'rgba(26,26,26,0.35)';
-  if (rate >= 100) return '#15803d';
-  if (rate >= 70) return '#FF6B3D';
-  if (rate >= 40) return '#d97706';
-  return '#b91c1c';
-}
 
 function freqLabel(frequency: string, targetCount: number | null): string {
   return frequency === 'daily' ? '매일' : `주 ${targetCount ?? 1}회`;
@@ -275,12 +269,13 @@ export default function StatisticsScreen() {
 
   // ── RENDER ───────────────────────────────────────────────────
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <View style={s.container}>
+      <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView ref={scrollRef} style={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.screenTitle}>통계</Text>
 
         {/* ── 탭 전환 ── */}
-        <View style={s.tabRow}>
+        <CyberFrame style={s.tabFrame} contentStyle={s.tabContent} glassOnly={true}>
           <TouchableOpacity
             style={[s.tabBtn, activeTab === 'weekly' && s.tabBtnActive]}
             onPress={() => setActiveTab('weekly')}
@@ -293,7 +288,7 @@ export default function StatisticsScreen() {
           >
             <Text style={[s.tabText, activeTab === 'monthly' && s.tabTextActive]}>월간 요약</Text>
           </TouchableOpacity>
-        </View>
+        </CyberFrame>
 
         {activeTab === 'monthly' ? (
           <>
@@ -308,16 +303,52 @@ export default function StatisticsScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* ═══ 우리 팀 달성률 차트 ═══ */}
+            {currentTeam && memberDetails.length > 0 && (
+              <>
+                <Text style={s.sectionTitle}>우리 팀 달성률</Text>
+                <CyberFrame style={s.chartFrame} contentStyle={s.chartContent}>
+                  {memberDetails.map((m, idx) => {
+                    const validRate = m.rate ?? 0;
+                    return (
+                      <View key={m.userId} style={s.chartRow}>
+                        <View style={s.chartLabelBox}>
+                          <Text style={s.chartRank}>
+                            {m.rate === null ? idx + 1 : (idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1)}
+                          </Text>
+                          <Text style={[s.chartName, m.isMe && s.chartNameMe]} numberOfLines={1}>
+                            {m.nickname}
+                          </Text>
+                        </View>
+                        <View style={s.chartBarBg}>
+                          <View
+                            style={[
+                              s.chartBarFill,
+                              { width: `${validRate}%` },
+                              m.isMe ? { backgroundColor: COLORS.primary } : { backgroundColor: 'rgba(26,26,26,0.15)' }
+                            ]}
+                          />
+                        </View>
+                        <Text style={[s.chartRateText, m.isMe && s.chartRateTextMe]}>
+                          {m.rate === null ? '-' : `${m.rate}%`}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </CyberFrame>
+              </>
+            )}
+
             {/* ═══ 나의 N월 ═══ */}
             <Text style={s.sectionTitle}>나의 {monthNum}월</Text>
-            <View style={s.memberCard}>
+            <CyberFrame style={s.memberCardFrame} contentStyle={s.memberCardContent}>
               {/* 달성률 */}
               <View style={s.cardRateRow}>
                 <Text style={s.cardRateLabel}>{monthNum}월 달성률</Text>
                 {myRate === null ? (
                   <Text style={s.rateEmpty}>집계 중</Text>
                 ) : (
-                  <Text style={[s.rateBig, { color: '#FF6B3D' }]}>
+                  <Text style={[s.rateBig, { color: '#1A1A1A' }]}>
                     {myRate}%{myRate === 100 ? ' 🏆' : ''}
                   </Text>
                 )}
@@ -339,8 +370,8 @@ export default function StatisticsScreen() {
                         <Text style={s.goalRateGray}>진행 중</Text>
                       ) : (
                         <View style={s.goalRateWrap}>
-                          <Text style={[s.goalRate, { color: rateColor(g.rate) }]}>{g.rate}%</Text>
-                          {g.rate >= 100 && <Ionicons name="checkmark-circle" size={15} color="#15803d" />}
+                          <Text style={[s.goalRate, { color: g.rate >= 100 ? COLORS.primary : '#1A1A1A' }]}>{g.rate}%</Text>
+                          {g.rate >= 100 && <Ionicons name="checkmark-circle" size={15} color={COLORS.primary} />}
                         </View>
                       )}
                     </View>
@@ -373,24 +404,26 @@ export default function StatisticsScreen() {
                   </Text>
                 </View>
               )}
-            </View>
+            </CyberFrame>
 
             {/* ═══ 팀원들의 N월 ═══ */}
             {currentTeam && otherMembers.length > 0 && (
               <>
                 <Text style={s.sectionTitle}>팀원들의 {monthNum}월</Text>
                 {otherMembers.map((m, idx) => (
-                  <View key={m.userId} style={s.memberCard}>
+                  <CyberFrame key={m.userId} style={s.memberCardFrame} contentStyle={s.memberCardContent}>
                     {/* 이름 + 달성률 */}
                     <View style={s.cardRateRow}>
                       <View style={s.memberNameRow}>
-                        <Text style={s.memberRankText}>{idx + 1}</Text>
+                        <Text style={s.memberRankText}>
+                          {m.rate === null ? idx + 1 : (idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1)}
+                        </Text>
                         <Text style={s.memberNickname}>{m.nickname}</Text>
                       </View>
                       {m.rate === null ? (
                         <Text style={s.rateEmpty}>집계 중</Text>
                       ) : (
-                        <Text style={[s.rateMedium, { color: '#FF6B3D' }]}>
+                        <Text style={[s.rateMedium, { color: '#1A1A1A' }]}>
                           {m.rate}%{m.rate === 100 ? ' 🏆' : ''}
                         </Text>
                       )}
@@ -426,7 +459,7 @@ export default function StatisticsScreen() {
                         <Text style={s.reviewText}>{m.hoego}</Text>
                       </View>
                     ) : null}
-                  </View>
+                  </CyberFrame>
                 ))}
               </>
             )}
@@ -439,48 +472,31 @@ export default function StatisticsScreen() {
       </ScrollView>
 
       {/* ── Review Modal ── */}
-      <Modal
+      <ReviewModal
         visible={editReviewModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditReviewModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={s.modalOverlay}
-        >
-          <View style={s.modalContent}>
-            <Text style={s.modalTitle}>월간 회고</Text>
-            <TextInput
-              style={s.modalInput}
-              value={tempText}
-              onChangeText={setTempText}
-              placeholder="잘한 점, 아쉬운 점 등을 자유롭게 기록해보세요"
-              multiline
-              textAlignVertical="top"
-            />
-            <View style={s.modalBtns}>
-              <Button title="취소" variant="secondary" onPress={() => setEditReviewModalVisible(false)} style={{ flex: 1 }} />
-              <Button title="저장" onPress={saveReview} style={{ flex: 1 }} />
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        value={tempText}
+        onChangeText={setTempText}
+        onClose={() => setEditReviewModalVisible(false)}
+        onSave={saveReview}
+      />
     </SafeAreaView>
+    </View>
   );
 }
 
 // ─── Styles ──────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8F6F4' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1 },
   scroll: { flex: 1 },
   screenTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginTop: 8, marginBottom: 16 },
 
   // Tabs
-  tabRow: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 16, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 4, padding: 4 },
-  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 4 },
-  tabBtnActive: { backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  tabFrame: { marginHorizontal: 16, marginBottom: 16, borderRadius: 12 },
+  tabContent: { flexDirection: 'row', padding: 4 },
+  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+  tabBtnActive: { backgroundColor: 'rgba(255, 255, 255, 0.8)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 },
   tabText: { fontSize: 14, fontWeight: '600', color: 'rgba(26,26,26,0.5)' },
   tabTextActive: { color: '#1A1A1A', fontWeight: '700' },
 
@@ -492,12 +508,26 @@ const s = StyleSheet.create({
   // Section title
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginBottom: 4, marginTop: 28 },
 
+  // Team Chart
+  chartFrame: { marginHorizontal: 16, marginTop: 8, marginBottom: 8 },
+  chartContent: { paddingVertical: 16, paddingHorizontal: 16, gap: 12 },
+  chartRow: { flexDirection: 'row', alignItems: 'center' },
+  chartLabelBox: { width: 70, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  chartRank: { fontSize: 20, fontWeight: '700', color: 'rgba(26,26,26,0.35)', width: 20 },
+  chartName: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', flex: 1 },
+  chartNameMe: { color: '#FF6B3D', fontWeight: '800' },
+  chartBarBg: { flex: 1, height: 12, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 6, overflow: 'hidden', marginHorizontal: 10 },
+  chartBarFill: { height: '100%', borderRadius: 6 },
+  chartRateText: { width: 36, textAlign: 'right', fontSize: 13, fontWeight: '700', color: '#1A1A1A' },
+  chartRateTextMe: { color: '#FF6B3D', fontWeight: '800' },
+
   // Member card (shared for me + each team member)
-  memberCard: { backgroundColor: '#FFF', marginHorizontal: 16, marginTop: 8, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)', shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, overflow: 'hidden' },
+  memberCardFrame: { marginHorizontal: 16, marginTop: 8, marginBottom: 8 },
+  memberCardContent: { paddingHorizontal: 0, paddingVertical: 0 },
 
   // Rate row at top of each card
   cardRateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 18 },
-  cardRateLabel: { fontSize: 13, fontWeight: '600', color: 'rgba(26,26,26,0.45)' },
+  cardRateLabel: { fontSize: 16, fontWeight: '600', color: 'rgba(26,26,26,0.45)' },
   rateBig: { fontSize: 32, fontWeight: '900', letterSpacing: -1 },
   rateMedium: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
   rateEmpty: { fontSize: 13, color: 'rgba(26,26,26,0.35)', fontWeight: '500' },
@@ -505,12 +535,12 @@ const s = StyleSheet.create({
 
   // Member name row
   memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  memberRankText: { fontSize: 13, fontWeight: '700', color: 'rgba(26,26,26,0.35)', width: 18 },
+  memberRankText: { fontSize: 20, fontWeight: '700', color: 'rgba(26,26,26,0.35)', width: 20 },
   memberNickname: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
 
   // Sub-sections within a card
   dividerSection: { paddingHorizontal: 18, paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
-  subLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(26,26,26,0.40)', marginBottom: 8, letterSpacing: 0.3, textTransform: 'uppercase' },
+  subLabel: { fontSize: 13, fontWeight: '700', color: 'rgba(26,26,26,0.40)', marginBottom: 8, letterSpacing: 0.3, textTransform: 'uppercase' },
 
   // Goal rows (my detailed view)
   goalRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
@@ -533,11 +563,4 @@ const s = StyleSheet.create({
   reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   reviewText: { fontSize: 14, color: '#1A1A1A', lineHeight: 20 },
   placeholder: { color: 'rgba(26,26,26,0.30)' },
-
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 4, padding: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginBottom: 16, textAlign: 'center' },
-  modalInput: { backgroundColor: '#F9FAFB', borderRadius: 4, padding: 12, fontSize: 15, color: '#1A1A1A', minHeight: 120, marginBottom: 20, textAlignVertical: 'top' },
-  modalBtns: { flexDirection: 'row', gap: 12 },
 });

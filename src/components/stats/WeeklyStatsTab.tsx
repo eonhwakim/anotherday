@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabaseClient';
 import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
+import CyberFrame from '../ui/CyberFrame';
 import { dayjsMax, dayjsMin, getCalendarWeekRanges } from './StatsShared';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
@@ -195,7 +196,7 @@ export default function WeeklyStatsTab() {
   const isWeekEnded = dayjs(weekStart).endOf('isoWeek').isBefore(dayjs(), 'day');
 
   return (
-    <>
+    <View style={s.container}>
       {/* ── 주 선택 ── */}
       <View style={s.monthRow}>
         <TouchableOpacity style={s.monthBtn} onPress={() => setWeekStart(p => dayjs(p).subtract(1, 'week').format('YYYY-MM-DD'))}>
@@ -212,22 +213,24 @@ export default function WeeklyStatsTab() {
 
       {/* ═══ 나의 주간 목표 ═══ */}
       <Text style={s.sectionTitle}>나의 주간 목표</Text>
-      <View style={s.card}>
+      <View style={s.weeklyGoalsContainer}>
         {isAllClear ? (
-          <View style={s.allClearBox}>
+          <CyberFrame glassOnly={true} style={s.allClearBox} contentStyle={s.allClearBoxContent}>
             <Text style={s.allClearEmoji}>🏆</Text>
             <Text style={s.allClearTitle}>이번 주 올클리어 달성!</Text>
             <Text style={s.allClearSub}>모든 목표를 완벽하게 해냈어요</Text>
-          </View>
+          </CyberFrame>
         ) : null}
 
         {myWeeklyGoals.length === 0 ? (
-          <Text style={s.emptySmall}>이번 주 진행 중인 목표가 없어요</Text>
+          <CyberFrame style={s.cardFrame} contentStyle={s.cardContent}>
+            <Text style={s.emptySmall}>이번 주 진행 중인 목표가 없어요</Text>
+          </CyberFrame>
         ) : (
-          <View style={s.weeklyGoalList}>
+          <CyberFrame style={s.weeklyGoalList}>
             {myWeeklyGoals.map(g => (
-              <View key={g.goalId} style={s.weeklyGoalItem}>
-                <View style={s.weeklyGoalInfo}>
+              <CyberFrame key={g.goalId} glassOnly={true} style={s.weeklyGoalItemFrame} contentStyle={s.weeklyGoalItemContent}>
+                <View>
                   <Text style={s.weeklyGoalName}>{g.name}</Text>
                   <Text style={s.weeklyGoalTarget}>{g.isDaily ? '매일' : `주 ${g.target}회`}</Text>
                 </View>
@@ -243,9 +246,9 @@ export default function WeeklyStatsTab() {
                       : ''
                   }
                 </View>
-              </View>
+              </CyberFrame>
             ))}
-          </View>
+          </CyberFrame>
         )}
       </View>
 
@@ -253,7 +256,7 @@ export default function WeeklyStatsTab() {
       {currentTeam && (
         <>
           <Text style={s.sectionTitle}>팀원들의 주간 현황</Text>
-          <View style={s.card}>
+          <CyberFrame style={s.cardFrame} contentStyle={s.cardContent}>
             {weeklyTeamData.length === 0 ? (
               <Text style={s.emptySmall}>팀원 데이터가 없습니다</Text>
             ) : (
@@ -294,14 +297,15 @@ export default function WeeklyStatsTab() {
                 ))}
               </View>
             )}
-          </View>
+          </CyberFrame>
         </>
       )}
-    </>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
+  container: { flex: 1 },
   // Month Selector (reused for Week Selector)
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16, gap: 16 },
   monthBtn: { padding: 8 },
@@ -314,37 +318,40 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginBottom: 4, marginTop: 28 },
 
   // Card
-  card: { backgroundColor: '#FFF', marginHorizontal: 16, padding: 14, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,107,61,0.08)', marginTop: 8, shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
+  cardFrame: { marginHorizontal: 16, marginTop: 8, marginBottom: 12 },
+  cardContent: { padding: 14 },
 
   // Empty
   emptySmall: { fontSize: 13, color: 'rgba(26,26,26,0.30)', textAlign: 'center', paddingVertical: 16 },
 
   // Weekly UI
-  allClearBox: { backgroundColor: 'rgba(74,222,128,0.1)', borderRadius: 4, padding: 20, alignItems: 'center', marginBottom: 16 },
+  allClearBox: { backgroundColor: 'rgba(74, 222, 128, 0.15)', borderRadius: 12, marginBottom: 16 },
+  allClearBoxContent: { padding: 16, alignItems: 'center' },
   allClearEmoji: { fontSize: 32, marginBottom: 8 },
-  allClearTitle: { fontSize: 16, fontWeight: '800', color: '#15803d', marginBottom: 4 },
-  allClearSub: { fontSize: 12, color: '#166534' },
+  allClearTitle: { fontSize: 18, fontWeight: '800', color: '#15803d', marginBottom: 4 },
+  allClearSub: { fontSize: 13, color: '#166534' },
 
-  weeklyGoalList: { gap: 12 },
-  weeklyGoalItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F9FAFB', padding: 10, borderRadius: 4 },
-  weeklyGoalInfo: { flex: 1 },
-  weeklyGoalName: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
-  weeklyGoalTarget: { fontSize: 11, color: 'rgba(26,26,26,0.5)' },
+  weeklyGoalsContainer: { marginHorizontal: 16, marginTop: 8 },
+  weeklyGoalList: { padding: 0 },
+  weeklyGoalItemFrame: { borderRadius: 12, marginBottom: 12 },
+  weeklyGoalItemContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12 },
+  weeklyGoalName: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
+  weeklyGoalTarget: { fontSize: 12, color: 'rgba(26,26,26,0.5)' },
   weeklyGoalStatus: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  weeklyGoalCount: { fontSize: 15, fontWeight: '800', color: '#1A1A1A' },
+  weeklyGoalCount: { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
 
   teamMemberList: { gap: 4 },
   teamMemberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.03)' },
   teamMemberRank: { width: 28, alignItems: 'center' },
   teamMemberRankText: { fontSize: 14, fontWeight: '700', color: 'rgba(26,26,26,0.4)' },
   teamMemberNameBox: { flex: 1, paddingHorizontal: 8 },
-  teamMemberName: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', marginBottom: 2 },
+  teamMemberName: { fontSize: 16, fontWeight: '600', color: '#1A1A1A', marginBottom: 2 },
   teamMemberNameMe: { color: '#FF6B3D', fontWeight: '800' },
-  teamMemberSubText: { fontSize: 11, color: 'rgba(26,26,26,0.45)' },
+  teamMemberSubText: { fontSize: 12, color: 'rgba(26,26,26,0.45)' },
   teamMemberScore: { alignItems: 'flex-end' },
   teamMemberBadgeClear: { backgroundColor: 'rgba(74,222,128,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  teamMemberBadgeTextClear: { fontSize: 12, fontWeight: '800', color: '#15803d' },
+  teamMemberBadgeTextClear: { fontSize: 13, fontWeight: '700', color: '#15803d' },
   teamMemberBadgeProgress: { backgroundColor: 'rgba(26,26,26,0.03)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
-  teamMemberBadgeTextProgress: { fontSize: 11, fontWeight: '700' },
+  teamMemberBadgeTextProgress: { fontSize: 12, fontWeight: '600' },
   teamMemberScoreTextGray: { fontSize: 12, fontWeight: '500', color: 'rgba(26,26,26,0.4)' },
 });

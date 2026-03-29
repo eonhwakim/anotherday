@@ -18,7 +18,6 @@ export interface Team {
   id: string;
   name: string;
   invite_code: string;
-  profile_image_url?: string | null;
   created_at: string;
 }
 
@@ -35,7 +34,7 @@ export interface TeamMember {
 
 /** 팀 멤버 + 유저 정보 조인 결과 */
 export interface TeamMemberWithUser extends TeamMember {
-  user: Pick<User, 'id' | 'nickname' | 'profile_image_url' | 'name' | 'gender' | 'age'>;
+  user: Pick<User, 'id' | 'nickname' | 'profile_image_url'>;
 }
 
 /** 팀 공통 목표 */
@@ -110,7 +109,7 @@ export interface CheckinWithGoal extends Checkin {
 export interface MonthlyResolution {
   id: string;
   user_id: string;
-  team_id: string | null;
+  team_id: string;
   year_month: string; // 'YYYY-MM'
   content: string;
   created_at: string;
@@ -158,8 +157,6 @@ export interface MemberProgress {
   profileImageUrl: string | null;
   totalGoals: number;
   completedGoals: number;
-  doneGoals: number;
-  passGoals: number;
   position: MountainPosition;
   goalDetails: MemberGoalDetail[];
 }
@@ -170,12 +167,11 @@ export interface CalendarDayMarking {
     marked: boolean;
     dotColor?: string;
     checkinCount: number;
-    /** 상태: all_done(✅), mixed(✅💤), mostly_fail(❌), partial, future(미래 예정) */
+    /** 상태: all_done(✅), mixed(✅💤), mostly_fail(❌), partial */
     dayStatus?: 'all_done' | 'mixed' | 'mostly_fail' | 'partial' | 'none' | 'future';
     doneCount?: number;
     passCount?: number;
     totalGoals?: number;
-    /** 해당 날짜에 유효한 목표 이름 목록 (캘린더 상세 표시용) */
     goalNames?: string[];
   };
 }
