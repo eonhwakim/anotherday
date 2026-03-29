@@ -12,6 +12,9 @@ import {
 import { BlurView } from 'expo-blur';
 import { COLORS } from '../../constants/defaults';
 
+// Android에서 BlurView의 렌더링 문제를 방지하기 위한 임시 방편 (기본 뷰로 대체)
+const SafeBlurView = Platform.OS === 'android' ? View : View;
+
 export interface GlassModalProps {
   visible: boolean;
   title?: string;
@@ -49,7 +52,7 @@ export default function GlassModal({
         </TouchableWithoutFeedback>
 
         <View style={styles.modalContainer}>
-          <BlurView intensity={40} tint="light" style={styles.glassPanel}>
+          <SafeBlurView intensity={40} tint="light" style={styles.glassPanel}>
             {/* ── Header ── */}
             {title && (
               <View style={styles.header}>
@@ -73,7 +76,7 @@ export default function GlassModal({
                 </TouchableOpacity>
               </View>
             )}
-          </BlurView>
+          </SafeBlurView>
         </View>
       </KeyboardAvoidingView>
     </Modal>

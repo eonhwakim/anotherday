@@ -6,7 +6,6 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { AppTabParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import CyberFrame from '../../components/ui/CyberFrame';
 import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';

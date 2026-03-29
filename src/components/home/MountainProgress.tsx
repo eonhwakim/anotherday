@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, Animated, Easing, Dimensions, Image,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import Svg, {
   Path, Circle, G, Defs, LinearGradient, Stop, Line, RadialGradient, Rect
 } from 'react-native-svg';
