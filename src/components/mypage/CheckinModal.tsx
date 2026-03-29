@@ -22,6 +22,9 @@ import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
 import CyberFrame from '../ui/CyberFrame';
 
+// Android에서 BlurView의 렌더링 문제를 방지하기 위한 임시 방편 (기본 뷰로 대체)
+const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
+
 interface GoalWithFrequency {
   goal: Goal;
   frequency: 'daily' | 'weekly_count';
@@ -174,7 +177,7 @@ export default function CheckinModal({
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={styles.overlayBg} />
         </TouchableWithoutFeedback>
-        <BlurView intensity={30} tint="light" style={styles.sheet}>
+        <SafeBlurView intensity={30} tint="light" style={styles.sheet}>
           {/* 핸들 바 */}
           <View style={styles.handleBar} />
 
@@ -332,7 +335,7 @@ export default function CheckinModal({
               )}
             </ScrollView>
           )}
-        </BlurView>
+        </SafeBlurView>
       </KeyboardAvoidingView>
     </Modal>
   );
