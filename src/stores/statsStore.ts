@@ -28,7 +28,7 @@ function isGoalActiveOnDate(ug: any, dateStr: string): boolean {
   // 통계 편의상 해당 주가 속한 범위라면 보여주는 것이 맞음.
   // 이 부분은 주차 기반(getCalendarWeekRanges)으로 넘어올 때는 dateStr 자체가 해당 범위 내에 있는지를 확인하므로
   // 단순 목표의 start_date/end_date 검사 로직을 조금 유연하게 처리해야 함.
-  
+
   const d = dayjs(dateStr);
   const weekStart = d.startOf('isoWeek').format('YYYY-MM-DD');
   const weekEnd = d.endOf('isoWeek').format('YYYY-MM-DD');
@@ -51,8 +51,15 @@ interface StatsState {
   fetchCalendarMarkings: (userId: string, yearMonth: string) => Promise<void>;
   fetchCheckinsForDate: (userId: string, date: string) => Promise<void>;
   fetchMonthlyCheckins: (userId: string, yearMonth: string) => Promise<void>;
-  fetchMemberDateCheckins: (teamId: string | undefined, userId: string, date: string) => Promise<void>;
-  toggleReaction: (checkinId: string, user: { id: string; nickname: string; profile_image_url: string | null }) => Promise<void>;
+  fetchMemberDateCheckins: (
+    teamId: string | undefined,
+    userId: string,
+    date: string,
+  ) => Promise<void>;
+  toggleReaction: (
+    checkinId: string,
+    user: { id: string; nickname: string; profile_image_url: string | null },
+  ) => Promise<void>;
   /** 스토어 초기화 (로그아웃 시) */
   reset: () => void;
 }
@@ -91,80 +98,107 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       return;
     }
 
-    const progress: MemberProgress[] = [];
+    const memberIds = members
+      .map((m) => (m.user_id || m.user?.id) as string | undefined)
+      .filter((id): id is string => !!id);
 
-    for (const member of members) {
-      const user = member.user as any;
-      const uid = member.user_id || user.id;
+    if (memberIds.length === 0) {
+      set({ memberProgress: [] });
+      return;
+    }
 
-      const ugQuery = supabase
-        .from('user_goals')
-        .select('goal_id, frequency, target_count, start_date, end_date, goal:goals!inner(team_id, owner_id)')
-        .eq('user_id', uid)
-        .eq('is_active', true)
-        .eq('goal.owner_id', uid);
-      const { data: userGoalsRaw } = await ugQuery;
-      const userGoals = (userGoalsRaw ?? []).map((ug: any) => ({
+    const { data: userGoalsRaw } = await supabase
+      .from('user_goals')
+      .select(
+        'user_id, goal_id, frequency, target_count, start_date, end_date, goal:goals(owner_id)',
+      )
+      .in('user_id', memberIds)
+      .eq('is_active', true);
+
+    const userGoalsByUserId = new Map<string, any[]>();
+    (userGoalsRaw ?? []).forEach((ug: any) => {
+      if (ug.goal?.owner_id !== ug.user_id) return;
+      const list = userGoalsByUserId.get(ug.user_id) ?? [];
+      list.push({
         goal_id: ug.goal_id,
         frequency: ug.frequency,
         target_count: ug.target_count,
         start_date: ug.start_date,
         end_date: ug.end_date,
-      }));
+      });
+      userGoalsByUserId.set(ug.user_id, list);
+    });
 
-      const todayGoalIds: string[] = [];
-      for (const ug of userGoals) {
-        if (!isGoalActiveOnDate(ug, today)) continue;
-        todayGoalIds.push(ug.goal_id);
-      }
+    const memberBases = members.map((member) => {
+      const user = member.user as any;
+      const uid = (member.user_id || user?.id) as string;
+      const userGoals = userGoalsByUserId.get(uid) ?? [];
+      const todayGoalIds = userGoals
+        .filter((ug) => isGoalActiveOnDate(ug, today))
+        .map((ug) => ug.goal_id as string);
 
-      const total = todayGoalIds.length;
+      return {
+        uid,
+        nickname: user?.nickname ?? '알 수 없음',
+        profileImageUrl: user?.profile_image_url ?? null,
+        todayGoalIds,
+      };
+    });
 
-      const { data: goalRows } = total > 0
-        ? await supabase.from('goals').select('id, name').in('id', todayGoalIds)
+    const allTodayGoalIds = Array.from(new Set(memberBases.flatMap((m) => m.todayGoalIds)));
+    const { data: goalRows } =
+      allTodayGoalIds.length > 0
+        ? await supabase.from('goals').select('id, name').in('id', allTodayGoalIds)
         : { data: [] as { id: string; name: string }[] };
-      const goalNameMap = new Map((goalRows ?? []).map((g: any) => [g.id, g.name as string]));
+    const goalNameMap = new Map((goalRows ?? []).map((g: any) => [g.id, g.name as string]));
 
-      const { data: todayCheckins } = await supabase
-        .from('checkins')
-        .select('goal_id, status, memo')
-        .eq('user_id', uid)
-        .eq('date', today)
-        .in('goal_id', total > 0 ? todayGoalIds : ['__none__']);
+    const { data: todayCheckins } = await supabase
+      .from('checkins')
+      .select('user_id, goal_id, status')
+      .in('user_id', memberIds)
+      .eq('date', today);
 
-      const doneGoalIds = new Set(
-        (todayCheckins ?? [])
-          .filter((c: any) => c.status === 'done')
-          .map((c: any) => c.goal_id),
-      );
-      const passGoalIds = new Set(
-        (todayCheckins ?? [])
-          .filter((c: any) => c.status === 'pass')
-          .map((c: any) => c.goal_id),
-      );
-      const doneCount = doneGoalIds.size;
-      const passCount = passGoalIds.size;
+    const doneByUser = new Map<string, Set<string>>();
+    const passByUser = new Map<string, Set<string>>();
+    (todayCheckins ?? []).forEach((c: any) => {
+      const targetMap = c.status === 'pass' ? passByUser : doneByUser;
+      const setForUser = targetMap.get(c.user_id) ?? new Set<string>();
+      setForUser.add(c.goal_id);
+      targetMap.set(c.user_id, setForUser);
+    });
 
-      const goalDetails: MemberGoalDetail[] = todayGoalIds.map((gid) => ({
+    const progress: MemberProgress[] = memberBases.map((member) => {
+      const doneSet = doneByUser.get(member.uid) ?? new Set<string>();
+      const passSet = passByUser.get(member.uid) ?? new Set<string>();
+
+      let doneCount = 0;
+      let passCount = 0;
+      member.todayGoalIds.forEach((gid) => {
+        if (doneSet.has(gid)) doneCount += 1;
+        if (passSet.has(gid)) passCount += 1;
+      });
+
+      const goalDetails: MemberGoalDetail[] = member.todayGoalIds.map((gid) => ({
         goalId: gid,
         goalName: goalNameMap.get(gid) ?? '목표',
-        isDone: doneGoalIds.has(gid),
-        isPass: passGoalIds.has(gid),
+        isDone: doneSet.has(gid),
+        isPass: passSet.has(gid),
         isActive: true,
       }));
 
-      progress.push({
-        userId: uid,
-        nickname: user?.nickname ?? '알 수 없음',
-        profileImageUrl: user?.profile_image_url ?? null,
+      const total = member.todayGoalIds.length;
+      return {
+        userId: member.uid,
+        nickname: member.nickname,
+        profileImageUrl: member.profileImageUrl,
         totalGoals: total,
         completedGoals: doneCount + passCount,
         doneGoals: doneCount,
         passGoals: passCount,
         position: getPosition(doneCount, total, passCount),
         goalDetails,
-      });
-    }
+      };
+    });
 
     set({ memberProgress: progress });
   },
@@ -214,7 +248,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
       markings[dateStr] = {
         marked: true,
-        dotColor: (dayStatus === 'all_done' || dayStatus === 'mixed') ? '#4ADE80' : '#EF4444',
+        dotColor: dayStatus === 'all_done' || dayStatus === 'mixed' ? '#4ADE80' : '#EF4444',
         checkinCount: doneCount + passCount,
         dayStatus,
         doneCount,
@@ -305,7 +339,9 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
       const { data: checkins } = await supabase
         .from('checkins')
-        .select('*, goal:goals(id, name), reactions:checkin_reactions(id, checkin_id, user_id, created_at, user:users(id, nickname, profile_image_url))')
+        .select(
+          '*, goal:goals(id, name), reactions:checkin_reactions(id, checkin_id, user_id, created_at, user:users(id, nickname, profile_image_url))',
+        )
         .eq('user_id', uid)
         .eq('date', date)
         .order('created_at');

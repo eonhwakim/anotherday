@@ -82,11 +82,6 @@ export interface Checkin {
   created_at: string;
 }
 
-/** 체크인 + 목표명 조인 결과 */
-export interface CheckinWithGoal extends Checkin {
-  goal: Pick<Goal, 'id' | 'name'>;
-}
-
 /** 리액션 (MVP에서는 타입 정의만) */
 export interface Reaction {
   id: string;
@@ -102,6 +97,7 @@ export interface ReactionWithUser extends Reaction {
 /** 체크인 + 목표명 + 리액션 조인 결과 */
 export interface CheckinWithGoal extends Checkin {
   goal: Pick<Goal, 'id' | 'name'>;
+  // 쿼리에 reactions 조인을 붙이지 않는 경우도 있어 optional로 둠
   reactions?: ReactionWithUser[];
 }
 
