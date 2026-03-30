@@ -157,6 +157,8 @@ export interface MemberProgress {
   profileImageUrl: string | null;
   totalGoals: number;
   completedGoals: number;
+  doneGoals?: number;
+  passGoals?: number;
   position: MountainPosition;
   goalDetails: MemberGoalDetail[];
 }

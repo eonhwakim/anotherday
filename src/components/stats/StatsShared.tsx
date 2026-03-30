@@ -168,21 +168,30 @@ export function getCalendarWeekRanges(yearMonth: string) {
 
   const ranges: { s: dayjs.Dayjs; e: dayjs.Dayjs }[] = [];
 
+  // 월의 시작일이 월요일이 아닐 때 처리
   if (!ms.isSame(firstMon, 'day')) {
+    // 그 전 달의 마지막 날들 (이 달에 포함되는지 확인)
+    const prevMon = ms.startOf('isoWeek');
     const daysInThisMonth = firstMon.diff(ms, 'day');
+    
+    // 이 달의 날짜가 4일 이상이면 이 달의 1주차로 편입
     if (daysInThisMonth >= 4) {
-      const weekMon = ms.startOf('isoWeek');
-      ranges.push({ s: weekMon, e: firstMon.subtract(1, 'day') });
+      ranges.push({ s: prevMon, e: firstMon.subtract(1, 'day') });
     }
   }
 
   let cursor = firstMon;
   while (cursor.isBefore(monthEnd) || cursor.isSame(monthEnd, 'day')) {
     const weekSun = cursor.add(6, 'day');
+    
+    // 주가 이번 달 안에 완전히 포함될 때
     if (weekSun.isBefore(monthEnd) || weekSun.isSame(monthEnd, 'day')) {
       ranges.push({ s: cursor, e: weekSun });
-    } else {
+    } 
+    // 주가 다음 달로 넘어갈 때
+    else {
       const daysInThisMonth = monthEnd.diff(cursor, 'day') + 1;
+      // 이번 달의 날짜가 4일 이상이면 이번 달의 마지막 주차로 편입
       if (daysInThisMonth >= 4) {
         ranges.push({ s: cursor, e: weekSun });
       }
@@ -190,7 +199,8 @@ export function getCalendarWeekRanges(yearMonth: string) {
     cursor = cursor.add(1, 'week');
   }
 
-  const dataStart = ranges.length > 0 ? ranges[0].s.format('YYYY-MM-DD') : `${yearMonth}-01`;
+  // ⭐️ dataStart/dataEnd 계산 시, ranges가 비어있을 수 있는 예외 처리 보완
+  const dataStart = ranges.length > 0 ? ranges[0].s.format('YYYY-MM-DD') : ms.format('YYYY-MM-DD');
   const dataEnd = ranges.length > 0 ? ranges[ranges.length - 1].e.format('YYYY-MM-DD') : monthEnd.format('YYYY-MM-DD');
 
   return { ranges, monthEnd, dataStart, dataEnd };
@@ -217,14 +227,29 @@ export function getGoalWeekRanges(
   targetCount: number,
 ): GoalWeekRange[] {
   const { ranges } = getCalendarWeekRanges(yearMonth);
+  
+  // 목표의 실제 DB 시작일/종료일이 아니라
+  // 통계 기준(주차 포함 여부)으로 유효성을 판단하기 위해
+  // 목표의 시작/종료가 이 달의 전체 캘린더 주차 범위와 겹치는지 우선 판단
+  const dataStart = ranges.length > 0 ? ranges[0].s.format('YYYY-MM-DD') : dayjs(`${yearMonth}-01`).format('YYYY-MM-DD');
+  const dataEnd = ranges.length > 0 ? ranges[ranges.length - 1].e.format('YYYY-MM-DD') : dayjs(`${yearMonth}-01`).endOf('month').format('YYYY-MM-DD');
+
+  // 목표가 통계 달력 범위를 완전히 벗어나면 빈 배열 반환
+  if (goalStart > dataEnd) return [];
+  if (goalEnd < dataStart) return [];
+
   const gS = dayjs(goalStart);
   const gE = dayjs(goalEnd);
 
   const raw: { s: dayjs.Dayjs; e: dayjs.Dayjs; activeDays: number }[] = [];
   for (const wr of ranges) {
+    // 통계 주차 내에서 이 목표가 언제부터 언제까지 유효한지 계산
     const effS = dayjsMax(wr.s, gS);
     const effE = dayjsMin(wr.e, gE);
+    
+    // 이 주차에 유효한 날이 없으면 건너뜀
     if (effS.isAfter(effE)) continue;
+    
     const activeDays = effE.diff(effS, 'day') + 1;
     raw.push({ s: effS, e: effE, activeDays });
   }
@@ -279,6 +304,7 @@ export function calcWeekAchievement(
 
   const weekDoneCheckins = checkins.filter(c => c.status === 'done' && c.date >= weekStart && c.date <= wEnd);
 
+  // ⭐️ 통계 주차 내에서 목표가 유효한지 검사 (단순 해당 주 날짜와 겹치는지 판단)
   const activeGoals = userGoals.filter(ug => {
     if (ug.start_date && ug.start_date > wEnd) return false;
     if (ug.end_date && ug.end_date < weekStart) return false;

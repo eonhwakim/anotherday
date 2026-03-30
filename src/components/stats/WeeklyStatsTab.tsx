@@ -64,6 +64,8 @@ export default function WeeklyStatsTab() {
 
           // 유효한 목표 필터링 (이번 주에 겹치는지)
           const activeGoals = uGoals.filter((ug: any) => {
+            // 통계 편의상 ISO 주 단위로 필터링합니다. 
+            // 캘린더 화면과 맞추기 위해, 부분주 편입 규칙에 상관없이 실제 해당 주의 날짜(weekStart ~ wEnd)와 겹치는지 확인
             if (ug.start_date && ug.start_date > wEnd) return false;
             if (ug.end_date && ug.end_date < weekStart) return false;
             return true;

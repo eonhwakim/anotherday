@@ -24,8 +24,17 @@ function getPosition(done: number, total: number, pass: number = 0): MountainPos
 }
 
 function isGoalActiveOnDate(ug: any, dateStr: string): boolean {
-  if (ug.start_date && dateStr < ug.start_date) return false;
-  if (ug.end_date && dateStr > ug.end_date) return false;
+  // 통계 주차 로직: 목표의 원래 시작일/종료일이 아니라
+  // 통계 편의상 해당 주가 속한 범위라면 보여주는 것이 맞음.
+  // 이 부분은 주차 기반(getCalendarWeekRanges)으로 넘어올 때는 dateStr 자체가 해당 범위 내에 있는지를 확인하므로
+  // 단순 목표의 start_date/end_date 검사 로직을 조금 유연하게 처리해야 함.
+  
+  const d = dayjs(dateStr);
+  const weekStart = d.startOf('isoWeek').format('YYYY-MM-DD');
+  const weekEnd = d.endOf('isoWeek').format('YYYY-MM-DD');
+
+  if (ug.start_date && weekEnd < ug.start_date) return false;
+  if (ug.end_date && weekStart > ug.end_date) return false;
   return true;
 }
 

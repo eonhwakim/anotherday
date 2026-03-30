@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import type { Goal, UserGoal, Checkin } from '../types/domain';
 import dayjs from '../lib/dayjs';
 import { scheduleGoalReminderNotification } from '../utils/notifications';
+import { getCalendarWeekRanges } from '../components/stats/StatsShared';
 
 // ─── Store Interface ──────────────────────────────────────────
 
@@ -34,6 +35,7 @@ interface GoalState {
     name: string;
     frequency?: 'daily' | 'weekly_count';
     targetCount?: number | null;
+    duration?: 'continuous' | 'this_month';
   }) => Promise<boolean>;
   removeTeamGoal: (teamId: string, userId: string, goalId: string) => Promise<void>;
   deleteCheckin: (checkinId: string) => Promise<void>;
@@ -232,12 +234,41 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   },
 
   // ── 목표 추가 ──
-  addGoal: async ({ teamId, userId, name, frequency = 'daily', targetCount = null }) => {
+  addGoal: async ({ teamId, userId, name, frequency = 'daily', targetCount = null, duration = 'continuous' }) => {
     const trimmed = name.trim();
     if (!trimmed) return false;
 
     const today = dayjs().format('YYYY-MM-DD');
-    const endOfMonth = dayjs().endOf('month').format('YYYY-MM-DD');
+    let computedEndDate: string | null = null;
+    
+    if (duration === 'this_month') {
+      const todayDayjs = dayjs();
+      const todayStr = todayDayjs.format('YYYY-MM-DD');
+      
+      const candidates = [
+        todayDayjs.format('YYYY-MM'),
+        todayDayjs.add(1, 'month').format('YYYY-MM'),
+      ];
+
+      let targetMonth = candidates[0];
+      let matchedRanges: { s: dayjs.Dayjs; e: dayjs.Dayjs }[] = [];
+
+      for (const monthStr of candidates) {
+        const { ranges } = getCalendarWeekRanges(monthStr);
+        const isTodayInRanges = ranges.some(r => r.s.format('YYYY-MM-DD') <= todayStr && r.e.format('YYYY-MM-DD') >= todayStr);
+        if (isTodayInRanges) {
+          targetMonth = monthStr;
+          matchedRanges = ranges;
+          break;
+        }
+      }
+
+      if (matchedRanges.length > 0) {
+        computedEndDate = matchedRanges[matchedRanges.length - 1].e.format('YYYY-MM-DD');
+      } else {
+        computedEndDate = dayjs(`${targetMonth}-01`).endOf('month').format('YYYY-MM-DD');
+      }
+    }
 
     const myExisting = get().teamGoals.find(
       (g) => g.name.toLowerCase() === trimmed.toLowerCase() && g.owner_id === userId,
@@ -261,7 +292,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
             frequency,
             target_count: targetCount,
             start_date: today,
-            end_date: endOfMonth,
+            end_date: computedEndDate,
           })
           .eq('id', myGoal.id);
       } else {
@@ -272,7 +303,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
           frequency,
           target_count: targetCount,
           start_date: today,
-          end_date: endOfMonth,
+          end_date: computedEndDate,
         });
       }
 
@@ -301,7 +332,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       frequency,
       target_count: targetCount,
       start_date: today,
-      end_date: endOfMonth,
+      end_date: computedEndDate,
     });
 
     await get().fetchMyGoals(userId);

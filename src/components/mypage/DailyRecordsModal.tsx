@@ -54,7 +54,7 @@ export default function DailyRecordsModal({
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={styles.overlayBg} />
         </TouchableWithoutFeedback>
-        <SafeBlurView intensity={90} style={styles.sheet}>
+        <SafeBlurView intensity={30} tint="light" style={styles.sheet}>
           {/* 핸들 바 */}
           <View style={styles.handleBar} />
 
@@ -109,8 +109,9 @@ export default function DailyRecordsModal({
                           } else if (isPast) {
                             statusText = '미달';
                             badgeStyle = styles.badgeMissed;
-                          } else if (isToday) {
-                            statusText = '진행중';
+                          } 
+                          else if (isToday) {
+                            // statusText = '진행중';
                             badgeStyle = styles.badgeInProgress;
                           }
 
@@ -146,13 +147,13 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   overlayBg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    flex: 1,
   },
   sheet: {
-    backgroundColor: COLORS.background,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '75%',
@@ -287,7 +288,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   badgeInProgress: {
-    backgroundColor: 'rgba(59, 131, 246, 0.33)',
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    // backgroundColor: 'rgba(59, 131, 246, 0.33)',
+    // borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderWidth: 0,
   },
 });

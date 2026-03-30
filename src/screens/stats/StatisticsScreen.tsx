@@ -127,6 +127,7 @@ export default function StatisticsScreen() {
       ]);
 
       const myGoalsFiltered = (myUserGoalsRaw ?? []).filter((ug: any) => {
+        // 통계 범위(dataStart ~ dataEnd) 내에 목표가 한 번이라도 유효한지 검사
         if (ug.start_date && ug.start_date > dataEnd) return false;
         if (ug.end_date && ug.end_date < dataStart) return false;
         return true;
@@ -168,7 +169,10 @@ export default function StatisticsScreen() {
       setMyGoalDetails(goalDetailsList);
 
       // ── 2. 팀원 데이터 ──
-      if (!currentTeam) { setMemberDetails([]); return; }
+      if (!currentTeam) {
+        setMemberDetails([]);
+        return;
+      }
 
       const { data: members } = await supabase
         .from('team_members')

@@ -21,6 +21,8 @@ import { COLORS } from '../../constants/defaults';
 import type { GoalFrequency } from '../../types/domain';
 import CyberFrame from '../../components/ui/CyberFrame';
 import Input from '../../components/common/Input';
+import { getCalendarWeekRanges } from '../../components/stats/StatsShared';
+import dayjs from '../../lib/dayjs';
 
 export default function AddRoutineScreen() {
   const navigation = useNavigation();
@@ -32,25 +34,53 @@ export default function AddRoutineScreen() {
   const [isAdding, setIsAdding] = useState(false);
   const [frequency, setFrequency] = useState<GoalFrequency>('daily');
   const [targetCount, setTargetCount] = useState(3);
+  const [duration, setDuration] = useState<'continuous' | 'this_month'>('continuous');
 
-  const handleAdd = async () => {
-    const name = newGoal.trim();
-    if (!name) {
-      Alert.alert('루틴을 입력해주세요');
-      return;
+  const getComputedEndDate = () => {
+    const today = dayjs();
+    const todayStr = today.format('YYYY-MM-DD');
+
+    // 오늘이 속한 "통계 기준 월"을 찾기 위해 현재 월과 다음 월을 검사합니다.
+    const candidates = [
+      today.format('YYYY-MM'),
+      today.add(1, 'month').format('YYYY-MM'),
+    ];
+
+    let targetMonth = candidates[0];
+    let matchedRanges: { s: dayjs.Dayjs; e: dayjs.Dayjs }[] = [];
+
+    for (const monthStr of candidates) {
+      const { ranges } = getCalendarWeekRanges(monthStr);
+      const isTodayInRanges = ranges.some(r => r.s.format('YYYY-MM-DD') <= todayStr && r.e.format('YYYY-MM-DD') >= todayStr);
+      if (isTodayInRanges) {
+        targetMonth = monthStr;
+        matchedRanges = ranges;
+        break;
+      }
     }
 
-    if (!user) return;
+    let endDateStr = '';
+    if (matchedRanges.length > 0) {
+      endDateStr = matchedRanges[matchedRanges.length - 1].e.format('M월 D일');
+    } else {
+      endDateStr = dayjs(`${targetMonth}-01`).endOf('month').format('M월 D일');
+    }
 
+    return { targetMonth, endDateStr };
+  };
+
+  const executeAdd = async () => {
+    if (!user) return;
     setIsAdding(true);
     const count = frequency === 'weekly_count' ? targetCount : null;
     
     const success = await addGoal({
       teamId: currentTeam?.id,
       userId: user.id,
-      name,
+      name: newGoal.trim(),
       frequency,
       targetCount: count,
+      duration,
     });
     
     setIsAdding(false);
@@ -70,6 +100,38 @@ export default function AddRoutineScreen() {
       }
     } else {
       Alert.alert('등록 실패', '루틴을 저장하지 못했습니다.\n잠시 후 다시 시도해주세요.');
+    }
+  };
+
+  const handleAdd = async () => {
+    const name = newGoal.trim();
+    if (!name) {
+      Alert.alert('루틴을 입력해주세요');
+      return;
+    }
+
+    if (!user) return;
+
+    if (duration === 'this_month') {
+      const { targetMonth, endDateStr } = getComputedEndDate();
+      
+      const today = dayjs();
+      const calendarMonth = today.format('M월');
+      const statMonth = dayjs(`${targetMonth}-01`).format('M월');
+      
+      let message = '';
+      if (calendarMonth !== statMonth) {
+        message = `현재 날짜는 캘린더상 ${calendarMonth}이지만, 통계 주차 규칙(4일 이상 포함)에 따라 ${statMonth} 통계로 편입됩니다.\n\n따라서 이 루틴은 ${statMonth}의 마지막 통계 주차인 [${endDateStr}]까지 적용됩니다. 추가하시겠습니까?`;
+      } else {
+        message = `월초/월말 통계 주차 편입 규칙에 따라, 이 루틴은 이번 달 마지막 통계 주차인 [${endDateStr}]까지 적용됩니다. 추가하시겠습니까?`;
+      }
+
+      Alert.alert('이번달까지 루틴 추가', message, [
+        { text: '취소', style: 'cancel' },
+        { text: '확인', onPress: executeAdd },
+      ]);
+    } else {
+      executeAdd();
     }
   };
 
@@ -162,6 +224,48 @@ export default function AddRoutineScreen() {
                       </TouchableOpacity>
                     </View>
                   </CyberFrame>
+                )}
+              </CyberFrame>
+
+              {/* ── 기간 설정 ── */}
+              <CyberFrame style={styles.sectionFrame} contentStyle={styles.sectionContent} glassOnly={false}>
+                <Text style={styles.label}>언제까지 할까요?</Text>
+                <View style={styles.freqRow}>
+                  <TouchableOpacity
+                    style={{ flex: 1 }}
+                    onPress={() => setDuration('continuous')}
+                    activeOpacity={0.7}
+                  >
+                    <CyberFrame 
+                      style={[styles.freqBtnFrame, duration === 'continuous' && styles.activeFreqBtnFrame]}
+                      contentStyle={styles.freqBtnContent}
+                      glassOnly={true}
+                    >
+                      <Text style={[styles.freqBtnText, duration === 'continuous' && styles.freqBtnTextActive]}>
+                        계속
+                      </Text>
+                    </CyberFrame>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1 }}
+                    onPress={() => setDuration('this_month')}
+                    activeOpacity={0.7}
+                  >
+                    <CyberFrame 
+                      style={[styles.freqBtnFrame, duration === 'this_month' && styles.activeFreqBtnFrame]}
+                      contentStyle={styles.freqBtnContent}
+                      glassOnly={true}
+                    >
+                      <Text style={[styles.freqBtnText, duration === 'this_month' && styles.freqBtnTextActive]}>
+                        이번달까지
+                      </Text>
+                    </CyberFrame>
+                  </TouchableOpacity>
+                </View>
+                {duration === 'this_month' && (
+                  <Text style={styles.helperText}>
+                    💡 월초/월말 부분주가 4일 미만이면 인접 월에 편입되는 규칙에 따라, 추가 시 정확한 마지막 주차를 계산해 안내해 드립니다.
+                  </Text>
                 )}
               </CyberFrame>
             </View>
@@ -267,6 +371,12 @@ const styles = StyleSheet.create({
   freqBtnTextActive: {
     color: '#FF6B3D',
     fontWeight: '700',
+  },
+  helperText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    marginTop: 8,
   },
   targetCountFrame: {
     borderRadius: 12,
