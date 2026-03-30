@@ -1,0 +1,10 @@
+node_modules
+dist
+.expo
+.yarn
+.pnp.cjs
+.pnp.loader.mjs
+package-lock.json
+yarn.lock
+assets
+supabase
