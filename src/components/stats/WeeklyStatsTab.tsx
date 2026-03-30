@@ -71,6 +71,7 @@ export default function WeeklyStatsTab() {
 
           let totalGoals = 0;
           let failedGoals = 0;
+          const goalsDetail: any[] = [];
 
           activeGoals.forEach((ug: any) => {
             const isDaily = ug.frequency === 'daily';
@@ -89,6 +90,14 @@ export default function WeeklyStatsTab() {
               if (doneCount < target) {
                 failedGoals++;
               }
+              goalsDetail.push({
+                goalId: ug.goal_id,
+                name: allGoalMap.get(ug.goal_id) ?? '목표',
+                target,
+                doneCount,
+                isAchieved: doneCount >= target,
+                isDaily
+              });
             }
           });
 
@@ -101,9 +110,10 @@ export default function WeeklyStatsTab() {
             isMe: uid === user.id,
             totalGoals,
             failedGoals,
-            isAllClear
+            isAllClear,
+            goals: goalsDetail
           };
-        }).sort((a, b) => {
+        }).filter(m => !m.isMe).sort((a, b) => {
           // 1순위: 올클리어 여부
           if (a.isAllClear && !b.isAllClear) return -1;
           if (!a.isAllClear && b.isAllClear) return 1;
@@ -111,9 +121,6 @@ export default function WeeklyStatsTab() {
           if (a.failedGoals !== b.failedGoals) return a.failedGoals - b.failedGoals;
           // 3순위: 인증 횟수 많은 순
           if (b.doneCount !== a.doneCount) return b.doneCount - a.doneCount;
-          // 4순위: 나를 위로
-          if (a.isMe) return -1;
-          if (b.isMe) return 1;
           return 0;
         });
 
@@ -192,6 +199,8 @@ export default function WeeklyStatsTab() {
   }, [myGoals, user, weekStart, weeklyCheckins, allGoalMap]);
 
   const isAllClear = myWeeklyGoals.length > 0 && myWeeklyGoals.every(g => g.isAchieved);
+  const myTotalGoals = myWeeklyGoals.length;
+  const myFailedGoals = myWeeklyGoals.filter(g => !g.isAchieved).length;
 
   const isWeekEnded = dayjs(weekStart).endOf('isoWeek').isBefore(dayjs(), 'day');
 
@@ -223,31 +232,77 @@ export default function WeeklyStatsTab() {
         ) : null}
 
         {myWeeklyGoals.length === 0 ? (
-          <CyberFrame style={s.cardFrame} contentStyle={s.cardContent}>
+          <CyberFrame style={s.myCardFrame} contentStyle={s.cardContent}>
             <Text style={s.emptySmall}>이번 주 진행 중인 목표가 없어요</Text>
           </CyberFrame>
         ) : (
-          <CyberFrame style={s.weeklyGoalList}>
-            {myWeeklyGoals.map(g => (
-              <CyberFrame key={g.goalId} glassOnly={true} style={s.weeklyGoalItemFrame} contentStyle={s.weeklyGoalItemContent}>
-                <View>
-                  <Text style={s.weeklyGoalName}>{g.name}</Text>
-                  <Text style={s.weeklyGoalTarget}>{g.isDaily ? '매일' : `주 ${g.target}회`}</Text>
-                </View>
-                <View style={s.weeklyGoalStatus}>
-                  <Text style={s.weeklyGoalCount}>
-                    <Text style={ g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }}>{g.doneCount}</Text>
-                    <Text style={{ color: '#888' }}> / {g.target}</Text>
+          <CyberFrame style={s.myCardFrame} contentStyle={s.cardContent}>
+            <View style={s.teamMemberItem}>
+              {/* 상단: 요약 정보 (나) */}
+              <View style={s.teamMemberHeaderRow}>
+                <View style={s.teamMemberNameBox}>
+                  <Text style={[s.teamMemberName, s.teamMemberNameMe]}>
+                    나의 달성 현황
                   </Text>
-                  {g.isAchieved
-                    ? <Ionicons name="checkmark-circle" size={20} color={'#4ADE80'} />
-                    : isWeekEnded
-                      ? <Ionicons name="close-circle" size={20} color={'#EF4444'} />
-                      : ''
-                  }
+                  <Text style={s.teamMemberSubText}>총 목표 {myTotalGoals}개</Text>
                 </View>
-              </CyberFrame>
-            ))}
+                <View style={s.teamMemberScore}>
+                  {isAllClear ? (
+                    <View style={s.teamMemberBadgeClear}>
+                      <Text style={s.teamMemberBadgeTextClear}>🏆 올클리어</Text>
+                    </View>
+                  ) : !isWeekEnded ? (
+                    <View style={s.teamMemberBadgeProgress}>
+                      <Text style={[s.teamMemberBadgeTextProgress, { color: 'rgba(26,26,26,0.45)' }]}>아직 진행중</Text>
+                    </View>
+                  ) : (
+                    <View style={s.teamMemberBadgeProgress}>
+                      <Text style={s.teamMemberBadgeTextProgress}>
+                        <Text style={{ color: '#15803d' }}>{myTotalGoals - myFailedGoals}개 완료</Text>
+                        <Text style={{ color: 'rgba(26,26,26,0.2)' }}> | </Text>
+                        <Text style={{ color: '#EF4444' }}>{myFailedGoals}개 미달</Text>
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* 하단: 나의 상세 목표 리스트 */}
+              <View style={[s.teamMemberGoalList, { paddingLeft: 0 }]}>
+                {myWeeklyGoals.map(g => (
+                  <View key={g.goalId} style={s.teamMemberGoalRow}>
+                    <View style={s.teamMemberGoalInfo}>
+                      <Text style={s.teamMemberGoalName} numberOfLines={1}>∙ {g.name}</Text>
+                      <Text style={s.teamMemberGoalTarget}>{g.isDaily ? '매일' : `주 ${g.target}회`}</Text>
+                    </View>
+                    <View style={s.teamMemberGoalStatus}>
+                      <Text style={s.teamMemberGoalCount}>
+                        <Text style={ g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }}>{g.doneCount}</Text>
+                        <Text style={{ color: '#888' }}> / {g.target}</Text>
+                      </Text>
+                      {g.isAchieved
+                        ? (
+                          <View style={[s.badge, s.badgeSuccess]}>
+                            <Text style={s.badgeText}>완료</Text>
+                          </View>
+                        )
+                        : isWeekEnded
+                          ? (
+                            <View style={[s.badge, s.badgeMissed]}>
+                              <Text style={s.badgeText}>미달</Text>
+                            </View>
+                          )
+                          : (
+                            <View style={[s.badge, s.badgeInProgress]}>
+                              <Text style={[s.badgeText, { color: 'rgba(26,26,26,0.45)' }]}>집계중</Text>
+                            </View>
+                          )
+                      }
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
           </CyberFrame>
         )}
       </View>
@@ -263,36 +318,77 @@ export default function WeeklyStatsTab() {
               <View style={s.teamMemberList}>
                 {weeklyTeamData.map((m, idx) => (
                   <View key={m.userId} style={s.teamMemberItem}>
-                    <View style={s.teamMemberRank}>
-                      <Text style={s.teamMemberRankText}>{idx + 1}</Text>
+                    {/* 상단: 랭킹 및 요약 정보 */}
+                    <View style={s.teamMemberHeaderRow}>
+                      <View style={s.teamMemberRank}>
+                        <Text style={s.teamMemberRankText}>{idx + 1}</Text>
+                      </View>
+                      <View style={s.teamMemberNameBox}>
+                        <Text style={[s.teamMemberName, m.isMe && s.teamMemberNameMe]}>
+                          {m.nickname} {m.isMe && '(나)'}
+                        </Text>
+                        <Text style={s.teamMemberSubText}>총 목표 {m.totalGoals}개</Text>
+                      </View>
+                      <View style={s.teamMemberScore}>
+                        {m.totalGoals === 0 ? (
+                          <Text style={s.teamMemberScoreTextGray}>목표 없음</Text>
+                        ) : m.isAllClear ? (
+                          <View style={s.teamMemberBadgeClear}>
+                            <Text style={s.teamMemberBadgeTextClear}>🏆 올클리어</Text>
+                          </View>
+                        ) : !isWeekEnded ? (
+                          <View style={s.teamMemberBadgeProgress}>
+                            <Text style={[s.teamMemberBadgeTextProgress, { color: 'rgba(26,26,26,0.45)' }]}>아직 진행중</Text>
+                          </View>
+                        ) : (
+                          <View style={s.teamMemberBadgeProgress}>
+                            <Text style={s.teamMemberBadgeTextProgress}>
+                              <Text style={{ color: '#15803d' }}>{m.totalGoals - m.failedGoals}개 완료</Text>
+                              <Text style={{ color: 'rgba(26,26,26,0.2)' }}> | </Text>
+                              <Text style={{ color: '#EF4444' }}>{m.failedGoals}개 미달</Text>
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
-                    <View style={s.teamMemberNameBox}>
-                      <Text style={[s.teamMemberName, m.isMe && s.teamMemberNameMe]}>
-                        {m.nickname} {m.isMe && '(나)'}
-                      </Text>
-                      <Text style={s.teamMemberSubText}>총 목표 {m.totalGoals}개</Text>
-                    </View>
-                    <View style={s.teamMemberScore}>
-                      {m.totalGoals === 0 ? (
-                        <Text style={s.teamMemberScoreTextGray}>목표 없음</Text>
-                      ) : m.isAllClear ? (
-                        <View style={s.teamMemberBadgeClear}>
-                          <Text style={s.teamMemberBadgeTextClear}>🏆 올클리어</Text>
-                        </View>
-                      ) : !isWeekEnded ? (
-                        <View style={s.teamMemberBadgeProgress}>
-                          <Text style={[s.teamMemberBadgeTextProgress, { color: 'rgba(26,26,26,0.45)' }]}>아직 진행중</Text>
-                        </View>
-                      ) : (
-                        <View style={s.teamMemberBadgeProgress}>
-                          <Text style={s.teamMemberBadgeTextProgress}>
-                            <Text style={{ color: '#15803d' }}>{m.totalGoals - m.failedGoals}개 완료</Text>
-                            <Text style={{ color: 'rgba(26,26,26,0.2)' }}> | </Text>
-                            <Text style={{ color: '#EF4444' }}>{m.failedGoals}개 미달</Text>
-                          </Text>
-                        </View>
-                      )}
-                    </View>
+
+                    {/* 하단: 팀원의 상세 목표 리스트 */}
+                    {m.goals && m.goals.length > 0 && (
+                      <View style={s.teamMemberGoalList}>
+                        {m.goals.map((g: any) => (
+                          <View key={g.goalId} style={s.teamMemberGoalRow}>
+                            <View style={s.teamMemberGoalInfo}>
+                              <Text style={s.teamMemberGoalName} numberOfLines={1}>∙ {g.name}</Text>
+                              <Text style={s.teamMemberGoalTarget}>{g.isDaily ? '매일' : `주 ${g.target}회`}</Text>
+                            </View>
+                            <View style={s.teamMemberGoalStatus}>
+                              <Text style={s.teamMemberGoalCount}>
+                                <Text style={ g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }}>{g.doneCount}</Text>
+                                <Text style={{ color: '#888' }}> / {g.target}</Text>
+                              </Text>
+                              {g.isAchieved
+                                ? (
+                                  <View style={[s.badge, s.badgeSuccess]}>
+                                    <Text style={s.badgeText}>완료</Text>
+                                  </View>
+                                )
+                                : isWeekEnded
+                                  ? (
+                                    <View style={[s.badge, s.badgeMissed]}>
+                                      <Text style={s.badgeText}>미달</Text>
+                                    </View>
+                                  )
+                                  : (
+                                    <View style={[s.badge, s.badgeInProgress]}>
+                                      <Text style={[s.badgeText, { color: 'rgba(26,26,26,0.45)' }]}>집계중</Text>
+                                    </View>
+                                  )
+                              }
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 ))}
               </View>
@@ -318,6 +414,7 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginBottom: 4, marginTop: 28 },
 
   // Card
+  myCardFrame: { borderRadius: 12 },
   cardFrame: { marginHorizontal: 16, marginTop: 8, marginBottom: 12 },
   cardContent: { padding: 14 },
 
@@ -325,7 +422,7 @@ const s = StyleSheet.create({
   emptySmall: { fontSize: 13, color: 'rgba(26,26,26,0.30)', textAlign: 'center', paddingVertical: 16 },
 
   // Weekly UI
-  allClearBox: { backgroundColor: 'rgba(74, 222, 128, 0.15)', borderRadius: 12, marginBottom: 16 },
+  allClearBox: { backgroundColor: 'rgba(74, 222, 128, 0.15)', borderRadius: 12, marginBottom: 4 },
   allClearBoxContent: { padding: 16, alignItems: 'center' },
   allClearEmoji: { fontSize: 32, marginBottom: 8 },
   allClearTitle: { fontSize: 18, fontWeight: '800', color: '#15803d', marginBottom: 4 },
@@ -340,8 +437,9 @@ const s = StyleSheet.create({
   weeklyGoalStatus: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   weeklyGoalCount: { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
 
-  teamMemberList: { gap: 4 },
-  teamMemberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.03)' },
+  teamMemberList: { gap: 12 },
+  teamMemberItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.03)' },
+  teamMemberHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   teamMemberRank: { width: 28, alignItems: 'center' },
   teamMemberRankText: { fontSize: 14, fontWeight: '700', color: 'rgba(26,26,26,0.4)' },
   teamMemberNameBox: { flex: 1, paddingHorizontal: 8 },
@@ -354,4 +452,66 @@ const s = StyleSheet.create({
   teamMemberBadgeProgress: { backgroundColor: 'rgba(26,26,26,0.03)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   teamMemberBadgeTextProgress: { fontSize: 12, fontWeight: '600' },
   teamMemberScoreTextGray: { fontSize: 12, fontWeight: '500', color: 'rgba(26,26,26,0.4)' },
+  teamMemberGoalList: {
+    paddingLeft: 36, // 랭크 너비만큼 들여쓰기
+    marginTop: 4,
+    gap: 8,
+  },
+  teamMemberGoalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB', // 살짝 밝은 회색으로 변경 (리스트 내부)
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+    padding: 10,
+    borderRadius: 8,
+  },
+  teamMemberGoalInfo: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  teamMemberGoalName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  teamMemberGoalTarget: {
+    fontSize: 11,
+    color: 'rgba(26,26,26,0.5)',
+    marginLeft: 8,
+  },
+  teamMemberGoalStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  teamMemberGoalCount: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  badgeSuccess: {
+    backgroundColor: 'rgba(74, 222, 128, 0.43)',
+    borderColor: 'rgba(74, 222, 128, 0.3)',
+  },
+  badgeMissed: {
+    backgroundColor: 'rgba(255, 68, 58, 0.35)',
+    borderColor: 'rgba(255, 69, 58, 0.3)',
+  },
+  badgeInProgress: {
+    backgroundColor: 'rgba(26,26,26,0.03)',
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
 });

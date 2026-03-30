@@ -272,7 +272,10 @@ export default function StatisticsScreen() {
     <View style={s.container}>
       <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView ref={scrollRef} style={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.screenTitle}>통계</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center',  }}>
+          <Text style={s.screenTitle}>통계</Text>
+          <Text style={s.subtitle}>💡월초/월말 부분주가 4일 미만이면 인접 월에 편입 (해당 월에서 제외)</Text>
+        </View>
 
         {/* ── 탭 전환 ── */}
         <CyberFrame style={s.tabFrame} contentStyle={s.tabContent} glassOnly={true}>
@@ -491,6 +494,7 @@ const s = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flex: 1 },
   screenTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginTop: 8, marginBottom: 16 },
+  subtitle: { fontSize: 12, color: 'rgba(26,26,26,0.50)', lineHeight: 20, fontWeight: '400' },
 
   // Tabs
   tabFrame: { marginHorizontal: 16, marginBottom: 16, borderRadius: 12 },

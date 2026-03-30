@@ -22,7 +22,7 @@ import { useStatsStore } from '../../stores/statsStore';
 import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalList';
 import CyberFrame from '../../components/ui/CyberFrame';
-import DevGuideModal from '../../components/home/DevGuideModal';
+// import DevGuideModal from '../../components/home/DevGuideModal';
 import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
 import dayjs from '../../lib/dayjs';
@@ -282,10 +282,10 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <DevGuideModal
+      {/* <DevGuideModal
         visible={showGuideModal}
         onClose={handleCloseGuide}
-      />
+      /> */}
 
       <MonthlyGoalPromptModal
         visible={showMonthlyPrompt}

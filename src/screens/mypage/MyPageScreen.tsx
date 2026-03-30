@@ -395,6 +395,16 @@ export default function MyPageScreen() {
           </CyberFrame>
         </TouchableOpacity>
 
+        {/* ── 한달 목표 설정 ── */}
+        <GoalSetting
+          teamGoals={myVisibleGoals}
+          allTeamGoals={teamGoals || []}
+          myGoals={currentTeamUserGoals}
+          onAdd={handleAddGoal}
+          onRemove={handleRemoveGoal}
+          monthlyResolution={monthlyResolution}
+        />
+
         {/* ── 소속 팀 목록 및 관리 ── */}
         <CyberFrame style={styles.sectionFrame} contentStyle={styles.sectionCard} glassOnly={false}>
           <View style={styles.sectionHeader}>
@@ -481,16 +491,6 @@ export default function MyPageScreen() {
             ))
           )}
         </CyberFrame>
-
-        {/* ── 한달 목표 설정 ── */}
-        <GoalSetting
-          teamGoals={myVisibleGoals}
-          allTeamGoals={teamGoals || []}
-          myGoals={currentTeamUserGoals}
-          onAdd={handleAddGoal}
-          onRemove={handleRemoveGoal}
-          monthlyResolution={monthlyResolution}
-        />
 
         {/* ── 계정 관리 ── */}
         <CyberFrame style={styles.sectionFrame} contentStyle={styles.accountSection} glassOnly={false}>

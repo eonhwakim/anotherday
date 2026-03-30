@@ -127,7 +127,7 @@ export default function GoalSetting({
         <Text style={styles.title}>목표 설정</Text>
       </View>
       <Text style={styles.subtitle}>
-        목표를 추가하면 오늘부터 적용됩니다 {'\n'}💡 월초/월말 부분주가 4일 미만이면 인접 월에 편입 (해당 월에서 제외)
+        목표를 추가하면 오늘부터 적용됩니다
       </Text>
 
       {/* ── 이번 달 한마디 (목표) ── */}
@@ -226,9 +226,9 @@ const styles = StyleSheet.create({
   cardContent: {
     padding: 24,
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
-  title: { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
-  subtitle: { fontSize: 12, color: 'rgba(26,26,26,0.50)', marginBottom: 24, lineHeight: 20, fontWeight: '400' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
+  title: { fontSize: 20, fontWeight: '800', color: '#1A1A1A' },
+  subtitle: { fontSize: 12, color: 'rgba(26,26,26,0.50)', marginBottom: 26, lineHeight: 20, fontWeight: '400' },
 
   // 밝은 글래스모피즘 오버라이드 스타일
   brightGlass: {
