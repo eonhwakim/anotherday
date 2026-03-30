@@ -60,6 +60,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .select('*')
       .eq('user_id', userId)
       .eq('is_active', true)
+      .is('deleted_at', null)
       .lt('end_date', today)
       .gte('end_date', lastMonthStart);
 
@@ -105,6 +106,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .select('id')
       .eq('user_id', userId)
       .eq('is_active', true)
+      .is('deleted_at', null)
       .gte('end_date', prevMonthStart)
       .lte('end_date', prevMonthEnd);
 
@@ -120,6 +122,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     let query = supabase
       .from('goals')
       .select('*')
+      .is('deleted_at', null)
       .order('created_at');
 
     if (userId) {
@@ -149,6 +152,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .select('*')
       .eq('user_id', userId)
       .eq('is_active', true)
+      .is('deleted_at', null)
       .or(`end_date.is.null,end_date.gte.${today}`);
     set({ myGoals: data ?? [] });
   },
@@ -248,11 +252,12 @@ export const useGoalStore = create<GoalState>((set, get) => ({
         .maybeSingle();
 
       if (myGoal) {
-        if (myGoal.is_active) return false;
+        if (myGoal.is_active && !myGoal.deleted_at) return false;
         await supabase
           .from('user_goals')
           .update({
             is_active: true,
+            deleted_at: null,
             frequency,
             target_count: targetCount,
             start_date: today,
@@ -304,20 +309,66 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     return true;
   },
 
-  // ── 목표 삭제 (DB에서 완전 삭제) ──
+  // ── 목표 삭제 (Soft Delete 지원) ──
   removeTeamGoal: async (teamId, userId, goalId) => {
-    const { error: ugErr } = await supabase
-      .from('user_goals')
-      .delete()
+    const today = dayjs().format('YYYY-MM-DD');
+
+    // 1. 해당 사용자의 이 목표에 대한 체크인이 있는지 확인
+    const { count: userCheckinsCount } = await supabase
+      .from('checkins')
+      .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('goal_id', goalId);
-    if (ugErr) console.error('removeTeamGoal user_goals delete error:', ugErr);
 
-    const { error: goalErr } = await supabase
-      .from('goals')
-      .delete()
-      .eq('id', goalId);
-    if (goalErr) console.error('removeTeamGoal goals delete error:', goalErr);
+    if (userCheckinsCount && userCheckinsCount > 0) {
+      // 인증 기록이 있으면 Soft Delete (과거 통계 유지를 위해)
+      const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+      const { error: ugErr } = await supabase
+        .from('user_goals')
+        .update({ 
+          deleted_at: new Date().toISOString(),
+          end_date: yesterday
+        })
+        .eq('user_id', userId)
+        .eq('goal_id', goalId);
+      if (ugErr) console.error('removeTeamGoal user_goals update error:', ugErr);
+    } else {
+      // 인증 기록이 없으면 Hard Delete
+      const { error: ugErr } = await supabase
+        .from('user_goals')
+        .delete()
+        .eq('user_id', userId)
+        .eq('goal_id', goalId);
+      if (ugErr) console.error('removeTeamGoal user_goals delete error:', ugErr);
+    }
+
+    // 2. 이 목표가 다른 사람에 의해 사용 중인지 확인
+    const { count: totalCheckinsCount } = await supabase
+      .from('checkins')
+      .select('*', { count: 'exact', head: true })
+      .eq('goal_id', goalId);
+
+    const { count: otherUsersCount } = await supabase
+      .from('user_goals')
+      .select('*', { count: 'exact', head: true })
+      .eq('goal_id', goalId)
+      .is('deleted_at', null);
+
+    if ((totalCheckinsCount && totalCheckinsCount > 0) || (otherUsersCount && otherUsersCount > 0)) {
+      // 누군가 인증했거나 사용 중이면 goals는 Soft Delete (RLS 때문에 owner만 적용됨)
+      const { error: goalErr } = await supabase
+        .from('goals')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', goalId);
+      if (goalErr) console.error('removeTeamGoal goals update error:', goalErr);
+    } else {
+      // 아무도 안 쓰고 인증도 없으면 Hard Delete
+      const { error: goalErr } = await supabase
+        .from('goals')
+        .delete()
+        .eq('id', goalId);
+      if (goalErr) console.error('removeTeamGoal goals delete error:', goalErr);
+    }
 
     await Promise.all([
       get().fetchTeamGoals(teamId, userId),

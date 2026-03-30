@@ -287,13 +287,12 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
       const { data: userGoals } = await supabase
         .from('user_goals')
-        .select('goal_id, frequency, target_count, start_date, end_date')
+        .select('goal_id, frequency, target_count, start_date, end_date, goal:goals(name)')
         .eq('user_id', uid)
         .eq('is_active', true);
 
-      const activeGoalIds = (userGoals ?? [])
-        .filter((ug: any) => isGoalActiveOnDate(ug, date))
-        .map((ug: any) => ug.goal_id);
+      const activeGoals = (userGoals ?? []).filter((ug: any) => isGoalActiveOnDate(ug, date));
+      const activeGoalIds = activeGoals.map((ug: any) => ug.goal_id);
 
       const { data: checkins } = await supabase
         .from('checkins')
@@ -314,6 +313,12 @@ export const useStatsStore = create<StatsState>((set, get) => ({
         totalGoals: activeGoalIds.length,
         doneCount,
         passCount,
+        goals: activeGoals.map((ug: any) => ({
+          goalId: ug.goal_id,
+          name: ug.goal?.name ?? '알 수 없는 목표',
+          frequency: ug.frequency,
+          targetCount: ug.target_count,
+        })),
       });
     }
 

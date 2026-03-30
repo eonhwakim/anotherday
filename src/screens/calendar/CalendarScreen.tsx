@@ -12,6 +12,7 @@ import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
 import { useTeamStore } from '../../stores/teamStore';
 import CheckinModal from '../../components/mypage/CheckinModal';
+import DailyRecordsModal from '../../components/mypage/DailyRecordsModal';
 import Button from '../../components/common/Button';
 import dayjs from '../../lib/dayjs';
 import { getCalendarWeekRanges } from '../../components/stats/StatsShared';
@@ -54,6 +55,7 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
   const [checkinModalVisible, setCheckinModalVisible] = useState(false);
+  const [dailyRecordsModalVisible, setDailyRecordsModalVisible] = useState(false);
   const [photoModal, setPhotoModal] = useState<{ url: string; checkinId: string } | null>(null);
   const [selectedMember, setSelectedMember] = useState<{ userId: string; nickname: string; profileImageUrl: string | null } | null>(null);
   const [lastTap, setLastTap] = useState<number | null>(null);
@@ -585,7 +587,7 @@ export default function CalendarScreen() {
       {/* ── 플로팅 기록 보기 버튼 ── */}
       <TouchableOpacity 
         style={styles.floatingButtonWrapper}
-        onPress={handleCheckinPress}
+        onPress={() => setDailyRecordsModalVisible(true)}
         activeOpacity={0.8}
       >
         <Image 
@@ -637,6 +639,14 @@ export default function CalendarScreen() {
         checkins={selectedDateCheckins}
         onClose={() => setCheckinModalVisible(false)}
         onCheckinDone={handleCheckinDone}
+      />
+
+      {/* ── 일간 기록 모달 ── */}
+      <DailyRecordsModal
+        visible={dailyRecordsModalVisible}
+        date={selectedDate}
+        memberRecords={memberDateCheckins}
+        onClose={() => setDailyRecordsModalVisible(false)}
       />
     </SafeAreaView>
     </View>

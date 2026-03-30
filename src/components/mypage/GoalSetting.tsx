@@ -127,7 +127,7 @@ export default function GoalSetting({
         <Text style={styles.title}>목표 설정</Text>
       </View>
       <Text style={styles.subtitle}>
-        목표를 추가하면 오늘부터 이번 달 말까지 적용됩니다
+        목표를 추가하면 오늘부터 적용됩니다 {'\n'}💡 월초/월말 부분주가 4일 미만이면 인접 월에 편입 (해당 월에서 제외)
       </Text>
 
       {/* ── 이번 달 한마디 (목표) ── */}

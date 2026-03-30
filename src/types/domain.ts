@@ -185,4 +185,10 @@ export interface MemberCheckinSummary {
   totalGoals: number;
   doneCount: number;
   passCount: number;
+  goals: {
+    goalId: string;
+    name: string;
+    frequency: 'daily' | 'weekly_count';
+    targetCount: number | null;
+  }[];
 }
