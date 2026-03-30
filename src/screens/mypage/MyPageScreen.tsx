@@ -901,7 +901,7 @@ const styles = StyleSheet.create({
   fabMenuContainer: {
     position: 'absolute',
     right: 20,
-    bottom: 180, // 플로팅 버튼 위로 뜨도록
+    bottom: 200, // 플로팅 버튼 위로 뜨도록
     width: 200,
   },
   fabMenuSection: {

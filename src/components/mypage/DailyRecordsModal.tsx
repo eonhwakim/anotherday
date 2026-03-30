@@ -18,7 +18,7 @@ import dayjs from '../../lib/dayjs';
 import CyberFrame from '../ui/CyberFrame';
 import { MemberCheckinSummary } from '../../types/domain';
 
-const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
+const SafeBlurView = Platform.OS === 'android' ? View : View;
 
 interface DailyRecordsModalProps {
   visible: boolean;
