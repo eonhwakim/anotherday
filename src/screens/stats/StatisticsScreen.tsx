@@ -1,8 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Image
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -14,13 +11,11 @@ import { useGoalStore } from '../../stores/goalStore';
 import { supabase } from '../../lib/supabaseClient';
 import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
-import Button from '../../components/common/Button';
 import WeeklyStatsTab from '../../components/stats/WeeklyStatsTab';
 import CyberFrame from '../../components/ui/CyberFrame';
 import ReviewModal from '../../components/stats/ReviewModal';
-import { getCalendarWeekRanges, calcWeekAchievement } from '../../components/stats/StatsShared';
-
-// ─── Types ───────────────────────────────────────────────────
+import { getCalendarWeekRanges, calcWeekAchievement } from '../../lib/statsUtils';
+import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 
 interface GoalItem {
   goalId: string;
@@ -45,13 +40,9 @@ interface MemberDetail {
   hoego: string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────
-
 function freqLabel(frequency: string, targetCount: number | null): string {
   return frequency === 'daily' ? '매일' : `주 ${targetCount ?? 1}회`;
 }
-
-// ─── Main Component ──────────────────────────────────────────
 
 export default function StatisticsScreen() {
   const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
@@ -60,7 +51,7 @@ export default function StatisticsScreen() {
   const { fetchTeamGoals, fetchMyGoals } = useGoalStore();
 
   const scrollRef = useRef<ScrollView>(null);
-  const lastTapRef = useRef(0);
+  useTabDoubleTapScrollTop({ navigation: tabNavigation, scrollRef });
 
   const [activeTab, setActiveTab] = useState<'monthly' | 'weekly'>('weekly');
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
@@ -72,25 +63,15 @@ export default function StatisticsScreen() {
   const [editReviewModalVisible, setEditReviewModalVisible] = useState(false);
   const [tempText, setTempText] = useState('');
 
-  // ── Double-tap tab → scroll to top ──
-  React.useEffect(() => {
-    const unsub = tabNavigation.addListener('tabPress', () => {
-      if (tabNavigation.isFocused()) {
-        const now = Date.now();
-        if (now - lastTapRef.current < 300) scrollRef.current?.scrollTo({ y: 0, animated: true });
-        lastTapRef.current = now;
-      }
-    });
-    return unsub;
-  }, [tabNavigation]);
-
   // ── Month navigation ──
-  const goToPrev = () => setYearMonth(p => dayjs(`${p}-01`).subtract(1, 'month').format('YYYY-MM'));
+  const goToPrev = () =>
+    setYearMonth((p) => dayjs(`${p}-01`).subtract(1, 'month').format('YYYY-MM'));
   const goToNext = () => {
     const next = dayjs(`${yearMonth}-01`).add(1, 'month').format('YYYY-MM');
     if (next <= dayjs().format('YYYY-MM')) setYearMonth(next);
   };
-  const canNext = dayjs(`${yearMonth}-01`).add(1, 'month').format('YYYY-MM') <= dayjs().format('YYYY-MM');
+  const canNext =
+    dayjs(`${yearMonth}-01`).add(1, 'month').format('YYYY-MM') <= dayjs().format('YYYY-MM');
   const monthLabel = dayjs(`${yearMonth}-01`).format('YYYY년 M월');
   const monthNum = dayjs(`${yearMonth}-01`).month() + 1;
 
@@ -101,9 +82,13 @@ export default function StatisticsScreen() {
     const team = useTeamStore.getState().currentTeam;
     if (!team) return;
     await Promise.all([fetchTeamGoals(team.id, user.id), fetchMyGoals(user.id)]);
-  }, [user]);
+  }, [user, fetchTeams, fetchTeamGoals, fetchMyGoals]);
 
-  useFocusEffect(useCallback(() => { loadStoreData(); }, [loadStoreData]));
+  useFocusEffect(
+    useCallback(() => {
+      loadStoreData();
+    }, [loadStoreData]),
+  );
 
   // ── Fetch monthly stats ──
   const fetchMonthlyStats = useCallback(async () => {
@@ -114,16 +99,22 @@ export default function StatisticsScreen() {
     const dataStart = ranges[0].s.format('YYYY-MM-DD');
     const dataEnd = ranges[ranges.length - 1].e.format('YYYY-MM-DD');
     const today = dayjs().format('YYYY-MM-DD');
-    const endedRanges = ranges.filter(wr => wr.e.format('YYYY-MM-DD') < today);
+    const endedRanges = ranges.filter((wr) => wr.e.format('YYYY-MM-DD') < today);
 
     try {
       // ── 1. 나의 체크인 + 목표 ──
       const [{ data: myCheckins }, { data: myUserGoalsRaw }] = await Promise.all([
-        supabase.from('checkins').select('goal_id, status, date')
-          .eq('user_id', user.id).gte('date', dataStart).lte('date', dataEnd),
-        supabase.from('user_goals')
+        supabase
+          .from('checkins')
+          .select('goal_id, status, date')
+          .eq('user_id', user.id)
+          .gte('date', dataStart)
+          .lte('date', dataEnd),
+        supabase
+          .from('user_goals')
           .select('goal_id, frequency, target_count, start_date, end_date, goals(name)')
-          .eq('user_id', user.id).eq('is_active', true),
+          .eq('user_id', user.id)
+          .eq('is_active', true),
       ]);
 
       const myGoalsFiltered = (myUserGoalsRaw ?? []).filter((ug: any) => {
@@ -134,22 +125,29 @@ export default function StatisticsScreen() {
       });
 
       // 월간 달성률
-      let myTotal = 0, myFailed = 0;
-      endedRanges.forEach(wr => {
+      let myTotal = 0,
+        myFailed = 0;
+      endedRanges.forEach((wr) => {
         const r = calcWeekAchievement(wr.s.format('YYYY-MM-DD'), myCheckins ?? [], myGoalsFiltered);
         myTotal += r.totalGoals;
         myFailed += r.failedGoals;
       });
-      setMyRate(myTotal > 0 ? Math.round((myTotal - myFailed) / myTotal * 100) : null);
+      setMyRate(myTotal > 0 ? Math.round(((myTotal - myFailed) / myTotal) * 100) : null);
 
       // 목표별 달성률
       const goalDetailsList: MyGoalDetail[] = myGoalsFiltered.map((ug: any) => {
-        const singleGoal = [{
-          goal_id: ug.goal_id, frequency: ug.frequency,
-          target_count: ug.target_count, start_date: ug.start_date, end_date: ug.end_date,
-        }];
-        let achievedWeeks = 0, totalActiveWeeks = 0;
-        endedRanges.forEach(wr => {
+        const singleGoal = [
+          {
+            goal_id: ug.goal_id,
+            frequency: ug.frequency,
+            target_count: ug.target_count,
+            start_date: ug.start_date,
+            end_date: ug.end_date,
+          },
+        ];
+        let achievedWeeks = 0,
+          totalActiveWeeks = 0;
+        endedRanges.forEach((wr) => {
           const r = calcWeekAchievement(wr.s.format('YYYY-MM-DD'), myCheckins ?? [], singleGoal);
           if (r.totalGoals > 0) {
             totalActiveWeeks++;
@@ -163,7 +161,7 @@ export default function StatisticsScreen() {
           targetCount: ug.target_count,
           achievedWeeks,
           totalActiveWeeks,
-          rate: totalActiveWeeks > 0 ? Math.round(achievedWeeks / totalActiveWeeks * 100) : null,
+          rate: totalActiveWeeks > 0 ? Math.round((achievedWeeks / totalActiveWeeks) * 100) : null,
         };
       });
       setMyGoalDetails(goalDetailsList);
@@ -180,7 +178,10 @@ export default function StatisticsScreen() {
         .eq('team_id', currentTeam.id);
 
       const memberIds = (members ?? []).map((m: any) => m.user_id);
-      if (memberIds.length === 0) { setMemberDetails([]); return; }
+      if (memberIds.length === 0) {
+        setMemberDetails([]);
+        return;
+      }
 
       const [
         { data: teamCheckins },
@@ -188,305 +189,381 @@ export default function StatisticsScreen() {
         { data: allResolutions },
         { data: allRetrospectives },
       ] = await Promise.all([
-        supabase.from('checkins').select('user_id, goal_id, status, date')
-          .in('user_id', memberIds).gte('date', dataStart).lte('date', dataEnd),
-        supabase.from('user_goals')
+        supabase
+          .from('checkins')
+          .select('user_id, goal_id, status, date')
+          .in('user_id', memberIds)
+          .gte('date', dataStart)
+          .lte('date', dataEnd),
+        supabase
+          .from('user_goals')
           .select('user_id, goal_id, frequency, target_count, start_date, end_date, goals(name)')
-          .in('user_id', memberIds).eq('is_active', true),
-        supabase.from('monthly_resolutions').select('user_id, content')
-          .in('user_id', memberIds).eq('team_id', currentTeam.id).eq('year_month', yearMonth),
-        supabase.from('monthly_retrospectives').select('user_id, content')
-          .in('user_id', memberIds).eq('team_id', currentTeam.id).eq('year_month', yearMonth),
+          .in('user_id', memberIds)
+          .eq('is_active', true),
+        supabase
+          .from('monthly_resolutions')
+          .select('user_id, content')
+          .in('user_id', memberIds)
+          .eq('team_id', currentTeam.id)
+          .eq('year_month', yearMonth),
+        supabase
+          .from('monthly_retrospectives')
+          .select('user_id, content')
+          .in('user_id', memberIds)
+          .eq('team_id', currentTeam.id)
+          .eq('year_month', yearMonth),
       ]);
 
-      const processed: MemberDetail[] = (members ?? []).map((m: any) => {
-        const uid = m.user_id;
-        const uCheckins = (teamCheckins ?? [])
-          .filter((c: any) => c.user_id === uid)
-          .map((c: any) => ({ goal_id: c.goal_id, status: c.status, date: c.date }));
-        const uGoalsRaw = (teamUserGoalsRaw ?? []).filter((g: any) => g.user_id === uid);
-        const uGoals = uGoalsRaw
-          .filter((ug: any) => {
-            if (ug.start_date && ug.start_date > dataEnd) return false;
-            if (ug.end_date && ug.end_date < dataStart) return false;
-            return true;
-          })
-          .map((g: any) => ({
-            goal_id: g.goal_id, frequency: g.frequency,
-            target_count: g.target_count, start_date: g.start_date, end_date: g.end_date,
-          }));
+      const processed: MemberDetail[] = (members ?? [])
+        .map((m: any) => {
+          const uid = m.user_id;
+          const uCheckins = (teamCheckins ?? [])
+            .filter((c: any) => c.user_id === uid)
+            .map((c: any) => ({ goal_id: c.goal_id, status: c.status, date: c.date }));
+          const uGoalsRaw = (teamUserGoalsRaw ?? []).filter((g: any) => g.user_id === uid);
+          const uGoals = uGoalsRaw
+            .filter((ug: any) => {
+              if (ug.start_date && ug.start_date > dataEnd) return false;
+              if (ug.end_date && ug.end_date < dataStart) return false;
+              return true;
+            })
+            .map((g: any) => ({
+              goal_id: g.goal_id,
+              frequency: g.frequency,
+              target_count: g.target_count,
+              start_date: g.start_date,
+              end_date: g.end_date,
+            }));
 
-        let mTotal = 0, mFailed = 0;
-        endedRanges.forEach(wr => {
-          const r = calcWeekAchievement(wr.s.format('YYYY-MM-DD'), uCheckins, uGoals);
-          mTotal += r.totalGoals;
-          mFailed += r.failedGoals;
-        });
+          let mTotal = 0,
+            mFailed = 0;
+          endedRanges.forEach((wr) => {
+            const r = calcWeekAchievement(wr.s.format('YYYY-MM-DD'), uCheckins, uGoals);
+            mTotal += r.totalGoals;
+            mFailed += r.failedGoals;
+          });
 
-        const goalItems: GoalItem[] = uGoalsRaw
-          .filter((ug: any) => {
-            if (ug.start_date && ug.start_date > dataEnd) return false;
-            if (ug.end_date && ug.end_date < dataStart) return false;
-            return true;
-          })
-          .map((g: any) => ({
-            goalId: g.goal_id,
-            name: g.goals?.name ?? '목표',
-            frequency: g.frequency,
-            targetCount: g.target_count,
-          }));
+          const goalItems: GoalItem[] = uGoalsRaw
+            .filter((ug: any) => {
+              if (ug.start_date && ug.start_date > dataEnd) return false;
+              if (ug.end_date && ug.end_date < dataStart) return false;
+              return true;
+            })
+            .map((g: any) => ({
+              goalId: g.goal_id,
+              name: g.goals?.name ?? '목표',
+              frequency: g.frequency,
+              targetCount: g.target_count,
+            }));
 
-        return {
-          userId: uid,
-          nickname: m.users?.nickname || '알 수 없음',
-          isMe: uid === user.id,
-          rate: mTotal > 0 ? Math.round((mTotal - mFailed) / mTotal * 100) : null,
-          goals: goalItems,
-          hanmadi: (allResolutions ?? []).find((r: any) => r.user_id === uid)?.content || '',
-          hoego: (allRetrospectives ?? []).find((r: any) => r.user_id === uid)?.content || '',
-        };
-      }).sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
+          return {
+            userId: uid,
+            nickname: m.users?.nickname || '알 수 없음',
+            isMe: uid === user.id,
+            rate: mTotal > 0 ? Math.round(((mTotal - mFailed) / mTotal) * 100) : null,
+            goals: goalItems,
+            hanmadi: (allResolutions ?? []).find((r: any) => r.user_id === uid)?.content || '',
+            hoego: (allRetrospectives ?? []).find((r: any) => r.user_id === uid)?.content || '',
+          };
+        })
+        .sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
 
       setMemberDetails(processed);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   }, [user, currentTeam, yearMonth]);
 
   const saveReview = async () => {
     if (!user || !currentTeam) return;
     try {
-      const { error } = await supabase.from('monthly_retrospectives').upsert(
-        { user_id: user.id, team_id: currentTeam.id, year_month: yearMonth, content: tempText },
-        { onConflict: 'user_id, team_id, year_month' },
-      );
+      const { error } = await supabase
+        .from('monthly_retrospectives')
+        .upsert(
+          { user_id: user.id, team_id: currentTeam.id, year_month: yearMonth, content: tempText },
+          { onConflict: 'user_id, team_id, year_month' },
+        );
       if (error) throw error;
-      setMemberDetails(prev => prev.map(m => m.isMe ? { ...m, hoego: tempText } : m));
+      setMemberDetails((prev) => prev.map((m) => (m.isMe ? { ...m, hoego: tempText } : m)));
       setEditReviewModalVisible(false);
-    } catch (e) { Alert.alert('저장 실패', '회고 저장 중 오류가 발생했습니다.'); }
+    } catch (e) {
+      Alert.alert('저장 실패', '회고 저장 중 오류가 발생했습니다.');
+    }
   };
 
   useEffect(() => {
     fetchMonthlyStats();
   }, [fetchMonthlyStats]);
 
-  const myMember = memberDetails.find(m => m.isMe);
-  const otherMembers = memberDetails.filter(m => !m.isMe);
+  const myMember = memberDetails.find((m) => m.isMe);
+  const otherMembers = memberDetails.filter((m) => !m.isMe);
 
   // ── RENDER ───────────────────────────────────────────────────
   return (
     <View style={s.container}>
       <SafeAreaView style={s.safe} edges={['top']}>
-      <ScrollView ref={scrollRef} style={s.scroll} showsVerticalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', alignItems: 'center',  }}>
-          <Text style={s.screenTitle}>통계</Text>
-          <Text style={s.subtitle}>💡월초/월말 부분주가 4일 미만이면 인접 월에 편입 (해당 월에서 제외)</Text>
-        </View>
+        <ScrollView ref={scrollRef} style={s.scroll} showsVerticalScrollIndicator={false}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={s.screenTitle}>통계</Text>
+            <Text style={s.subtitle}>
+              💡월초/월말 부분주가 4일 미만이면 인접 월에 편입 (해당 월에서 제외)
+            </Text>
+          </View>
 
-        {/* ── 탭 전환 ── */}
-        <CyberFrame style={s.tabFrame} contentStyle={s.tabContent} glassOnly={true}>
-          <TouchableOpacity
-            style={[s.tabBtn, activeTab === 'weekly' && s.tabBtnActive]}
-            onPress={() => setActiveTab('weekly')}
-          >
-            <Text style={[s.tabText, activeTab === 'weekly' && s.tabTextActive]}>주간 현황</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.tabBtn, activeTab === 'monthly' && s.tabBtnActive]}
-            onPress={() => setActiveTab('monthly')}
-          >
-            <Text style={[s.tabText, activeTab === 'monthly' && s.tabTextActive]}>월간 요약</Text>
-          </TouchableOpacity>
-        </CyberFrame>
+          {/* ── 탭 전환 ── */}
+          <CyberFrame style={s.tabFrame} contentStyle={s.tabContent} glassOnly={true}>
+            <TouchableOpacity
+              style={[s.tabBtn, activeTab === 'weekly' && s.tabBtnActive]}
+              onPress={() => setActiveTab('weekly')}
+            >
+              <Text style={[s.tabText, activeTab === 'weekly' && s.tabTextActive]}>주간 현황</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.tabBtn, activeTab === 'monthly' && s.tabBtnActive]}
+              onPress={() => setActiveTab('monthly')}
+            >
+              <Text style={[s.tabText, activeTab === 'monthly' && s.tabTextActive]}>월간 요약</Text>
+            </TouchableOpacity>
+          </CyberFrame>
 
-        {activeTab === 'monthly' ? (
-          <>
-            {/* ── 월 선택 ── */}
-            <View style={s.monthRow}>
-              <TouchableOpacity style={s.monthBtn} onPress={goToPrev}>
-                <Ionicons name="chevron-back" size={22} color={COLORS.primaryLight} />
-              </TouchableOpacity>
-              <Text style={s.monthLabel}>{monthLabel}</Text>
-              <TouchableOpacity style={[s.monthBtn, !canNext && { opacity: 0.4 }]} onPress={goToNext} disabled={!canNext}>
-                <Ionicons name="chevron-forward" size={22} color={canNext ? COLORS.primaryLight : 'rgba(26,26,26,0.25)'} />
-              </TouchableOpacity>
-            </View>
-
-            {/* ═══ 우리 팀 달성률 차트 ═══ */}
-            {currentTeam && memberDetails.length > 0 && (
-              <>
-                <Text style={s.sectionTitle}>우리 팀 달성률</Text>
-                <CyberFrame style={s.chartFrame} contentStyle={s.chartContent}>
-                  {memberDetails.map((m, idx) => {
-                    const validRate = m.rate ?? 0;
-                    return (
-                      <View key={m.userId} style={s.chartRow}>
-                        <View style={s.chartLabelBox}>
-                          <Text style={s.chartRank}>
-                            {m.rate === null ? idx + 1 : (idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1)}
-                          </Text>
-                          <Text style={[s.chartName, m.isMe && s.chartNameMe]} numberOfLines={1}>
-                            {m.nickname}
-                          </Text>
-                        </View>
-                        <View style={s.chartBarBg}>
-                          <View
-                            style={[
-                              s.chartBarFill,
-                              { width: `${validRate}%` },
-                              m.isMe ? { backgroundColor: COLORS.primary } : { backgroundColor: 'rgba(26,26,26,0.15)' }
-                            ]}
-                          />
-                        </View>
-                        <Text style={[s.chartRateText, m.isMe && s.chartRateTextMe]}>
-                          {m.rate === null ? '-' : `${m.rate}%`}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </CyberFrame>
-              </>
-            )}
-
-            {/* ═══ 나의 N월 ═══ */}
-            <Text style={s.sectionTitle}>나의 {monthNum}월</Text>
-            <CyberFrame style={s.memberCardFrame} contentStyle={s.memberCardContent}>
-              {/* 달성률 */}
-              <View style={s.cardRateRow}>
-                <Text style={s.cardRateLabel}>{monthNum}월 달성률</Text>
-                {myRate === null ? (
-                  <Text style={s.rateEmpty}>집계 중</Text>
-                ) : (
-                  <Text style={[s.rateBig, { color: '#1A1A1A' }]}>
-                    {myRate}%{myRate === 100 ? ' 🏆' : ''}
-                  </Text>
-                )}
+          {activeTab === 'monthly' ? (
+            <>
+              {/* ── 월 선택 ── */}
+              <View style={s.monthRow}>
+                <TouchableOpacity style={s.monthBtn} onPress={goToPrev}>
+                  <Ionicons name="chevron-back" size={22} color={COLORS.primaryLight} />
+                </TouchableOpacity>
+                <Text style={s.monthLabel}>{monthLabel}</Text>
+                <TouchableOpacity
+                  style={[s.monthBtn, !canNext && { opacity: 0.4 }]}
+                  onPress={goToNext}
+                  disabled={!canNext}
+                >
+                  <Ionicons
+                    name="chevron-forward"
+                    size={22}
+                    color={canNext ? COLORS.primaryLight : 'rgba(26,26,26,0.25)'}
+                  />
+                </TouchableOpacity>
               </View>
 
-              {/* 목표 */}
-              {myGoalDetails.length > 0 && (
-                <View style={s.dividerSection}>
-                  <Text style={s.subLabel}>목표</Text>
-                  {myGoalDetails.map(g => (
-                    <View key={g.goalId} style={s.goalRow}>
-                      <View style={s.goalInfo}>
-                        <View style={s.myGoalChip}>
-                          <Text style={s.myGoalChipText}>{g.name}</Text>
-                          <Text style={s.myGoalChipFreq}> · {freqLabel(g.frequency, g.targetCount)}</Text>
+              {/* ═══ 우리 팀 달성률 차트 ═══ */}
+              {currentTeam && memberDetails.length > 0 && (
+                <>
+                  <Text style={s.sectionTitle}>우리 팀 달성률</Text>
+                  <CyberFrame style={s.chartFrame} contentStyle={s.chartContent}>
+                    {memberDetails.map((m, idx) => {
+                      const validRate = m.rate ?? 0;
+                      return (
+                        <View key={m.userId} style={s.chartRow}>
+                          <View style={s.chartLabelBox}>
+                            <Text style={s.chartRank}>
+                              {m.rate === null
+                                ? idx + 1
+                                : idx === 0
+                                  ? '🥇'
+                                  : idx === 1
+                                    ? '🥈'
+                                    : idx === 2
+                                      ? '🥉'
+                                      : idx + 1}
+                            </Text>
+                            <Text style={[s.chartName, m.isMe && s.chartNameMe]} numberOfLines={1}>
+                              {m.nickname}
+                            </Text>
+                          </View>
+                          <View style={s.chartBarBg}>
+                            <View
+                              style={[
+                                s.chartBarFill,
+                                { width: `${validRate}%` },
+                                m.isMe
+                                  ? { backgroundColor: COLORS.primary }
+                                  : { backgroundColor: 'rgba(26,26,26,0.15)' },
+                              ]}
+                            />
+                          </View>
+                          <Text style={[s.chartRateText, m.isMe && s.chartRateTextMe]}>
+                            {m.rate === null ? '-' : `${m.rate}%`}
+                          </Text>
                         </View>
-                      </View>
-                      {g.rate === null ? (
-                        <Text style={s.goalRateGray}>진행 중</Text>
-                      ) : (
-                        <View style={s.goalRateWrap}>
-                          <Text style={[s.goalRate, { color: g.rate >= 100 ? COLORS.primary : '#1A1A1A' }]}>{g.rate}%</Text>
-                          {g.rate >= 100 && <Ionicons name="checkmark-circle" size={15} color={COLORS.primary} />}
-                        </View>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* 한마디 */}
-              {currentTeam && myMember?.hanmadi ? (
-                <View style={s.dividerSection}>
-                  <Text style={s.subLabel}>한마디</Text>
-                  <Text style={s.reviewText}>{myMember.hanmadi}</Text>
-                </View>
-              ) : null}
-
-              {/* 회고 */}
-              {currentTeam && (
-                <View style={s.dividerSection}>
-                  <View style={s.reviewHeaderRow}>
-                    <Text style={s.subLabel}>회고</Text>
-                    <TouchableOpacity
-                      onPress={() => { setTempText(myMember?.hoego ?? ''); setEditReviewModalVisible(true); }}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="pencil" size={14} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={[s.reviewText, !(myMember?.hoego) && s.placeholder]}>
-                    {myMember?.hoego || '이번 달은 어떠셨나요? 다음 달을 위한 다짐을 남겨보세요.'}
-                  </Text>
-                </View>
-              )}
-            </CyberFrame>
-
-            {/* ═══ 팀원들의 N월 ═══ */}
-            {currentTeam && otherMembers.length > 0 && (
-              <>
-                <Text style={s.sectionTitle}>팀원들의 {monthNum}월</Text>
-                {otherMembers.map((m, idx) => (
-                  <CyberFrame key={m.userId} style={s.memberCardFrame} contentStyle={s.memberCardContent}>
-                    {/* 이름 + 달성률 */}
-                    <View style={s.cardRateRow}>
-                      <View style={s.memberNameRow}>
-                        <Text style={s.memberRankText}>
-                          {m.rate === null ? idx + 1 : (idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1)}
-                        </Text>
-                        <Text style={s.memberNickname}>{m.nickname}</Text>
-                      </View>
-                      {m.rate === null ? (
-                        <Text style={s.rateEmpty}>집계 중</Text>
-                      ) : (
-                        <Text style={[s.rateMedium, { color: '#1A1A1A' }]}>
-                          {m.rate}%{m.rate === 100 ? ' 🏆' : ''}
-                        </Text>
-                      )}
-                    </View>
-
-                    {/* 목표 chips */}
-                    {m.goals.length > 0 && (
-                      <View style={s.dividerSection}>
-                        <Text style={s.subLabel}>목표</Text>
-                        <View style={s.goalChipsWrap}>
-                          {m.goals.map(g => (
-                            <View key={g.goalId} style={s.goalChip}>
-                              <Text style={s.goalChipText}>{g.name}</Text>
-                              <Text style={s.goalChipFreq}> · {freqLabel(g.frequency, g.targetCount)}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    )}
-
-                    {/* 한마디 */}
-                    {m.hanmadi ? (
-                      <View style={s.dividerSection}>
-                        <Text style={s.subLabel}>한마디</Text>
-                        <Text style={s.reviewText}>{m.hanmadi}</Text>
-                      </View>
-                    ) : null}
-
-                    {/* 회고 */}
-                    {m.hoego ? (
-                      <View style={s.dividerSection}>
-                        <Text style={s.subLabel}>회고</Text>
-                        <Text style={s.reviewText}>{m.hoego}</Text>
-                      </View>
-                    ) : null}
+                      );
+                    })}
                   </CyberFrame>
-                ))}
-              </>
-            )}
-          </>
-        ) : (
-          <WeeklyStatsTab />
-        )}
+                </>
+              )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+              {/* ═══ 나의 N월 ═══ */}
+              <Text style={s.sectionTitle}>나의 {monthNum}월</Text>
+              <CyberFrame style={s.memberCardFrame} contentStyle={s.memberCardContent}>
+                {/* 달성률 */}
+                <View style={s.cardRateRow}>
+                  <Text style={s.cardRateLabel}>{monthNum}월 달성률</Text>
+                  {myRate === null ? (
+                    <Text style={s.rateEmpty}>집계 중</Text>
+                  ) : (
+                    <Text style={[s.rateBig, { color: '#1A1A1A' }]}>
+                      {myRate}%{myRate === 100 ? ' 🏆' : ''}
+                    </Text>
+                  )}
+                </View>
 
-      {/* ── Review Modal ── */}
-      <ReviewModal
-        visible={editReviewModalVisible}
-        value={tempText}
-        onChangeText={setTempText}
-        onClose={() => setEditReviewModalVisible(false)}
-        onSave={saveReview}
-      />
-    </SafeAreaView>
+                {/* 목표 */}
+                {myGoalDetails.length > 0 && (
+                  <View style={s.dividerSection}>
+                    <Text style={s.subLabel}>목표</Text>
+                    {myGoalDetails.map((g) => (
+                      <View key={g.goalId} style={s.goalRow}>
+                        <View style={s.goalInfo}>
+                          <View style={s.myGoalChip}>
+                            <Text style={s.myGoalChipText}>{g.name}</Text>
+                            <Text style={s.myGoalChipFreq}>
+                              {' '}
+                              · {freqLabel(g.frequency, g.targetCount)}
+                            </Text>
+                          </View>
+                        </View>
+                        {g.rate === null ? (
+                          <Text style={s.goalRateGray}>진행 중</Text>
+                        ) : (
+                          <View style={s.goalRateWrap}>
+                            <Text
+                              style={[
+                                s.goalRate,
+                                { color: g.rate >= 100 ? COLORS.primary : '#1A1A1A' },
+                              ]}
+                            >
+                              {g.rate}%
+                            </Text>
+                            {g.rate >= 100 && (
+                              <Ionicons name="checkmark-circle" size={15} color={COLORS.primary} />
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* 한마디 */}
+                {currentTeam && myMember?.hanmadi ? (
+                  <View style={s.dividerSection}>
+                    <Text style={s.subLabel}>한마디</Text>
+                    <Text style={s.reviewText}>{myMember.hanmadi}</Text>
+                  </View>
+                ) : null}
+
+                {/* 회고 */}
+                {currentTeam && (
+                  <View style={s.dividerSection}>
+                    <View style={s.reviewHeaderRow}>
+                      <Text style={s.subLabel}>회고</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setTempText(myMember?.hoego ?? '');
+                          setEditReviewModalVisible(true);
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="pencil" size={14} color={COLORS.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={[s.reviewText, !myMember?.hoego && s.placeholder]}>
+                      {myMember?.hoego || '이번 달은 어떠셨나요? 다음 달을 위한 다짐을 남겨보세요.'}
+                    </Text>
+                  </View>
+                )}
+              </CyberFrame>
+
+              {/* ═══ 팀원들의 N월 ═══ */}
+              {currentTeam && otherMembers.length > 0 && (
+                <>
+                  <Text style={s.sectionTitle}>팀원들의 {monthNum}월</Text>
+                  {otherMembers.map((m, idx) => (
+                    <CyberFrame
+                      key={m.userId}
+                      style={s.memberCardFrame}
+                      contentStyle={s.memberCardContent}
+                    >
+                      {/* 이름 + 달성률 */}
+                      <View style={s.cardRateRow}>
+                        <View style={s.memberNameRow}>
+                          <Text style={s.memberRankText}>
+                            {m.rate === null
+                              ? idx + 1
+                              : idx === 0
+                                ? '🥇'
+                                : idx === 1
+                                  ? '🥈'
+                                  : idx === 2
+                                    ? '🥉'
+                                    : idx + 1}
+                          </Text>
+                          <Text style={s.memberNickname}>{m.nickname}</Text>
+                        </View>
+                        {m.rate === null ? (
+                          <Text style={s.rateEmpty}>집계 중</Text>
+                        ) : (
+                          <Text style={[s.rateMedium, { color: '#1A1A1A' }]}>
+                            {m.rate}%{m.rate === 100 ? ' 🏆' : ''}
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* 목표 chips */}
+                      {m.goals.length > 0 && (
+                        <View style={s.dividerSection}>
+                          <Text style={s.subLabel}>목표</Text>
+                          <View style={s.goalChipsWrap}>
+                            {m.goals.map((g) => (
+                              <View key={g.goalId} style={s.goalChip}>
+                                <Text style={s.goalChipText}>{g.name}</Text>
+                                <Text style={s.goalChipFreq}>
+                                  {' '}
+                                  · {freqLabel(g.frequency, g.targetCount)}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      {/* 한마디 */}
+                      {m.hanmadi ? (
+                        <View style={s.dividerSection}>
+                          <Text style={s.subLabel}>한마디</Text>
+                          <Text style={s.reviewText}>{m.hanmadi}</Text>
+                        </View>
+                      ) : null}
+
+                      {/* 회고 */}
+                      {m.hoego ? (
+                        <View style={s.dividerSection}>
+                          <Text style={s.subLabel}>회고</Text>
+                          <Text style={s.reviewText}>{m.hoego}</Text>
+                        </View>
+                      ) : null}
+                    </CyberFrame>
+                  ))}
+                </>
+              )}
+            </>
+          ) : (
+            <WeeklyStatsTab />
+          )}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+
+        {/* ── Review Modal ── */}
+        <ReviewModal
+          visible={editReviewModalVisible}
+          value={tempText}
+          onChangeText={setTempText}
+          onClose={() => setEditReviewModalVisible(false)}
+          onSave={saveReview}
+        />
+      </SafeAreaView>
     </View>
   );
 }
@@ -497,24 +574,57 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   safe: { flex: 1 },
   scroll: { flex: 1 },
-  screenTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginTop: 8, marginBottom: 16 },
+  screenTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+  },
   subtitle: { fontSize: 12, color: 'rgba(26,26,26,0.50)', lineHeight: 20, fontWeight: '400' },
 
   // Tabs
   tabFrame: { marginHorizontal: 16, marginBottom: 16, borderRadius: 12 },
   tabContent: { flexDirection: 'row', padding: 4 },
   tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
-  tabBtnActive: { backgroundColor: 'rgba(255, 255, 255, 0.8)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 },
+  tabBtnActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
   tabText: { fontSize: 14, fontWeight: '600', color: 'rgba(26,26,26,0.5)' },
   tabTextActive: { color: '#1A1A1A', fontWeight: '700' },
 
   // Month selector
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8, gap: 16 },
+  monthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    gap: 16,
+  },
   monthBtn: { padding: 8 },
-  monthLabel: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', minWidth: 130, textAlign: 'center' },
+  monthLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    minWidth: 130,
+    textAlign: 'center',
+  },
 
   // Section title
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1A1A1A', marginHorizontal: 16, marginBottom: 4, marginTop: 28 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginHorizontal: 16,
+    marginBottom: 4,
+    marginTop: 28,
+  },
 
   // Team Chart
   chartFrame: { marginHorizontal: 16, marginTop: 8, marginBottom: 8 },
@@ -524,9 +634,22 @@ const s = StyleSheet.create({
   chartRank: { fontSize: 20, fontWeight: '700', color: 'rgba(26,26,26,0.35)', width: 20 },
   chartName: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', flex: 1 },
   chartNameMe: { color: '#FF6B3D', fontWeight: '800' },
-  chartBarBg: { flex: 1, height: 12, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 6, overflow: 'hidden', marginHorizontal: 10 },
+  chartBarBg: {
+    flex: 1,
+    height: 12,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginHorizontal: 10,
+  },
   chartBarFill: { height: '100%', borderRadius: 6 },
-  chartRateText: { width: 36, textAlign: 'right', fontSize: 13, fontWeight: '700', color: '#1A1A1A' },
+  chartRateText: {
+    width: 36,
+    textAlign: 'right',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
   chartRateTextMe: { color: '#FF6B3D', fontWeight: '800' },
 
   // Member card (shared for me + each team member)
@@ -534,7 +657,13 @@ const s = StyleSheet.create({
   memberCardContent: { paddingHorizontal: 0, paddingVertical: 0 },
 
   // Rate row at top of each card
-  cardRateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 18 },
+  cardRateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+  },
   cardRateLabel: { fontSize: 16, fontWeight: '600', color: 'rgba(26,26,26,0.45)' },
   rateBig: { fontSize: 32, fontWeight: '900', letterSpacing: -1 },
   rateMedium: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
@@ -547,13 +676,32 @@ const s = StyleSheet.create({
   memberNickname: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
 
   // Sub-sections within a card
-  dividerSection: { paddingHorizontal: 18, paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
-  subLabel: { fontSize: 13, fontWeight: '700', color: 'rgba(26,26,26,0.40)', marginBottom: 8, letterSpacing: 0.3, textTransform: 'uppercase' },
+  dividerSection: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  subLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.40)',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
 
   // Goal rows (my detailed view)
   goalRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   goalInfo: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  myGoalChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,107,61,0.06)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  myGoalChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,107,61,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
   myGoalChipText: { fontSize: 13, fontWeight: '600', color: '#1A1A1A' },
   myGoalChipFreq: { fontSize: 12, color: 'rgba(26,26,26,0.45)' },
   goalRateWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -562,13 +710,25 @@ const s = StyleSheet.create({
 
   // Goal chips (team member compact view)
   goalChipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  goalChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,107,61,0.06)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  goalChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,107,61,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
   goalChipText: { fontSize: 12, fontWeight: '600', color: '#1A1A1A' },
   goalChipFreq: { fontSize: 11, color: 'rgba(26,26,26,0.45)' },
   goalChipRate: { fontSize: 11, fontWeight: '700' },
 
   // Review (한마디 / 회고)
-  reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  reviewHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
   reviewText: { fontSize: 14, color: '#1A1A1A', lineHeight: 20 },
   placeholder: { color: 'rgba(26,26,26,0.30)' },
 });

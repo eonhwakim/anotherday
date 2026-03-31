@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  Dimensions,
   TouchableOpacity,
   Image,
 } from 'react-native';
@@ -28,39 +27,40 @@ import CheckinModal from '../../components/mypage/CheckinModal';
 import dayjs from '../../lib/dayjs';
 import { COLORS } from '../../constants/defaults';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
-import { getCalendarWeekRanges } from '../../components/stats/StatsShared';
-import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, RadialGradient, Stop, Rect, Path, Line, G } from 'react-native-svg';
-
-const { width } = Dimensions.get('window');
+import { getCalendarWeekRanges } from '../../lib/statsUtils';
+import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  RadialGradient,
+  Stop,
+  Path,
+} from 'react-native-svg';
 
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam, fetchTeams, fetchMembers } = useTeamStore();
-  const { myGoals, teamGoals, todayCheckins, fetchTeamGoals, fetchTodayCheckins, fetchMyGoals, extendGoalsForNewMonth } = useGoalStore();
+  const {
+    myGoals,
+    teamGoals,
+    todayCheckins,
+    fetchTeamGoals,
+    fetchTodayCheckins,
+    fetchMyGoals,
+    extendGoalsForNewMonth,
+  } = useGoalStore();
   const { memberProgress, fetchMemberProgress } = useStatsStore();
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
-  const lastTapRef = useRef(0);
-
-  React.useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress', () => {
-      if (navigation.isFocused()) {
-        const now = Date.now();
-        if (now - lastTapRef.current < 300) {
-          scrollRef.current?.scrollTo({ y: 0, animated: true });
-        }
-        lastTapRef.current = now;
-      }
-    });
-    return unsubscribe;
-  }, [navigation]);
+  useTabDoubleTapScrollTop({ navigation, scrollRef });
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [isStampFinished, setIsStampFinished] = React.useState(false);
   const [timePeriod, setTimePeriod] = React.useState<'DAY' | 'SUNSET' | 'NIGHT'>('DAY');
   const [isManualOverride, setIsManualOverride] = React.useState(false);
-  const [showGuideModal, setShowGuideModal] = React.useState(false);
+  // const [showGuideModal, setShowGuideModal] = React.useState(false);
   const [showMonthlyPrompt, setShowMonthlyPrompt] = React.useState(false);
   const [promptNewMonth, setPromptNewMonth] = React.useState<string>('');
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
@@ -82,12 +82,12 @@ export default function HomeScreen() {
       (teamGoals || []).filter((g) => g.owner_id === user?.id).map((g) => g.id),
     );
     const todayStr = dayjs().format('YYYY-MM-DD');
-    const weekStart = dayjs().startOf('isoWeek').format('YYYY-MM-DD');
-    const weekEnd = dayjs().endOf('isoWeek').format('YYYY-MM-DD');
-    
+    // const weekStart = dayjs().startOf('isoWeek').format('YYYY-MM-DD');
+    // const weekEnd = dayjs().endOf('isoWeek').format('YYYY-MM-DD');
+
     // monthlyCheckins 대신 todayCheckins를 활용하여 대략적인 주간 완료 수 계산 (정확한 주간 카운트가 필요하다면 statsStore의 monthlyCheckins를 가져와야 함)
     // 여기서는 홈 화면이므로 주간 카운트 표시는 생략하거나 0으로 처리 (CheckinModal 내에서 처리됨)
-    
+
     return (teamGoals || [])
       .filter((g) => myOwnedGoalIds.has(g.id))
       .filter((g) => {
@@ -114,27 +114,27 @@ export default function HomeScreen() {
   };
 
   // ── 안내 모달 체크 (유저 정보 로드 완료 시) ──
-  React.useEffect(() => {
-    if (!user) return;
+  // React.useEffect(() => {
+  //   if (!user) return;
 
-    const checkGuide = async () => {
-      try {
-        const key = 'hasSeenDevGuide_v2';
-        const hasSeen = await AsyncStorage.getItem(key);
-        
-        if (!hasSeen) {
-          // 약간의 지연을 주어 화면 전환 후 뜨게 함
-          setTimeout(() => {
-            setShowGuideModal(true);
-          }, 500);
-        }
-      } catch (e) {
-        console.error('[GuideCheck] Error:', e);
-      }
-    };
-    
-    checkGuide();
-  }, [user]);
+  //   const checkGuide = async () => {
+  //     try {
+  //       const key = 'hasSeenDevGuide_v2';
+  //       const hasSeen = await AsyncStorage.getItem(key);
+
+  //       if (!hasSeen) {
+  //         // 약간의 지연을 주어 화면 전환 후 뜨게 함
+  //         setTimeout(() => {
+  //           setShowGuideModal(true);
+  //         }, 500);
+  //       }
+  //     } catch (e) {
+  //       console.error('[GuideCheck] Error:', e);
+  //     }
+  //   };
+
+  //   checkGuide();
+  // }, [user]);
 
   // ── 새 달 1주차 시작일 감지 ──
   React.useEffect(() => {
@@ -146,10 +146,7 @@ export default function HomeScreen() {
         const todayStr = today.format('YYYY-MM-DD');
 
         // 이번 달과 다음 달의 1주차 시작일 확인 (주차 편입 규칙 적용)
-        const candidates = [
-          today.format('YYYY-MM'),
-          today.add(1, 'month').format('YYYY-MM'),
-        ];
+        const candidates = [today.format('YYYY-MM'), today.add(1, 'month').format('YYYY-MM')];
 
         let matchedMonth: string | null = null;
         for (const monthStr of candidates) {
@@ -187,17 +184,17 @@ export default function HomeScreen() {
     setShowMonthlyPrompt(false);
   };
 
-  const handleCloseGuide = async (savePreference: boolean) => {
-    try {
-      if (savePreference) {
-        await AsyncStorage.setItem('hasSeenDevGuide_v1', 'true');
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setShowGuideModal(false);
-    }
-  };
+  // const handleCloseGuide = async (savePreference: boolean) => {
+  //   try {
+  //     if (savePreference) {
+  //       await AsyncStorage.setItem('hasSeenDevGuide_v1', 'true');
+  //     }
+  //   } catch (e) {
+  //     console.error(e);
+  //   } finally {
+  //     setShowGuideModal(false);
+  //   }
+  // };
 
   React.useEffect(() => {
     const updateTime = () => {
@@ -239,7 +236,15 @@ export default function HomeScreen() {
         .map((g) => g.goalName);
       scheduleGoalReminderNotification(uncompleted).catch(() => {});
     }
-  }, [user]);
+  }, [
+    user,
+    fetchTeams,
+    fetchTeamGoals,
+    fetchTodayCheckins,
+    fetchMyGoals,
+    fetchMemberProgress,
+    fetchMembers,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -255,27 +260,6 @@ export default function HomeScreen() {
   };
 
   const today = dayjs().format('YY년 M월 D일');
-
-  // 오늘 해당되는 목표: DAILY(start_date이후) + WEEKLY_COUNT(이번 주 미달성)
-  // 주 N회의 이번 주 완료 수는 todayCheckins + 이번 주 과거 데이터에서 계산
-  const myActiveGoals = React.useMemo(() => {
-    const todayStr = dayjs().format('YYYY-MM-DD');
-    const activeUserGoalIds = myGoals
-      .filter((ug) => {
-        if (!ug.is_active) return false;
-        // start_date 체크
-        if (ug.start_date && todayStr < ug.start_date) return false;
-        // DAILY는 항상 포함
-        if (ug.frequency === 'daily') return true;
-        // WEEKLY_COUNT: store의 fetchMemberProgress에서 이미 계산하므로
-        // 여기서는 일단 포함 (UI에서 "이번 주 X/N" 표시 가능)
-        if (ug.frequency === 'weekly_count') return true;
-        return true;
-      })
-      .map((ug) => ug.goal_id);
-    return teamGoals.filter((g) => activeUserGoalIds.includes(g.id));
-  }, [myGoals, teamGoals]);
-
   const isDay = timePeriod === 'DAY';
   const isSunset = timePeriod === 'SUNSET';
   const isNight = timePeriod === 'NIGHT';
@@ -291,7 +275,7 @@ export default function HomeScreen() {
         visible={showMonthlyPrompt}
         newMonthStr={promptNewMonth}
         activeGoals={myGoals}
-        goalNames={new Map(teamGoals.map(g => [g.id, g.name]))}
+        goalNames={new Map(teamGoals.map((g) => [g.id, g.name]))}
         onContinue={handleMonthlyPromptContinue}
         onNewPlan={handleMonthlyPromptNewPlan}
       />
@@ -303,26 +287,26 @@ export default function HomeScreen() {
             timePeriod === 'DAY'
               ? require('../../../assets/bg-m.png')
               : timePeriod === 'SUNSET'
-              ? require('../../../assets/bg-d.png')
-              : require('../../../assets/bg-n.png')
+                ? require('../../../assets/bg-d.png')
+                : require('../../../assets/bg-n.png')
           }
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
         {/* 밤: 전체 어둠 오버레이 */}
-        {timePeriod === 'NIGHT' && (
-          <View style={styles.nightOverlay} pointerEvents="none" />
-        )}
+        {timePeriod === 'NIGHT' && <View style={styles.nightOverlay} pointerEvents="none" />}
       </View>
 
       {/* ── 장식 ── */}
       <View style={styles.decorLayer}>
         {timePeriod === 'SUNSET' && (
-          <HoloGlow style={{ top: 80, right: 20 }} color1={COLORS.holoPink} color2={COLORS.holoMint} />
+          <HoloGlow
+            style={{ top: 80, right: 20 }}
+            color1={COLORS.holoPink}
+            color2={COLORS.holoMint}
+          />
         )}
-        {timePeriod === 'NIGHT' && (
-          <HoloMoon style={{ top: 90, right: 30 }} />
-        )}
+        {timePeriod === 'NIGHT' && <HoloMoon style={{ top: 90, right: 30 }} />}
       </View>
 
       <SafeAreaView style={styles.safe} edges={['top']}>
@@ -331,7 +315,11 @@ export default function HomeScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.secondary} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.secondary}
+            />
           }
         >
           {/* 시간대 테스트 */}
@@ -351,7 +339,13 @@ export default function HomeScreen() {
 
           {/* 헤더 */}
           <View style={styles.header}>
-            <Text style={[styles.greeting, isDay && styles.greetingDay, isSunset && styles.greetingSunset]}>
+            <Text
+              style={[
+                styles.greeting,
+                isDay && styles.greetingDay,
+                isSunset && styles.greetingSunset,
+              ]}
+            >
               반가워요, {user?.nickname ?? ''}님
             </Text>
             <View style={styles.frameRow}>
@@ -366,7 +360,13 @@ export default function HomeScreen() {
 
           {/* 산 */}
           <View style={styles.mountainSection}>
-            <MountainProgress members={memberProgress} currentUserId={user?.id} startAnimation={isStampFinished} isNight={timePeriod === 'NIGHT'} timePeriod={timePeriod} />
+            <MountainProgress
+              members={memberProgress}
+              currentUserId={user?.id}
+              startAnimation={isStampFinished}
+              isNight={timePeriod === 'NIGHT'}
+              timePeriod={timePeriod}
+            />
           </View>
 
           {/* 목표 — 사이버 프레임 카드 */}
@@ -386,10 +386,10 @@ export default function HomeScreen() {
           onPress={() => setCheckinModalVisible(true)}
           activeOpacity={0.78}
         >
-          <Image 
-            source={require('../../../assets/camera-btn.png')} 
-            style={{ width: '100%', height: '100%' }} 
-            resizeMode="contain" 
+          <Image
+            source={require('../../../assets/camera-btn.png')}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="contain"
           />
         </TouchableOpacity>
       </SafeAreaView>
@@ -407,9 +407,7 @@ export default function HomeScreen() {
   );
 }
 
-
 // ─── 홀로그래픽 장식 ───
-
 function HoloGlow({ style, color1, color2 }: any) {
   return (
     <View style={[styles.decorItem, style]}>
@@ -439,10 +437,7 @@ function HoloMoon({ style }: any) {
           </RadialGradient>
         </Defs>
         <Circle cx="45" cy="45" r="42" fill="url(#moonGlow)" />
-        <Path
-          d="M 55 12 A 28 28 0 1 0 55 78 A 22 22 0 1 1 55 12 Z"
-          fill="rgba(240,240,255,0.10)"
-        />
+        <Path d="M 55 12 A 28 28 0 1 0 55 78 A 22 22 0 1 1 55 12 Z" fill="rgba(240,240,255,0.10)" />
       </Svg>
     </View>
   );
@@ -547,7 +542,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'stretch',
   },
-  
+
   // ── 플로팅 버튼 (이미지) ──
   floatingButtonWrapper: {
     position: 'absolute',

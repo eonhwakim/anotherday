@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useRef } from 'react';
-import * as Clipboard from 'expo-clipboard';
 import {
   View,
   Text,
@@ -7,7 +6,6 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
-  Modal,
   Platform,
   Image,
 } from 'react-native';
@@ -29,6 +27,10 @@ import { supabase } from '../../lib/supabaseClient';
 import { COLORS } from '../../constants/defaults';
 import CyberFrame from '../../components/ui/CyberFrame';
 import GlassModal from '../../components/ui/GlassModal';
+import MyPageProfileCard from './components/MyPageProfileCard';
+import MyPageTeamSection from './components/MyPageTeamSection';
+import MyPageFabMenu from './components/MyPageFabMenu';
+import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 
 export default function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -40,7 +42,6 @@ export default function MyPageScreen() {
     lastMonthGoals,
     fetchTeamGoals,
     fetchMyGoals,
-    fetchLastMonthGoals,
     copyGoalsFromLastMonth,
     fetchTodayCheckins,
     addGoal,
@@ -49,20 +50,7 @@ export default function MyPageScreen() {
 
   const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
-  const lastTapRef = useRef(0);
-
-  React.useEffect(() => {
-    const unsubscribe = tabNavigation.addListener('tabPress', () => {
-      if (tabNavigation.isFocused()) {
-        const now = Date.now();
-        if (now - lastTapRef.current < 300) {
-          scrollRef.current?.scrollTo({ y: 0, animated: true });
-        }
-        lastTapRef.current = now;
-      }
-    });
-    return unsubscribe;
-  }, [tabNavigation]);
+  useTabDoubleTapScrollTop({ navigation: tabNavigation, scrollRef });
 
   const [teamModalType, setTeamModalType] = useState<'create' | 'join' | null>(null);
   const [teamInputValue, setTeamInputValue] = useState('');
@@ -110,12 +98,12 @@ export default function MyPageScreen() {
       fetchTodayCheckins(user.id),
     ]);
     await loadResolution();
-  }, [user, loadResolution]);
+  }, [user, fetchTeams, fetchTeamGoals, fetchMyGoals, fetchTodayCheckins, loadResolution]);
 
   // 팀 변경 시 한마디 다시 로드
   React.useEffect(() => {
     loadResolution();
-  }, [currentTeam?.id]);
+  }, [currentTeam?.id, loadResolution]);
 
   useFocusEffect(
     useCallback(() => {
@@ -151,7 +139,7 @@ export default function MyPageScreen() {
         ],
       );
     }
-  }, [lastMonthGoals, myGoals, user]);
+  }, [lastMonthGoals, myGoals, user, copyGoalsFromLastMonth]);
 
   const handleAddGoal = async (
     name: string,
@@ -236,11 +224,14 @@ export default function MyPageScreen() {
       const team = await createTeam(teamInputValue.trim(), user.id);
       if (team) {
         Alert.alert('성공', '팀이 생성되었습니다!', [
-          { text: '확인', onPress: () => {
-            setTeamModalType(null);
-            setTeamInputValue('');
-            loadData();
-          }}
+          {
+            text: '확인',
+            onPress: () => {
+              setTeamModalType(null);
+              setTeamInputValue('');
+              loadData();
+            },
+          },
         ]);
       } else {
         Alert.alert('실패', '팀 생성 중 오류가 발생했습니다.');
@@ -262,11 +253,14 @@ export default function MyPageScreen() {
         selectTeam(team);
         await fetchTeams(user.id);
         Alert.alert('환영합니다!', `${team.name} 팀에 합류하셨습니다.`, [
-          { text: '확인', onPress: () => {
-            setTeamModalType(null);
-            setTeamInputValue('');
-            loadData();
-          }}
+          {
+            text: '확인',
+            onPress: () => {
+              setTeamModalType(null);
+              setTeamInputValue('');
+              loadData();
+            },
+          },
         ]);
       } else {
         Alert.alert('실패', '초대 코드가 올바르지 않거나 팀을 찾을 수 없습니다.');
@@ -290,47 +284,14 @@ export default function MyPageScreen() {
   const handleLogout = () => {
     Alert.alert('로그아웃', '정말 로그아웃하시겠어요?', [
       { text: '취소', style: 'cancel' },
-      { 
-        text: '로그아웃', 
-        style: 'destructive', 
+      {
+        text: '로그아웃',
+        style: 'destructive',
         onPress: async () => {
           await signOut();
-        } 
+        },
       },
     ]);
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      '계정 삭제',
-      '계정을 삭제하면 모든 데이터(목표, 인증 기록, 팀 정보 등)가 영구적으로 삭제되며 복구할 수 없습니다.\n\n정말 삭제하시겠어요?',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제하기',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              '최종 확인',
-              '이 작업은 되돌릴 수 없습니다. 계정을 삭제할까요?',
-              [
-                { text: '취소', style: 'cancel' },
-                {
-                  text: '영구 삭제',
-                  style: 'destructive',
-                  onPress: async () => {
-                    const success = await deleteAccount();
-                    if (!success) {
-                      Alert.alert('오류', '계정 삭제에 실패했습니다. 다시 시도해주세요.');
-                    }
-                  },
-                },
-              ],
-            );
-          },
-        },
-      ],
-    );
   };
 
   // ── 현재 팀에 해당하는 나의 목표만 필터링 ──
@@ -347,53 +308,27 @@ export default function MyPageScreen() {
   // ── 마이페이지 목표설정에 보여줄 목표 (user_goals에도 존재하는 것만) ──
   const myVisibleGoals = React.useMemo(() => {
     if (!teamGoals || !user) return [];
-    const activeGoalIds = new Set(myGoals.map(ug => ug.goal_id));
+    const activeGoalIds = new Set(myGoals.map((ug) => ug.goal_id));
     return teamGoals.filter((g) => g.owner_id === user.id && activeGoalIds.has(g.id));
   }, [teamGoals, myGoals, user]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView 
-        ref={scrollRef} 
-        style={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <ScrollView ref={scrollRef} style={styles.scroll} keyboardShouldPersistTaps="handled">
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+        >
           <Text style={styles.screenTitle}>마이페이지</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('AppSettings')} style={{ padding: 14 }}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AppSettings')}
+            style={{ padding: 14 }}
+          >
             <Ionicons name="settings-outline" size={24} color={COLORS.textSecondary} />
           </TouchableOpacity>
         </View>
 
         {/* ── 프로필 카드 ── */}
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('ProfileEdit')}
-        >
-          <CyberFrame style={styles.profileFrame} contentStyle={styles.profileCard} glassOnly={false}>
-            <View style={styles.avatarLarge}>
-              {user?.profile_image_url ? (
-                <Image 
-                  source={{ uri: user.profile_image_url }} 
-                  style={{ width: 56, height: 56, borderRadius: 28 }} 
-                />
-              ) : (
-                <Ionicons name="person" size={28} color={COLORS.primaryLight} />
-              )}
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.nickname}>{user?.nickname ?? '-'}</Text>
-              {(user?.name || user?.gender || user?.age) && (
-                <Text style={styles.detailText}>
-                  {[user.name, user.gender, user.age ? `${user.age}세` : null]
-                    .filter(Boolean)
-                    .join(' / ')}
-                </Text>
-              )}
-              <Text style={styles.email}>{user?.email ?? '-'}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </CyberFrame>
-        </TouchableOpacity>
+        <MyPageProfileCard user={user} onPress={() => navigation.navigate('ProfileEdit')} />
 
         {/* ── 한달 목표 설정 ── */}
         <GoalSetting
@@ -405,95 +340,25 @@ export default function MyPageScreen() {
           monthlyResolution={monthlyResolution}
         />
 
-        {/* ── 소속 팀 목록 및 관리 ── */}
-        <CyberFrame style={styles.sectionFrame} contentStyle={styles.sectionCard} glassOnly={false}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.cardTitle}>소속 팀</Text>
-          </View>
-
-          
-          {teams.length === 0 ? (
-            <Text style={styles.emptyText}>소속된 팀이 없습니다.</Text>
-          ) : (
-            teams.map((team) => (
-              <TouchableOpacity 
-                key={team.id} 
-                onPress={() => {
-                  selectTeam(team);
-                  navigation.navigate('TeamMember', { teamId: team.id });
-                }}
-                activeOpacity={0.7}
-              >
-                <CyberFrame 
-                  style={[
-                    styles.teamItemFrame,
-                    currentTeam?.id === team.id && styles.activeTeamItemFrame
-                  ]} 
-                  contentStyle={styles.teamItemContent} 
-                  glassOnly={true}
-                >
-                  <TouchableOpacity 
-                    onPress={() => {
-                      selectTeam(team);
-                      loadData(); // 팀 변경 시 데이터 새로고침
-                    }}
-                    style={styles.teamImageWrap}
-                  >
-                    {/* @ts-ignore */}
-                    {team.profile_image_url ? (
-                      <Image
-                        // @ts-ignore
-                        source={{ uri: team.profile_image_url }}
-                        style={styles.teamCardImage}
-                      />
-                    ) : (
-                      <View style={[styles.teamCardImage, styles.teamCardImagePlaceholder]}>
-                        <Ionicons name="people" size={20} color={COLORS.primaryLight} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                  <View style={styles.teamInfo}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={[
-                        styles.teamName,
-                        currentTeam?.id === team.id && styles.activeTeamText
-                      ]}>
-                        {team.name}
-                      </Text>
-                      {team.role === 'leader' ? (
-                        <View style={styles.leaderBadge}>
-                          <Text style={styles.leaderText}>LEADER</Text>
-                        </View>
-                      ) : (
-                        <View style={styles.memberBadge}>
-                          <Text style={styles.memberText}>MEMBER</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.inviteCode}>
-                      초대코드: {team.invite_code}
-                    </Text>
-                  </View>
-                  {currentTeam?.id === team.id && (
-                    <TouchableOpacity 
-                      onPress={async (e) => {
-                        e.stopPropagation();
-                        await Clipboard.setStringAsync(team.invite_code);
-                        Alert.alert('복사 완료', '초대 코드가 클립보드에 복사되었습니다.');
-                      }}
-                      style={{ padding: 4 }}
-                    >
-                      <Ionicons name="clipboard-outline" size={18} color={COLORS.primaryLight} />
-                    </TouchableOpacity>
-                  )}
-                </CyberFrame>
-              </TouchableOpacity>
-            ))
-          )}
-        </CyberFrame>
+        <MyPageTeamSection
+          teams={teams}
+          currentTeam={currentTeam}
+          onOpenTeamMember={(team) => {
+            selectTeam(team);
+            navigation.navigate('TeamMember', { teamId: team.id });
+          }}
+          onSelectTeam={(team) => {
+            selectTeam(team);
+            loadData();
+          }}
+        />
 
         {/* ── 계정 관리 ── */}
-        <CyberFrame style={styles.sectionFrame} contentStyle={styles.accountSection} glassOnly={false}>
+        <CyberFrame
+          style={styles.sectionFrame}
+          contentStyle={styles.accountSection}
+          glassOnly={false}
+        >
           <Text style={styles.accountSectionTitle}>계정 관리</Text>
 
           <TouchableOpacity style={styles.accountRow} onPress={handleLogout}>
@@ -510,88 +375,40 @@ export default function MyPageScreen() {
 
       {/* ── 플로팅 버튼 (+) ── */}
       {!fabMenuVisible && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.floatingButton}
           onPress={() => setFabMenuVisible(true)}
           activeOpacity={0.8}
         >
-          <Image 
-            source={require('../../../assets/plus-btn.png')} 
-            style={{ width: '100%', height: '100%' }} 
-            resizeMode="contain" 
+          <Image
+            source={require('../../../assets/plus-btn.png')}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="contain"
           />
         </TouchableOpacity>
       )}
 
-      {/* ── FAB 메뉴 모달 ── */}
-      <Modal
+      <MyPageFabMenu
         visible={fabMenuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setFabMenuVisible(false)}
-      >
-        <View style={styles.fabOverlay}>
-          <TouchableOpacity 
-            style={StyleSheet.absoluteFill} 
-            activeOpacity={1} 
-            onPress={() => setFabMenuVisible(false)}
-          />
-          
-          <View style={styles.fabMenuContainer}>
-            <View style={styles.fabMenuSection}>
-              <TouchableOpacity 
-                style={styles.fabMenuItem}
-                onPress={() => { setFabMenuVisible(false); handleOpenTeamModal('create'); }}
-              >
-                <Ionicons name="add-circle-outline" size={20} color="#1A1A1A" />
-                <Text style={styles.fabMenuText}>팀 생성</Text>
-              </TouchableOpacity>
-              <View style={styles.fabMenuDivider} />
-              <TouchableOpacity 
-                style={styles.fabMenuItem}
-                onPress={() => { setFabMenuVisible(false); handleOpenTeamModal('join'); }}
-              >
-                <Ionicons name="enter-outline" size={20} color="#1A1A1A" />
-                <Text style={styles.fabMenuText}>팀 참가</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.fabMenuSection}>
-              <TouchableOpacity 
-                style={styles.fabMenuItem}
-                onPress={() => { 
-                  setFabMenuVisible(false); 
-                  setResolutionInput(monthlyResolution);
-                  setResolutionModalVisible(true); 
-                }}
-              >
-                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#1A1A1A" />
-                <Text style={styles.fabMenuText}>한마디 추가</Text>
-              </TouchableOpacity>
-              <View style={styles.fabMenuDivider} />
-              <TouchableOpacity 
-                style={styles.fabMenuItem}
-                onPress={() => { 
-                  setFabMenuVisible(false); 
-                  navigation.navigate('AddRoutine');
-                }}
-              >
-                <Ionicons name="calendar-outline" size={20} color="#1A1A1A" />
-                <Text style={styles.fabMenuText}>루틴 추가</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* 모달 내부에도 동일한 X 버튼을 배치하여 어두운 배경 위로 올라오게 함 */}
-          <TouchableOpacity 
-            style={[styles.floatingButton, styles.floatingButtonClose]}
-            onPress={() => setFabMenuVisible(false)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="close" size={28} color="#1A1A1A" />
-          </TouchableOpacity>
-        </View>
-      </Modal>
+        onClose={() => setFabMenuVisible(false)}
+        onCreateTeam={() => {
+          setFabMenuVisible(false);
+          handleOpenTeamModal('create');
+        }}
+        onJoinTeam={() => {
+          setFabMenuVisible(false);
+          handleOpenTeamModal('join');
+        }}
+        onAddResolution={() => {
+          setFabMenuVisible(false);
+          setResolutionInput(monthlyResolution);
+          setResolutionModalVisible(true);
+        }}
+        onAddRoutine={() => {
+          setFabMenuVisible(false);
+          navigation.navigate('AddRoutine');
+        }}
+      />
 
       {/* ── 한마디 추가 모달 ── */}
       <GlassModal
@@ -634,7 +451,6 @@ export default function MyPageScreen() {
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   safe: {
@@ -755,16 +571,16 @@ const styles = StyleSheet.create({
   },
   activeTeamItemFrame: {
     backgroundColor: 'rgba(255, 255, 255, 0.85)', // 불투명도가 높은 흰색 유리 느낌
-    borderTopColor: 'rgba(255, 255, 255, 1)',     // 좌상단은 빛을 받아 하얗게 빛남
+    borderTopColor: 'rgba(255, 255, 255, 1)', // 좌상단은 빛을 받아 하얗게 빛남
     borderLeftColor: 'rgba(229, 229, 229, 1)',
     borderBottomColor: 'rgba(255, 135, 61, 0.22)',
     borderWidth: 0.6,
     shadowColor: '#929292ff',
-    shadowOffset: { width: 1, height: 1 },        // 우하단으로 넓게 퍼지는 빛 번짐
+    shadowOffset: { width: 1, height: 1 }, // 우하단으로 넓게 퍼지는 빛 번짐
     shadowOpacity: 0.35,
     shadowRadius: 16,
     elevation: 8,
-    overflow: 'visible',                          // 글로우 효과가 잘리지 않도록
+    overflow: 'visible', // 글로우 효과가 잘리지 않도록
   },
   teamItemContent: {
     flexDirection: 'row',
@@ -845,7 +661,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingHorizontal: 16,
   },
-  
+
   leaderBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -892,7 +708,7 @@ const styles = StyleSheet.create({
     bottom: 120,
     right: 24,
   },
-  
+
   // ── FAB 메뉴 모달 ──
   fabOverlay: {
     flex: 1,

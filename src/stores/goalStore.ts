@@ -3,9 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import type { Goal, UserGoal, Checkin } from '../types/domain';
 import dayjs from '../lib/dayjs';
 import { scheduleGoalReminderNotification } from '../utils/notifications';
-import { getCalendarWeekRanges } from '../components/stats/StatsShared';
-
-// ─── Store Interface ──────────────────────────────────────────
+import { getCalendarWeekRanges } from '../lib/statsUtils';
 
 interface GoalState {
   teamGoals: Goal[];
@@ -42,8 +40,6 @@ interface GoalState {
   /** 스토어 초기화 (로그아웃 시) */
   reset: () => void;
 }
-
-// ─── Store ────────────────────────────────────────────────────
 
 export const useGoalStore = create<GoalState>((set, get) => ({
   teamGoals: [],
@@ -121,11 +117,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   // ── 팀 목표 로드 ──
   fetchTeamGoals: async (teamId, userId) => {
-    let query = supabase
-      .from('goals')
-      .select('*')
-      .is('deleted_at', null)
-      .order('created_at');
+    let query = supabase.from('goals').select('*').is('deleted_at', null).order('created_at');
 
     if (userId) {
       if (teamId && teamId.trim().length > 0) {
@@ -234,17 +226,24 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   },
 
   // ── 목표 추가 ──
-  addGoal: async ({ teamId, userId, name, frequency = 'daily', targetCount = null, duration = 'continuous' }) => {
+  addGoal: async ({
+    teamId,
+    userId,
+    name,
+    frequency = 'daily',
+    targetCount = null,
+    duration = 'continuous',
+  }) => {
     const trimmed = name.trim();
     if (!trimmed) return false;
 
     const today = dayjs().format('YYYY-MM-DD');
     let computedEndDate: string | null = null;
-    
+
     if (duration === 'this_month') {
       const todayDayjs = dayjs();
       const todayStr = todayDayjs.format('YYYY-MM-DD');
-      
+
       const candidates = [
         todayDayjs.format('YYYY-MM'),
         todayDayjs.add(1, 'month').format('YYYY-MM'),
@@ -255,7 +254,9 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
       for (const monthStr of candidates) {
         const { ranges } = getCalendarWeekRanges(monthStr);
-        const isTodayInRanges = ranges.some(r => r.s.format('YYYY-MM-DD') <= todayStr && r.e.format('YYYY-MM-DD') >= todayStr);
+        const isTodayInRanges = ranges.some(
+          (r) => r.s.format('YYYY-MM-DD') <= todayStr && r.e.format('YYYY-MM-DD') >= todayStr,
+        );
         if (isTodayInRanges) {
           targetMonth = monthStr;
           matchedRanges = ranges;
@@ -314,11 +315,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     const payload: any = { name: trimmed, owner_id: userId };
     if (teamId) payload.team_id = teamId;
 
-    const { data: newGoal, error } = await supabase
-      .from('goals')
-      .insert(payload)
-      .select()
-      .single();
+    const { data: newGoal, error } = await supabase.from('goals').insert(payload).select().single();
 
     if (error || !newGoal) {
       console.error('addGoal error:', error);
@@ -342,8 +339,6 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   // ── 목표 삭제 (Soft Delete 지원) ──
   removeTeamGoal: async (teamId, userId, goalId) => {
-    const today = dayjs().format('YYYY-MM-DD');
-
     // 1. 해당 사용자의 이 목표에 대한 체크인이 있는지 확인
     const { count: userCheckinsCount } = await supabase
       .from('checkins')
@@ -356,9 +351,9 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
       const { error: ugErr } = await supabase
         .from('user_goals')
-        .update({ 
+        .update({
           deleted_at: new Date().toISOString(),
-          end_date: yesterday
+          end_date: yesterday,
         })
         .eq('user_id', userId)
         .eq('goal_id', goalId);
@@ -385,7 +380,10 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       .eq('goal_id', goalId)
       .is('deleted_at', null);
 
-    if ((totalCheckinsCount && totalCheckinsCount > 0) || (otherUsersCount && otherUsersCount > 0)) {
+    if (
+      (totalCheckinsCount && totalCheckinsCount > 0) ||
+      (otherUsersCount && otherUsersCount > 0)
+    ) {
       // 누군가 인증했거나 사용 중이면 goals는 Soft Delete (RLS 때문에 owner만 적용됨)
       const { error: goalErr } = await supabase
         .from('goals')
@@ -394,17 +392,11 @@ export const useGoalStore = create<GoalState>((set, get) => ({
       if (goalErr) console.error('removeTeamGoal goals update error:', goalErr);
     } else {
       // 아무도 안 쓰고 인증도 없으면 Hard Delete
-      const { error: goalErr } = await supabase
-        .from('goals')
-        .delete()
-        .eq('id', goalId);
+      const { error: goalErr } = await supabase.from('goals').delete().eq('id', goalId);
       if (goalErr) console.error('removeTeamGoal goals delete error:', goalErr);
     }
 
-    await Promise.all([
-      get().fetchTeamGoals(teamId, userId),
-      get().fetchMyGoals(userId),
-    ]);
+    await Promise.all([get().fetchTeamGoals(teamId, userId), get().fetchMyGoals(userId)]);
   },
 
   // ── 체크인 삭제 ──

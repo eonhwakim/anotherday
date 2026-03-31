@@ -10,18 +10,11 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, {
-  Path,
-  Defs,
-  LinearGradient,
-  Stop,
-  Circle as SvgCircle,
-  Rect,
-} from 'react-native-svg';
 import type { MemberProgress } from '../../types/domain';
 import { useIsFocused } from '@react-navigation/native';
 
 import CyberFrame from '../ui/CyberFrame';
+import DynamicBadge from './TodayGoalBadge';
 
 interface TodayGoalListProps {
   members: MemberProgress[];
@@ -54,11 +47,10 @@ function GoalChip({ goalId, goalName, isDone, isPass, isInactive }: GoalChipProp
 
   return (
     <View key={goalId} style={chipStyle}>
-      {isDone && (
-        <Text style={styles.goalChipIcon}>✓</Text>
-      )}
+      {isDone && <Text style={styles.goalChipIcon}>✓</Text>}
       <Text style={textStyle} numberOfLines={1}>
-        {isPass ? '(패스) ' : ''}{goalName}
+        {isPass ? '(패스) ' : ''}
+        {goalName}
       </Text>
     </View>
   );
@@ -78,10 +70,7 @@ function MemberCard({ member, isMe, animVal }: MemberCardProps) {
 
   return (
     <Animated.View
-      style={[
-        styles.memberRow,
-        { opacity: animOpacity, transform: [{ translateY: animSlide }] },
-      ]}
+      style={[styles.memberRow, { opacity: animOpacity, transform: [{ translateY: animSlide }] }]}
     >
       <View style={[styles.trailNode, allDone && styles.trailNodeDone]}>
         {member.profileImageUrl ? (
@@ -99,13 +88,11 @@ function MemberCard({ member, isMe, animVal }: MemberCardProps) {
         )}
       </View>
 
-      <CyberFrame
-        style={styles.memberCard}
-        contentStyle={styles.memberCardContent}
-      >
+      <CyberFrame style={styles.memberCard} contentStyle={styles.memberCardContent}>
         <View style={styles.memberHeader}>
           <Text style={[styles.memberName, isMe && styles.memberNameMe]} numberOfLines={1}>
-            {member.nickname}{isMe ? ' (나)' : ''}
+            {member.nickname}
+            {isMe ? ' (나)' : ''}
           </Text>
           <Text style={styles.memberCount}>
             {member.completedGoals}/{member.totalGoals}
@@ -137,7 +124,11 @@ function MemberCard({ member, isMe, animVal }: MemberCardProps) {
 }
 
 // ─── Main Component ───
-export default function TodayGoalList({ members, currentUserId, onAnimationFinish }: TodayGoalListProps) {
+export default function TodayGoalList({
+  members,
+  currentUserId,
+  onAnimationFinish,
+}: TodayGoalListProps) {
   const isFocused = useIsFocused();
 
   const totalAll = members.reduce((s, m) => s + m.totalGoals, 0);
@@ -147,28 +138,28 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   const { badgeState, badgeMembers } = React.useMemo(() => {
     if (!members || members.length === 0) return { badgeState: 'START', badgeMembers: [] };
 
-    const membersWithPct = members.map(m => ({
+    const membersWithPct = members.map((m) => ({
       ...m,
       pct: m.totalGoals > 0 ? m.completedGoals / m.totalGoals : 0,
     }));
 
-    if (membersWithPct.every(m => m.pct >= 1)) {
+    if (membersWithPct.every((m) => m.pct >= 1)) {
       return { badgeState: 'ALL_CLEAR', badgeMembers: members };
     }
 
-    const finishers = membersWithPct.filter(m => m.pct >= 1);
+    const finishers = membersWithPct.filter((m) => m.pct >= 1);
     if (finishers.length > 0) {
       return { badgeState: 'FINISHER', badgeMembers: finishers };
     }
 
-    const activeMembers = membersWithPct.filter(m => m.completedGoals > 0);
+    const activeMembers = membersWithPct.filter((m) => m.completedGoals > 0);
     if (activeMembers.length === 0) {
       return { badgeState: 'START', badgeMembers: [] };
     }
 
     const sorted = [...activeMembers].sort((a, b) => b.pct - a.pct);
     const bestPct = sorted[0].pct;
-    const top = sorted.filter(m => m.pct === bestPct);
+    const top = sorted.filter((m) => m.pct === bestPct);
 
     return { badgeState: 'LEADER', badgeMembers: top };
   }, [members]);
@@ -217,16 +208,46 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
 
       const seq = Animated.sequence([
         Animated.parallel([
-          Animated.timing(scaleAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.elastic(1.5)), useNativeDriver: true }),
-          Animated.timing(translateYAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.exp), useNativeDriver: true }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 500,
+            easing: Easing.out(Easing.elastic(1.5)),
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateYAnim, {
+            toValue: 1,
+            duration: 500,
+            easing: Easing.out(Easing.exp),
+            useNativeDriver: true,
+          }),
           Animated.timing(rotateAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
         ]),
         Animated.delay(800),
         Animated.parallel([
-          Animated.timing(scaleAnim, { toValue: 0, duration: 600, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(translateYAnim, { toValue: 2, duration: 700, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(rotateAnim, { toValue: 0, duration: 600, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(badgeOpacityAnim, { toValue: 0, duration: 700, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(scaleAnim, {
+            toValue: 0,
+            duration: 600,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateYAnim, {
+            toValue: 2,
+            duration: 700,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotateAnim, {
+            toValue: 0,
+            duration: 600,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(badgeOpacityAnim, {
+            toValue: 0,
+            duration: 700,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          }),
         ]),
       ]);
       sequenceAnimRef.current = seq;
@@ -256,8 +277,14 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
   const centerTranslateX = -(screenWidth / 2);
 
   const scale = scaleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.9] });
-  const translateY = translateYAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [0, -250, -420] });
-  const translateX = translateYAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [0, centerTranslateX, centerTranslateX + 80] });
+  const translateY = translateYAnim.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: [0, -250, -420],
+  });
+  const translateX = translateYAnim.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: [0, centerTranslateX, centerTranslateX + 80],
+  });
   const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-12deg'] });
   const glowOpacity = scaleAnim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 1] });
 
@@ -322,258 +349,6 @@ export default function TodayGoalList({ members, currentUserId, onAnimationFinis
             )}
           </>
         )}
-      </View>
-    </View>
-  );
-}
-
-// ─── Badge constants ───
-const THUMB_UP = 'M50 8C50 2 64 2 64 10L66 42 92 42C98 42 102 48 102 54C102 58 100 61 97 62C100 64 102 68 102 72C102 76 100 79 97 80C100 82 102 86 102 90C102 94 99 98 94 98L48 98C42 98 36 94 34 88L26 70C24 66 20 64 16 64L12 64C8 64 6 60 6 56L6 46C6 42 8 40 12 40L34 40C40 40 44 34 46 26Z';
-const THUMB_HIGHLIGHT = 'M50 10C50 4 62 4 63 11L64 42 88 42C92 42 96 46 96 50C96 54 94 56 92 57L50 57 50 10Z';
-
-function DynamicBadge({ state, members, isActive }: { state: string; members: MemberProgress[]; isActive: boolean }) {
-  if (state === 'START') return <StartBadge isActive={isActive} />;
-  if (state === 'LEADER') return <LeaderBadge members={members} isActive={isActive} />;
-  if (state === 'FINISHER') return <FinisherBadge members={members} isActive={isActive} />;
-  if (state === 'ALL_CLEAR') return <AllClearBadge isActive={isActive} />;
-  return null;
-}
-
-function AvatarGroup({ members, size, showName = false }: { members: MemberProgress[]; size: number; showName?: boolean }) {
-  const count = members.length;
-  const isSingle = count === 1;
-  const isMany = count >= 3;
-
-  const actualSize = isSingle ? size * 1.4 : isMany ? size * 0.72 : size;
-  const nameSize = isSingle ? 10 : isMany ? 7 : 8;
-  const rowGap = showName ? (isMany ? 8 : 14) : (isMany ? 2 : 4);
-  const itemGap = showName ? (isMany ? 2 : 8) : -actualSize / 3;
-  const nameTagTop = actualSize - (isSingle ? 8 : isMany ? 4 : 6);
-  const nameTagMinWidth = isSingle ? actualSize + 4 : isMany ? actualSize + 8 : actualSize + 4;
-
-  const rows: MemberProgress[][] = [];
-  let remaining = [...members];
-  while (remaining.length > 0) {
-    if (remaining.length === 4) {
-      rows.push(remaining.slice(0, 2));
-      rows.push(remaining.slice(2, 4));
-      break;
-    }
-    if (remaining.length <= 3) {
-      rows.push(remaining);
-      break;
-    }
-    rows.push(remaining.slice(0, 3));
-    remaining = remaining.slice(3);
-  }
-
-  return (
-    <View style={{ alignItems: 'center', gap: rowGap }}>
-      {rows.map((rowMembers, rowIndex) => (
-        <View key={`row-${rowIndex}`} style={styles.avatarsRow}>
-          {rowMembers.map((m, i) => (
-            <View
-              key={m.userId}
-              style={{ width: actualSize, alignItems: 'center', marginLeft: i > 0 ? itemGap : 0, zIndex: 10 - i }}
-            >
-              <View style={[
-                styles.medalAvatarWrap,
-                { width: actualSize, height: actualSize, borderRadius: actualSize / 2, borderWidth: isMany ? 1.5 : 2 },
-              ]}>
-                {m.profileImageUrl ? (
-                  <Image source={{ uri: m.profileImageUrl }} style={styles.medalAvatarImg} />
-                ) : (
-                  <View style={styles.medalAvatarFallback}>
-                    <Text style={[styles.medalAvatarInitial, { fontSize: actualSize * 0.4 }]}>
-                      {m.nickname.charAt(0)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              {showName && (
-                <View style={[
-                  styles.nameTag,
-                  { top: nameTagTop, borderRadius: isMany ? 4 : 6, minWidth: nameTagMinWidth },
-                ]}>
-                  <Text style={[styles.nameTagText, { fontSize: nameSize }]}>
-                    {m.nickname}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function StartBadge({ isActive }: { isActive: boolean }) {
-  const k = isActive ? 1.0 : 0.45;
-  const id = `start_${isActive}`;
-  return (
-    <View style={styles.thumbBadge}>
-      <Svg width={110} height={110} viewBox="0 0 108 108" style={StyleSheet.absoluteFill}>
-        <Defs>
-          <LinearGradient id={`${id}_fill`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#FFD93D" stopOpacity={String(0.3 * k)} />
-            <Stop offset="100%" stopColor="#FF9A5C" stopOpacity={String(0.3 * k)} />
-          </LinearGradient>
-          <LinearGradient id={`${id}_border`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#FFD93D" stopOpacity={String(0.8 * k)} />
-            <Stop offset="50%" stopColor="#ef3b36" stopOpacity={String(0.8 * k)} />
-            <Stop offset="100%" stopColor="#FF9A5C" stopOpacity={String(0.8 * k)} />
-          </LinearGradient>
-        </Defs>
-        <SvgCircle cx="54" cy="54" r="42" fill={`url(#${id}_fill)`} stroke={`url(#${id}_border)`} strokeWidth={isActive ? 4 : 2} />
-      </Svg>
-      <View style={[styles.medalContentWrap, { top: 12, height: 84 }]}>
-        <Text style={{ fontSize: 28 }}>🔥</Text>
-        <Text style={[styles.holoText, styles.holoTextSm, { color: isActive ? '#FFF' : 'rgba(255,255,255,0.7)' }]}>
-          첫 인증을{'\n'}기다려요!
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function LeaderBadge({ members, isActive }: { members: MemberProgress[]; isActive: boolean }) {
-  const k = isActive ? 1.0 : 0.45;
-  const textColor = isActive ? '#FFFFFF' : 'rgba(255,255,255,0.7)';
-  const id = `l_${isActive}`;
-
-  return (
-    <View style={styles.thumbBadge}>
-      <Svg width={110} height={106} viewBox="0 0 108 106" style={StyleSheet.absoluteFill}>
-        <Defs>
-          <LinearGradient id={`${id}_fill1`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%"   stopColor="#FF6B3D" stopOpacity={String(0.30 * k)} />
-            <Stop offset="25%"  stopColor="#FFD93D" stopOpacity={String(0.25 * k)} />
-            <Stop offset="50%"  stopColor="#FF9A5C" stopOpacity={String(0.28 * k)} />
-            <Stop offset="75%"  stopColor="#FFB380" stopOpacity={String(0.22 * k)} />
-            <Stop offset="100%" stopColor="#FF6B3D" stopOpacity={String(0.30 * k)} />
-          </LinearGradient>
-          <LinearGradient id={`${id}_fill2`} x1="1" y1="0" x2="0" y2="1">
-            <Stop offset="0%"   stopColor="#FFD93D" stopOpacity={String(0.15 * k)} />
-            <Stop offset="40%"  stopColor="#FF9A5C" stopOpacity={String(0.12 * k)} />
-            <Stop offset="100%" stopColor="#FF6B3D" stopOpacity={String(0.18 * k)} />
-          </LinearGradient>
-          <LinearGradient id={`${id}_border`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%"   stopColor="#FF6B3D" stopOpacity={String(0.80 * k)} />
-            <Stop offset="20%"  stopColor="#FFD93D" stopOpacity={String(0.65 * k)} />
-            <Stop offset="40%"  stopColor="#FF9A5C" stopOpacity={String(0.70 * k)} />
-            <Stop offset="60%"  stopColor="#FFB380" stopOpacity={String(0.60 * k)} />
-            <Stop offset="80%"  stopColor="#FFD93D" stopOpacity={String(0.55 * k)} />
-            <Stop offset="100%" stopColor="#FF6B3D" stopOpacity={String(0.80 * k)} />
-          </LinearGradient>
-          <LinearGradient id={`${id}_bloomOuter`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%"   stopColor="#FF6B3D" stopOpacity={String(0.20 * k)} />
-            <Stop offset="30%"  stopColor="#FFD93D" stopOpacity={String(0.14 * k)} />
-            <Stop offset="60%"  stopColor="#FF9A5C" stopOpacity={String(0.16 * k)} />
-            <Stop offset="100%" stopColor="#FFB380" stopOpacity={String(0.14 * k)} />
-          </LinearGradient>
-          <LinearGradient id={`${id}_bloomMid`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%"   stopColor="#FF6B3D" stopOpacity={String(0.35 * k)} />
-            <Stop offset="25%"  stopColor="#FFD93D" stopOpacity={String(0.28 * k)} />
-            <Stop offset="50%"  stopColor="#FF9A5C" stopOpacity={String(0.32 * k)} />
-            <Stop offset="75%"  stopColor="#FFB380" stopOpacity={String(0.25 * k)} />
-            <Stop offset="100%" stopColor="#FF6B3D" stopOpacity={String(0.35 * k)} />
-          </LinearGradient>
-        </Defs>
-        <Path d={THUMB_UP} fill="none" stroke={`url(#${id}_bloomOuter)`} strokeWidth={isActive ? 10 : 6} strokeLinejoin="round" />
-        <Path d={THUMB_UP} fill="none" stroke={`url(#${id}_bloomMid)`} strokeWidth={isActive ? 5 : 3} strokeLinejoin="round" />
-        <Path d={THUMB_UP} fill={`url(#${id}_fill1)`} />
-        <Path d={THUMB_UP} fill={`url(#${id}_fill2)`} />
-        <Path d={THUMB_UP} fill="none" stroke={`url(#${id}_border)`} strokeWidth={isActive ? 1.6 : 0.9} strokeLinejoin="round" />
-      </Svg>
-
-      <View style={styles.leaderAvatarWrap}>
-        <AvatarGroup members={members} size={28} showName={true} />
-      </View>
-
-      <View style={styles.leaderLabelWrap}>
-        <Text style={[styles.holoText, styles.holoTextSm, styles.badgeLabelShadow, { color: textColor }]}>
-          {members.length > 1 ? '공동 선두!' : '현재 선두!'}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function FinisherBadge({ members, isActive }: { members: MemberProgress[]; isActive: boolean }) {
-  const k = isActive ? 1.0 : 0.45;
-  const id = `f_${isActive}`;
-
-  return (
-    <View style={styles.finisherBadge}>
-      <Svg width={120} height={120} viewBox="0 0 120 120" style={StyleSheet.absoluteFill}>
-        <Defs>
-          <LinearGradient id={`${id}_gold`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%"   stopColor="#FFE066" stopOpacity={String(0.9 * k)} />
-            <Stop offset="30%"  stopColor="#FFF7CC" stopOpacity={String(0.95 * k)} />
-            <Stop offset="50%"  stopColor="#FFD700" stopOpacity={String(0.9 * k)} />
-            <Stop offset="80%"  stopColor="#FFA500" stopOpacity={String(0.95 * k)} />
-            <Stop offset="100%" stopColor="#FF8C00" stopOpacity={String(0.9 * k)} />
-          </LinearGradient>
-          <LinearGradient id={`${id}_border`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%"   stopColor="#FFD700" stopOpacity={String(k)} />
-            <Stop offset="50%"  stopColor="#FFA500" stopOpacity={String(k)} />
-            <Stop offset="100%" stopColor="#FF8C00" stopOpacity={String(k)} />
-          </LinearGradient>
-          <LinearGradient id={`${id}_ribbon`} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%"   stopColor="#FFD700" stopOpacity={String(k)} />
-            <Stop offset="50%"  stopColor="#ffd89b" stopOpacity={String(k)} />
-            <Stop offset="100%" stopColor="#FF8C00" stopOpacity={String(k)} />
-          </LinearGradient>
-          <LinearGradient id={`${id}_ribbonDark`} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%"   stopColor="#FFA500" stopOpacity={String(k)} />
-            <Stop offset="50%"  stopColor="#ffffff" stopOpacity={String(k)} />
-            <Stop offset="100%" stopColor="#CC7000" stopOpacity={String(k)} />
-          </LinearGradient>
-        </Defs>
-
-        <Path d="M 15 75 L 2 75 L 10 85 L 2 95 L 30 95 L 30 75 Z" fill={`url(#${id}_ribbonDark)`} stroke={`url(#${id}_border)`} strokeWidth={isActive ? 2 : 1} strokeLinejoin="round" />
-        <Path d="M 105 75 L 118 75 L 110 85 L 118 95 L 90 95 L 90 75 Z" fill={`url(#${id}_ribbonDark)`} stroke={`url(#${id}_border)`} strokeWidth={isActive ? 2 : 1} strokeLinejoin="round" />
-        <SvgCircle cx="60" cy="48" r="44" fill={`url(#${id}_gold)`} stroke={`url(#${id}_border)`} strokeWidth={isActive ? 6 : 3} />
-        <Rect x="20" y="72" width="80" height="28" rx="4" fill={`url(#${id}_ribbon)`} stroke={`url(#${id}_border)`} strokeWidth={isActive ? 3 : 1.5} />
-      </Svg>
-
-      <View style={styles.finisherAvatarWrap}>
-        <AvatarGroup members={members} size={36} showName={true} />
-      </View>
-
-      <View style={styles.finisherLabelWrap}>
-        <Text style={styles.finisherLabelText}>
-          100% 달성
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function AllClearBadge({ isActive }: { isActive: boolean }) {
-  const k = isActive ? 1.0 : 0.45;
-  const id = `a_${isActive}`;
-  return (
-    <View style={styles.thumbBadge}>
-      <Svg width={110} height={110} viewBox="0 0 108 108" style={StyleSheet.absoluteFill}>
-        <Defs>
-          <LinearGradient id={`${id}_fill`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%"   stopColor="#4ADE80" stopOpacity={String(0.3 * k)} />
-            <Stop offset="100%" stopColor="#3B82F6" stopOpacity={String(0.3 * k)} />
-          </LinearGradient>
-          <LinearGradient id={`${id}_border`} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%"   stopColor="#4ADE80" stopOpacity={String(0.8 * k)} />
-            <Stop offset="100%" stopColor="#3B82F6" stopOpacity={String(0.8 * k)} />
-          </LinearGradient>
-        </Defs>
-        <SvgCircle cx="54" cy="54" r="42" fill={`url(#${id}_fill)`} stroke={`url(#${id}_border)`} strokeWidth={isActive ? 4 : 2} />
-      </Svg>
-      <View style={[styles.medalContentWrap, { top: 12, height: 84 }]}>
-        <Text style={{ fontSize: 32 }}>🎉</Text>
-        <Text style={[styles.holoText, { color: isActive ? '#FFF' : 'rgba(255,255,255,0.7)', marginTop: 2, fontSize: 14 }]}>
-          모두{'\n'}클리어!
-        </Text>
       </View>
     </View>
   );

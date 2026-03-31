@@ -21,7 +21,7 @@ import { COLORS } from '../../constants/defaults';
 import type { GoalFrequency } from '../../types/domain';
 import CyberFrame from '../../components/ui/CyberFrame';
 import Input from '../../components/common/Input';
-import { getCalendarWeekRanges } from '../../components/stats/StatsShared';
+import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import dayjs from '../../lib/dayjs';
 
 export default function AddRoutineScreen() {
@@ -41,17 +41,16 @@ export default function AddRoutineScreen() {
     const todayStr = today.format('YYYY-MM-DD');
 
     // 오늘이 속한 "통계 기준 월"을 찾기 위해 현재 월과 다음 월을 검사합니다.
-    const candidates = [
-      today.format('YYYY-MM'),
-      today.add(1, 'month').format('YYYY-MM'),
-    ];
+    const candidates = [today.format('YYYY-MM'), today.add(1, 'month').format('YYYY-MM')];
 
     let targetMonth = candidates[0];
     let matchedRanges: { s: dayjs.Dayjs; e: dayjs.Dayjs }[] = [];
 
     for (const monthStr of candidates) {
       const { ranges } = getCalendarWeekRanges(monthStr);
-      const isTodayInRanges = ranges.some(r => r.s.format('YYYY-MM-DD') <= todayStr && r.e.format('YYYY-MM-DD') >= todayStr);
+      const isTodayInRanges = ranges.some(
+        (r) => r.s.format('YYYY-MM-DD') <= todayStr && r.e.format('YYYY-MM-DD') >= todayStr,
+      );
       if (isTodayInRanges) {
         targetMonth = monthStr;
         matchedRanges = ranges;
@@ -73,7 +72,7 @@ export default function AddRoutineScreen() {
     if (!user) return;
     setIsAdding(true);
     const count = frequency === 'weekly_count' ? targetCount : null;
-    
+
     const success = await addGoal({
       teamId: currentTeam?.id,
       userId: user.id,
@@ -82,7 +81,7 @@ export default function AddRoutineScreen() {
       targetCount: count,
       duration,
     });
-    
+
     setIsAdding(false);
 
     if (success) {
@@ -93,7 +92,7 @@ export default function AddRoutineScreen() {
         Alert.alert(
           `주 ${targetCount ?? 'N'}회 루틴 등록 완료`,
           '오늘 할 계획이 아니라면 패스 인증을 하면 산을 오를 수 있어요. (미달로 카운팅됩니다.)',
-          [{ text: '확인', onPress: () => navigation.goBack() }]
+          [{ text: '확인', onPress: () => navigation.goBack() }],
         );
       } else {
         navigation.goBack();
@@ -114,11 +113,11 @@ export default function AddRoutineScreen() {
 
     if (duration === 'this_month') {
       const { targetMonth, endDateStr } = getComputedEndDate();
-      
+
       const today = dayjs();
       const calendarMonth = today.format('M월');
       const statMonth = dayjs(`${targetMonth}-01`).format('M월');
-      
+
       let message = '';
       if (calendarMonth !== statMonth) {
         message = `현재 날짜는 캘린더상 ${calendarMonth}이지만, 통계 주차 규칙(4일 이상 포함)에 따라 ${statMonth} 통계로 편입됩니다.\n\n따라서 이 루틴은 ${statMonth}의 마지막 통계 주차인 [${endDateStr}]까지 적용됩니다. 추가하시겠습니까?`;
@@ -137,8 +136,8 @@ export default function AddRoutineScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <KeyboardAvoidingView 
-        style={styles.container} 
+      <KeyboardAvoidingView
+        style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -154,7 +153,11 @@ export default function AddRoutineScreen() {
 
             <View style={styles.content}>
               {/* ── 입력창 ── */}
-              <CyberFrame style={styles.sectionFrame} contentStyle={styles.sectionContent} glassOnly={false}>
+              <CyberFrame
+                style={styles.sectionFrame}
+                contentStyle={styles.sectionContent}
+                glassOnly={false}
+              >
                 <Text style={styles.label}>어떤 루틴을 추가할까요?</Text>
                 <View style={styles.inputRow}>
                   <Input
@@ -170,7 +173,11 @@ export default function AddRoutineScreen() {
               </CyberFrame>
 
               {/* ── 주기 설정 ── */}
-              <CyberFrame style={styles.sectionFrame} contentStyle={styles.sectionContent} glassOnly={false}>
+              <CyberFrame
+                style={styles.sectionFrame}
+                contentStyle={styles.sectionContent}
+                glassOnly={false}
+              >
                 <Text style={styles.label}>실천 주기</Text>
                 <View style={styles.freqRow}>
                   <TouchableOpacity
@@ -178,12 +185,20 @@ export default function AddRoutineScreen() {
                     onPress={() => setFrequency('daily')}
                     activeOpacity={0.7}
                   >
-                    <CyberFrame 
-                      style={[styles.freqBtnFrame, frequency === 'daily' && styles.activeFreqBtnFrame]}
+                    <CyberFrame
+                      style={[
+                        styles.freqBtnFrame,
+                        frequency === 'daily' && styles.activeFreqBtnFrame,
+                      ]}
                       contentStyle={styles.freqBtnContent}
                       glassOnly={true}
                     >
-                      <Text style={[styles.freqBtnText, frequency === 'daily' && styles.freqBtnTextActive]}>
+                      <Text
+                        style={[
+                          styles.freqBtnText,
+                          frequency === 'daily' && styles.freqBtnTextActive,
+                        ]}
+                      >
                         매일
                       </Text>
                     </CyberFrame>
@@ -193,12 +208,20 @@ export default function AddRoutineScreen() {
                     onPress={() => setFrequency('weekly_count')}
                     activeOpacity={0.7}
                   >
-                    <CyberFrame 
-                      style={[styles.freqBtnFrame, frequency === 'weekly_count' && styles.activeFreqBtnFrame]}
+                    <CyberFrame
+                      style={[
+                        styles.freqBtnFrame,
+                        frequency === 'weekly_count' && styles.activeFreqBtnFrame,
+                      ]}
                       contentStyle={styles.freqBtnContent}
                       glassOnly={true}
                     >
-                      <Text style={[styles.freqBtnText, frequency === 'weekly_count' && styles.freqBtnTextActive]}>
+                      <Text
+                        style={[
+                          styles.freqBtnText,
+                          frequency === 'weekly_count' && styles.freqBtnTextActive,
+                        ]}
+                      >
                         주 N회
                       </Text>
                     </CyberFrame>
@@ -206,7 +229,11 @@ export default function AddRoutineScreen() {
                 </View>
 
                 {frequency === 'weekly_count' && (
-                  <CyberFrame style={styles.targetCountFrame} contentStyle={styles.targetCountContent} glassOnly={true}>
+                  <CyberFrame
+                    style={styles.targetCountFrame}
+                    contentStyle={styles.targetCountContent}
+                    glassOnly={true}
+                  >
                     <Text style={styles.targetCountLabel}>일주일에 몇 번 할까요?</Text>
                     <View style={styles.counterWrap}>
                       <TouchableOpacity
@@ -228,7 +255,11 @@ export default function AddRoutineScreen() {
               </CyberFrame>
 
               {/* ── 기간 설정 ── */}
-              <CyberFrame style={styles.sectionFrame} contentStyle={styles.sectionContent} glassOnly={false}>
+              <CyberFrame
+                style={styles.sectionFrame}
+                contentStyle={styles.sectionContent}
+                glassOnly={false}
+              >
                 <Text style={styles.label}>언제까지 할까요?</Text>
                 <View style={styles.freqRow}>
                   <TouchableOpacity
@@ -236,12 +267,20 @@ export default function AddRoutineScreen() {
                     onPress={() => setDuration('continuous')}
                     activeOpacity={0.7}
                   >
-                    <CyberFrame 
-                      style={[styles.freqBtnFrame, duration === 'continuous' && styles.activeFreqBtnFrame]}
+                    <CyberFrame
+                      style={[
+                        styles.freqBtnFrame,
+                        duration === 'continuous' && styles.activeFreqBtnFrame,
+                      ]}
                       contentStyle={styles.freqBtnContent}
                       glassOnly={true}
                     >
-                      <Text style={[styles.freqBtnText, duration === 'continuous' && styles.freqBtnTextActive]}>
+                      <Text
+                        style={[
+                          styles.freqBtnText,
+                          duration === 'continuous' && styles.freqBtnTextActive,
+                        ]}
+                      >
                         계속
                       </Text>
                     </CyberFrame>
@@ -251,12 +290,20 @@ export default function AddRoutineScreen() {
                     onPress={() => setDuration('this_month')}
                     activeOpacity={0.7}
                   >
-                    <CyberFrame 
-                      style={[styles.freqBtnFrame, duration === 'this_month' && styles.activeFreqBtnFrame]}
+                    <CyberFrame
+                      style={[
+                        styles.freqBtnFrame,
+                        duration === 'this_month' && styles.activeFreqBtnFrame,
+                      ]}
                       contentStyle={styles.freqBtnContent}
                       glassOnly={true}
                     >
-                      <Text style={[styles.freqBtnText, duration === 'this_month' && styles.freqBtnTextActive]}>
+                      <Text
+                        style={[
+                          styles.freqBtnText,
+                          duration === 'this_month' && styles.freqBtnTextActive,
+                        ]}
+                      >
                         이번달까지
                       </Text>
                     </CyberFrame>
@@ -264,7 +311,8 @@ export default function AddRoutineScreen() {
                 </View>
                 {duration === 'this_month' && (
                   <Text style={styles.helperText}>
-                    💡 월초/월말 부분주가 4일 미만이면 인접 월에 편입되는 규칙에 따라, 추가 시 정확한 마지막 주차를 계산해 안내해 드립니다.
+                    💡 월초/월말 부분주가 4일 미만이면 인접 월에 편입되는 규칙에 따라, 추가 시
+                    정확한 마지막 주차를 계산해 안내해 드립니다.
                   </Text>
                 )}
               </CyberFrame>

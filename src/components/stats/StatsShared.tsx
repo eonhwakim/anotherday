@@ -1,10 +1,15 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import Svg, {
-  Path, Defs, LinearGradient, Stop, Circle as SvgCircle,
-  Line, G, Text as SvgText,
+  Path,
+  Defs,
+  LinearGradient,
+  Stop,
+  Circle as SvgCircle,
+  Line,
+  G,
+  Text as SvgText,
 } from 'react-native-svg';
-import dayjs from '../../lib/dayjs';
 
 const SCREEN_W = Dimensions.get('window').width;
 const CARD_MX = 16;
@@ -12,51 +17,10 @@ const CHART_W = SCREEN_W - CARD_MX * 2 - 40;
 const CHART_H = 160;
 const CHART_PAD = { top: 16, right: 8, bottom: 28, left: 32 };
 
-// ─── Types ──────────────────────────────────────────────────
-
-export interface GoalStat {
-  goalId: string;
-  name: string;
-  frequency: 'daily' | 'weekly_count';
-  targetCount: number | null;
-  startDate: string | null;
-  done: number;
-  pass: number;
-  fail: number;
-  rate: number;
-}
-
-export interface WeekData {
-  label: string;
-  range: string;
-  days: number;
-  rate: number;
-  doneCount: number;
-  passCount: number;
-}
-
-export interface WeeklyPaceGoal {
-  goalId: string;
-  name: string;
-  frequency: 'daily' | 'weekly_count';
-  target: number;
-  done: number;
-  rate: number;
-}
-
-// ─── Helpers ────────────────────────────────────────────────
-
-export const dayjsMax = (a: dayjs.Dayjs, b: dayjs.Dayjs) => a.isAfter(b) ? a : b;
-export const dayjsMin = (a: dayjs.Dayjs, b: dayjs.Dayjs) => a.isBefore(b) ? a : b;
-export const isPassCheckin = (c: any) => c.status === 'pass';
-export const isDoneCheckin = (c: any) => c.status === 'done';
-
-// ─── SVG Area Chart ─────────────────────────────────────────
-
 export function AreaChart({ data }: { data: { label: string; value: number }[] }) {
   if (data.length < 2) return null;
 
-  const maxVal = Math.max(...data.map(d => d.value), 100);
+  const maxVal = Math.max(...data.map((d) => d.value), 100);
   const plotW = CHART_W - CHART_PAD.left - CHART_PAD.right;
   const plotH = CHART_H - CHART_PAD.top - CHART_PAD.bottom;
 
@@ -70,9 +34,10 @@ export function AreaChart({ data }: { data: { label: string; value: number }[] }
     const cpX = (pts[i].x + pts[i + 1].x) / 2;
     linePath += ` C ${cpX} ${pts[i].y} ${cpX} ${pts[i + 1].y} ${pts[i + 1].x} ${pts[i + 1].y}`;
   }
-  const areaPath = linePath
-    + ` L ${pts[pts.length - 1].x} ${CHART_PAD.top + plotH}`
-    + ` L ${pts[0].x} ${CHART_PAD.top + plotH} Z`;
+  const areaPath =
+    linePath +
+    ` L ${pts[pts.length - 1].x} ${CHART_PAD.top + plotH}` +
+    ` L ${pts[0].x} ${CHART_PAD.top + plotH} Z`;
 
   const gridValues = [0, 50, 100];
   if (maxVal > 100) gridValues.push(Math.round(maxVal / 50) * 50);
@@ -85,29 +50,63 @@ export function AreaChart({ data }: { data: { label: string; value: number }[] }
           <Stop offset="100%" stopColor="#FF6B3D" stopOpacity="0.03" />
         </LinearGradient>
       </Defs>
-      {gridValues.filter(v => v <= maxVal).map(v => {
-        const y = CHART_PAD.top + plotH - (v / maxVal) * plotH;
-        return (
-          <G key={v}>
-            <Line x1={CHART_PAD.left} y1={y} x2={CHART_W - CHART_PAD.right} y2={y}
-              stroke="rgba(0,0,0,0.06)" strokeWidth={1} strokeDasharray="4,4" />
-            <SvgText x={CHART_PAD.left - 6} y={y + 4} fontSize={9}
-              fill="rgba(26,26,26,0.30)" textAnchor="end">{v}%</SvgText>
-          </G>
-        );
-      })}
+      {gridValues
+        .filter((v) => v <= maxVal)
+        .map((v) => {
+          const y = CHART_PAD.top + plotH - (v / maxVal) * plotH;
+          return (
+            <G key={v}>
+              <Line
+                x1={CHART_PAD.left}
+                y1={y}
+                x2={CHART_W - CHART_PAD.right}
+                y2={y}
+                stroke="rgba(0,0,0,0.06)"
+                strokeWidth={1}
+                strokeDasharray="4,4"
+              />
+              <SvgText
+                x={CHART_PAD.left - 6}
+                y={y + 4}
+                fontSize={9}
+                fill="rgba(26,26,26,0.30)"
+                textAnchor="end"
+              >
+                {v}%
+              </SvgText>
+            </G>
+          );
+        })}
       <Path d={areaPath} fill="url(#areaGrad)" />
-      <Path d={linePath} fill="none" stroke="#FF6B3D" strokeWidth={2.5}
-        strokeLinecap="round" strokeLinejoin="round" />
+      <Path
+        d={linePath}
+        fill="none"
+        stroke="#FF6B3D"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       {pts.map((p, i) => (
         <G key={i}>
           <SvgCircle cx={p.x} cy={p.y} r={4.5} fill="#FFF" stroke="#FF6B3D" strokeWidth={2.5} />
-          <SvgText x={p.x} y={CHART_PAD.top + plotH + 16} fontSize={10}
-            fill="rgba(26,26,26,0.50)" textAnchor="middle" fontWeight="600">
+          <SvgText
+            x={p.x}
+            y={CHART_PAD.top + plotH + 16}
+            fontSize={10}
+            fill="rgba(26,26,26,0.50)"
+            textAnchor="middle"
+            fontWeight="600"
+          >
             {data[i].label}
           </SvgText>
-          <SvgText x={p.x} y={p.y - 10} fontSize={10}
-            fill="#FF6B3D" textAnchor="middle" fontWeight="700">
+          <SvgText
+            x={p.x}
+            y={p.y - 10}
+            fontSize={10}
+            fill="#FF6B3D"
+            textAnchor="middle"
+            fontWeight="700"
+          >
             {Math.round(data[i].value)}%
           </SvgText>
         </G>
@@ -115,8 +114,6 @@ export function AreaChart({ data }: { data: { label: string; value: number }[] }
     </Svg>
   );
 }
-
-// ─── Mountain Background SVG ────────────────────────────────
 
 export function MountainBg({ width, height }: { width: number; height: number }) {
   return (
@@ -131,219 +128,47 @@ export function MountainBg({ width, height }: { width: number; height: number })
           <Stop offset="100%" stopColor="#FF6B3D" stopOpacity="0.01" />
         </LinearGradient>
       </Defs>
-      <Path d={`M0 ${height} L${width * .12} ${height * .3} L${width * .28} ${height * .55} L${width * .42} ${height * .2} L${width * .58} ${height * .45} L${width * .73} ${height * .15} L${width * .88} ${height * .4} L${width} ${height * .25} L${width} ${height} Z`} fill="url(#mt2)" />
-      <Path d={`M0 ${height} L${width * .08} ${height * .5} L${width * .22} ${height * .65} L${width * .38} ${height * .32} L${width * .52} ${height * .58} L${width * .68} ${height * .28} L${width * .82} ${height * .52} L${width} ${height * .42} L${width} ${height} Z`} fill="url(#mt1)" />
+      <Path
+        d={`M0 ${height} L${width * 0.12} ${height * 0.3} L${width * 0.28} ${height * 0.55} L${width * 0.42} ${height * 0.2} L${width * 0.58} ${height * 0.45} L${width * 0.73} ${height * 0.15} L${width * 0.88} ${height * 0.4} L${width} ${height * 0.25} L${width} ${height} Z`}
+        fill="url(#mt2)"
+      />
+      <Path
+        d={`M0 ${height} L${width * 0.08} ${height * 0.5} L${width * 0.22} ${height * 0.65} L${width * 0.38} ${height * 0.32} L${width * 0.52} ${height * 0.58} L${width * 0.68} ${height * 0.28} L${width * 0.82} ${height * 0.52} L${width} ${height * 0.42} L${width} ${height} Z`}
+        fill="url(#mt1)"
+      />
     </Svg>
   );
 }
 
-// ─── Progress Bar ───────────────────────────────────────────
+export function ProgressBar({
+  rate,
+  height = 8,
+  color = '#FF6B3D',
+}: {
+  rate: number;
+  height?: number;
+  color?: string;
+}) {
+  const pct = Math.min(Math.max(0, rate), 100);
 
-export function ProgressBar({ rate, height = 8, color = '#FF6B3D', maxRate = 100 }: { rate: number; height?: number; color?: string; maxRate?: number }) {
-  // maxRate가 지정되어 있더라도, rate가 더 크면 그것을 기준으로 삼아 꽉 찬 바를 보여주되,
-  // 시각적으로는 100%를 넘었다는 것을 표현하기 위해 width는 100%로 제한하고
-  // 색상이나 추가적인 인디케이터로 초과 달성을 표현하는 것이 일반적입니다.
-  // 여기서는 단순히 width를 100%로 캡핑합니다.
-  const pct = Math.min(Math.max(0, rate), 100); 
-  
   return (
-    <View style={{ height, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: height / 2, flex: 1, overflow: 'hidden' }}>
-      <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color, borderRadius: height / 2 }} />
+    <View
+      style={{
+        height,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: height / 2,
+        flex: 1,
+        overflow: 'hidden',
+      }}
+    >
+      <View
+        style={{
+          width: `${pct}%`,
+          height: '100%',
+          backgroundColor: color,
+          borderRadius: height / 2,
+        }}
+      />
     </View>
   );
-}
-
-// ─── Calendar-style week ranges for a given month ───────────
-// 월요일 기준 Mon-Sun 주 단위.
-// 월초/월말 부분주가 4일 미만이면 인접 월에 편입 (해당 월에서 제외).
-// 이 월이 소유하는 주차는 인접 월 날짜까지 포함하는 완전한 Mon-Sun 범위를 반환.
-// dataStart/dataEnd: 체크인 데이터를 조회해야 하는 전체 날짜 범위.
-
-export function getCalendarWeekRanges(yearMonth: string) {
-  const ms = dayjs(`${yearMonth}-01`);
-  const monthEnd = ms.endOf('month');
-
-  let firstMon = ms;
-  while (firstMon.day() !== 1) firstMon = firstMon.add(1, 'day');
-
-  const ranges: { s: dayjs.Dayjs; e: dayjs.Dayjs }[] = [];
-
-  // 월의 시작일이 월요일이 아닐 때 처리
-  if (!ms.isSame(firstMon, 'day')) {
-    // 그 전 달의 마지막 날들 (이 달에 포함되는지 확인)
-    const prevMon = ms.startOf('isoWeek');
-    const daysInThisMonth = firstMon.diff(ms, 'day');
-    
-    // 이 달의 날짜가 4일 이상이면 이 달의 1주차로 편입
-    if (daysInThisMonth >= 4) {
-      ranges.push({ s: prevMon, e: firstMon.subtract(1, 'day') });
-    }
-  }
-
-  let cursor = firstMon;
-  while (cursor.isBefore(monthEnd) || cursor.isSame(monthEnd, 'day')) {
-    const weekSun = cursor.add(6, 'day');
-    
-    // 주가 이번 달 안에 완전히 포함될 때
-    if (weekSun.isBefore(monthEnd) || weekSun.isSame(monthEnd, 'day')) {
-      ranges.push({ s: cursor, e: weekSun });
-    } 
-    // 주가 다음 달로 넘어갈 때
-    else {
-      const daysInThisMonth = monthEnd.diff(cursor, 'day') + 1;
-      // 이번 달의 날짜가 4일 이상이면 이번 달의 마지막 주차로 편입
-      if (daysInThisMonth >= 4) {
-        ranges.push({ s: cursor, e: weekSun });
-      }
-    }
-    cursor = cursor.add(1, 'week');
-  }
-
-  // ⭐️ dataStart/dataEnd 계산 시, ranges가 비어있을 수 있는 예외 처리 보완
-  const dataStart = ranges.length > 0 ? ranges[0].s.format('YYYY-MM-DD') : ms.format('YYYY-MM-DD');
-  const dataEnd = ranges.length > 0 ? ranges[ranges.length - 1].e.format('YYYY-MM-DD') : monthEnd.format('YYYY-MM-DD');
-
-  return { ranges, monthEnd, dataStart, dataEnd };
-}
-
-// ─── Goal-aware week ranges (부분주 합산) ───────────────────
-
-export interface GoalWeekRange {
-  s: dayjs.Dayjs;
-  e: dayjs.Dayjs;
-  label: string;
-  activeDays: number;
-  isMerged: boolean;
-}
-
-/**
- * 주N회 목표의 통계용 주차 범위 계산.
- * 활성일이 targetCount 미만인 부분 주는 인접 주에 합산.
- */
-export function getGoalWeekRanges(
-  yearMonth: string,
-  goalStart: string,
-  goalEnd: string,
-  targetCount: number,
-): GoalWeekRange[] {
-  const { ranges } = getCalendarWeekRanges(yearMonth);
-  
-  // 목표의 실제 DB 시작일/종료일이 아니라
-  // 통계 기준(주차 포함 여부)으로 유효성을 판단하기 위해
-  // 목표의 시작/종료가 이 달의 전체 캘린더 주차 범위와 겹치는지 우선 판단
-  const dataStart = ranges.length > 0 ? ranges[0].s.format('YYYY-MM-DD') : dayjs(`${yearMonth}-01`).format('YYYY-MM-DD');
-  const dataEnd = ranges.length > 0 ? ranges[ranges.length - 1].e.format('YYYY-MM-DD') : dayjs(`${yearMonth}-01`).endOf('month').format('YYYY-MM-DD');
-
-  // 목표가 통계 달력 범위를 완전히 벗어나면 빈 배열 반환
-  if (goalStart > dataEnd) return [];
-  if (goalEnd < dataStart) return [];
-
-  const gS = dayjs(goalStart);
-  const gE = dayjs(goalEnd);
-
-  const raw: { s: dayjs.Dayjs; e: dayjs.Dayjs; activeDays: number }[] = [];
-  for (const wr of ranges) {
-    // 통계 주차 내에서 이 목표가 언제부터 언제까지 유효한지 계산
-    const effS = dayjsMax(wr.s, gS);
-    const effE = dayjsMin(wr.e, gE);
-    
-    // 이 주차에 유효한 날이 없으면 건너뜀
-    if (effS.isAfter(effE)) continue;
-    
-    const activeDays = effE.diff(effS, 'day') + 1;
-    raw.push({ s: effS, e: effE, activeDays });
-  }
-
-  if (raw.length === 0) return [];
-
-  // 부분주 합산: 첫 주 activeDays < targetCount → 다음 주에 합산
-  while (raw.length > 1 && raw[0].activeDays < targetCount) {
-    raw[1] = { s: raw[0].s, e: raw[1].e, activeDays: raw[0].activeDays + raw[1].activeDays };
-    raw.splice(0, 1);
-  }
-  // 부분주 합산: 마지막 주 activeDays < targetCount → 이전 주에 합산
-  while (raw.length > 1 && raw[raw.length - 1].activeDays < targetCount) {
-    const last = raw.length - 1;
-    raw[last - 1] = { s: raw[last - 1].s, e: raw[last].e, activeDays: raw[last - 1].activeDays + raw[last].activeDays };
-    raw.splice(last, 1);
-  }
-
-  return raw.map((r, i) => ({
-    s: r.s,
-    e: r.e,
-    label: `${i + 1}주차`,
-    activeDays: r.activeDays,
-    isMerged: r.activeDays > 7,
-  }));
-}
-
-// ─── Week Achievement Calculator ────────────────────────────
-
-export interface WeekAchievement {
-  totalGoals: number;
-  failedGoals: number;
-  isAllClear: boolean;
-  isEnded: boolean;
-  isFuture: boolean;
-}
-
-/**
- * 한 주(weekStart 기준 ISO week)의 목표 달성 여부를 계산합니다.
- * checkins: 해당 유저의 전체(혹은 이 달) 체크인 — 함수 내에서 주 범위로 필터링
- * userGoals: 해당 유저의 활성 user_goals
- */
-export function calcWeekAchievement(
-  weekStart: string,
-  checkins: { goal_id: string; status: string; date: string }[],
-  userGoals: { goal_id: string; frequency: string; target_count: number | null; start_date: string | null; end_date: string | null }[],
-): WeekAchievement {
-  const wEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
-  const today = dayjs().format('YYYY-MM-DD');
-  const isEnded = wEnd < today;
-  const isFuture = weekStart > today;
-
-  const weekDoneCheckins = checkins.filter(c => c.status === 'done' && c.date >= weekStart && c.date <= wEnd);
-
-  // ⭐️ 통계 주차 내에서 목표가 유효한지 검사 (단순 해당 주 날짜와 겹치는지 판단)
-  const activeGoals = userGoals.filter(ug => {
-    if (ug.start_date && ug.start_date > wEnd) return false;
-    if (ug.end_date && ug.end_date < weekStart) return false;
-    return true;
-  });
-
-  let totalGoals = 0;
-  let failedGoals = 0;
-
-  activeGoals.forEach(ug => {
-    const isDaily = ug.frequency === 'daily';
-    let target = isDaily ? 7 : (ug.target_count || 1);
-
-    if (isDaily) {
-      const effS = dayjsMax(dayjs(weekStart), dayjs(ug.start_date || weekStart));
-      const effE = dayjsMin(dayjs(wEnd), dayjs(ug.end_date || wEnd));
-      if (effS.isAfter(effE)) target = 0;
-      else target = effE.diff(effS, 'day') + 1;
-    }
-
-    if (target > 0) {
-      totalGoals++;
-      const doneCount = weekDoneCheckins.filter(c => c.goal_id === ug.goal_id).length;
-      if (doneCount < target) failedGoals++;
-    }
-  });
-
-  const isAllClear = totalGoals > 0 && failedGoals === 0;
-  return { totalGoals, failedGoals, isAllClear, isEnded, isFuture };
-}
-
-// ─── Trend Insight Message ──────────────────────────────────
-
-export function getTrendInsight(trendData: WeekData[]): string {
-  if (trendData.length < 2) return '아직 첫 주예요! 좋은 시작이에요.';
-  const first = trendData[0].rate;
-  const last = trendData[trendData.length - 1].rate;
-  const diff = last - first;
-  if (diff > 5) return `첫 주보다 달성률이 ${diff}% 올랐어요! 페이스가 좋습니다.`;
-  if (diff < -5) return '살짝 쉬어가는 주가 있었네요. 다시 힘내봐요!';
-  return '꾸준한 페이스를 유지하고 있어요!';
 }
