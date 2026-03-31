@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabaseClient';
 import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
 import CyberFrame from '../ui/CyberFrame';
@@ -9,6 +8,7 @@ import { dayjsMax, dayjsMin, getCalendarWeekRanges } from '../../lib/statsUtils'
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
+import { fetchWeeklyStats } from '../../services/statsService';
 
 export default function WeeklyStatsTab() {
   const { user } = useAuthStore();
@@ -28,114 +28,14 @@ export default function WeeklyStatsTab() {
   const fetchWeeklyData = useCallback(async () => {
     if (!user || !currentTeam) return;
     try {
-      const wEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
-
-      // 1. 팀 멤버 가져오기
-      const { data: members } = await supabase
-        .from('team_members')
-        .select('user_id, users(nickname, profile_image_url)')
-        .eq('team_id', currentTeam.id);
-
-      const memberIds = (members ?? []).map((m: any) => m.user_id);
-
-      if (memberIds.length > 0) {
-        // 2. 이번 주 팀원들의 체크인 가져오기
-        const { data: teamCheckins } = await supabase
-          .from('checkins')
-          .select('user_id, goal_id, status, date')
-          .in('user_id', memberIds)
-          .gte('date', weekStart)
-          .lte('date', wEnd);
-
-        setWeeklyCheckins(teamCheckins ?? []);
-
-        // 3. 팀원들의 목표(user_goals) 가져오기
-        const { data: teamUserGoals } = await supabase
-          .from('user_goals')
-          .select('user_id, goal_id, frequency, target_count, start_date, end_date')
-          .in('user_id', memberIds)
-          .eq('is_active', true);
-
-        // 4. 팀원별 올클리어 / 미달 계산
-        const processed = (members ?? [])
-          .map((m: any) => {
-            const uid = m.user_id;
-            const uCheckins = (teamCheckins ?? []).filter(
-              (c: any) => c.user_id === uid && c.status === 'done',
-            );
-            const uGoals = (teamUserGoals ?? []).filter((g: any) => g.user_id === uid);
-
-            // 유효한 목표 필터링 (이번 주에 겹치는지)
-            const activeGoals = uGoals.filter((ug: any) => {
-              // 통계 편의상 ISO 주 단위로 필터링합니다.
-              // 캘린더 화면과 맞추기 위해, 부분주 편입 규칙에 상관없이 실제 해당 주의 날짜(weekStart ~ wEnd)와 겹치는지 확인
-              if (ug.start_date && ug.start_date > wEnd) return false;
-              if (ug.end_date && ug.end_date < weekStart) return false;
-              return true;
-            });
-
-            let totalGoals = 0;
-            let failedGoals = 0;
-            const goalsDetail: any[] = [];
-
-            activeGoals.forEach((ug: any) => {
-              const isDaily = ug.frequency === 'daily';
-              let target = isDaily ? 7 : ug.target_count || 1;
-
-              if (isDaily) {
-                let effS = dayjsMax(dayjs(weekStart), dayjs(ug.start_date || weekStart));
-                let effE = dayjsMin(dayjs(wEnd), dayjs(ug.end_date || wEnd));
-                if (effS.isAfter(effE)) target = 0;
-                else target = effE.diff(effS, 'day') + 1;
-              }
-
-              if (target > 0) {
-                totalGoals++;
-                const doneCount = uCheckins.filter((c: any) => c.goal_id === ug.goal_id).length;
-                if (doneCount < target) {
-                  failedGoals++;
-                }
-                goalsDetail.push({
-                  goalId: ug.goal_id,
-                  name: allGoalMap.get(ug.goal_id) ?? '목표',
-                  target,
-                  doneCount,
-                  isAchieved: doneCount >= target,
-                  isDaily,
-                });
-              }
-            });
-
-            const isAllClear = totalGoals > 0 && failedGoals === 0;
-
-            return {
-              userId: uid,
-              nickname: m.users?.nickname || '알 수 없음',
-              doneCount: uCheckins.length,
-              isMe: uid === user.id,
-              totalGoals,
-              failedGoals,
-              isAllClear,
-              goals: goalsDetail,
-            };
-          })
-          .filter((m) => !m.isMe)
-          .sort((a, b) => {
-            // 1순위: 올클리어 여부
-            if (a.isAllClear && !b.isAllClear) return -1;
-            if (!a.isAllClear && b.isAllClear) return 1;
-            // 2순위: 미달 개수 적은 순
-            if (a.failedGoals !== b.failedGoals) return a.failedGoals - b.failedGoals;
-            // 3순위: 인증 횟수 많은 순
-            if (b.doneCount !== a.doneCount) return b.doneCount - a.doneCount;
-            return 0;
-          });
-
-        setWeeklyTeamData(processed);
-      } else {
-        setWeeklyTeamData([]);
-        setWeeklyCheckins([]);
-      }
+      const result = await fetchWeeklyStats({
+        teamId: currentTeam.id,
+        userId: user.id,
+        weekStart,
+        goalNameMap: allGoalMap,
+      });
+      setWeeklyTeamData(result.weeklyTeamData);
+      setWeeklyCheckins(result.weeklyCheckins);
     } catch (e) {
       console.error(e);
     }

@@ -20,10 +20,10 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { joinTeamByCode } from '../../services/teamService';
+import { getMonthlyResolution, saveMonthlyResolution } from '../../services/monthlyService';
 import GoalSetting from '../../components/mypage/GoalSetting';
 import Input from '../../components/common/Input';
 import dayjs from '../../lib/dayjs';
-import { supabase } from '../../lib/supabaseClient';
 import { COLORS } from '../../constants/defaults';
 import CyberFrame from '../../components/ui/CyberFrame';
 import GlassModal from '../../components/ui/GlassModal';
@@ -72,14 +72,7 @@ export default function MyPageScreen() {
     }
     const yearMonth = dayjs().format('YYYY-MM');
     try {
-      let q = supabase
-        .from('monthly_resolutions')
-        .select('content')
-        .eq('user_id', u.id)
-        .eq('year_month', yearMonth);
-      q = team ? q.eq('team_id', team.id) : q.is('team_id', null);
-      const { data } = await q.maybeSingle();
-      const content = data?.content || '';
+      const content = await getMonthlyResolution(u.id, yearMonth, team?.id ?? null);
       setMonthlyResolution(content);
       setResolutionInput(content);
     } catch (e) {
@@ -181,30 +174,13 @@ export default function MyPageScreen() {
     if (!u) return false;
     const yearMonth = dayjs().format('YYYY-MM');
     try {
-      let sel = supabase
-        .from('monthly_resolutions')
-        .select('id')
-        .eq('user_id', u.id)
-        .eq('year_month', yearMonth);
-      sel = team ? sel.eq('team_id', team.id) : sel.is('team_id', null);
-      const { data: row, error: selErr } = await sel.maybeSingle();
-      if (selErr) throw selErr;
-
-      if (row) {
-        const { error } = await supabase
-          .from('monthly_resolutions')
-          .update({ content: text })
-          .eq('id', row.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('monthly_resolutions').insert({
-          user_id: u.id,
-          team_id: team?.id ?? null,
-          year_month: yearMonth,
-          content: text,
-        });
-        if (error) throw error;
-      }
+      const ok = await saveMonthlyResolution({
+        userId: u.id,
+        yearMonth,
+        content: text,
+        teamId: team?.id ?? null,
+      });
+      if (!ok) throw new Error('save failed');
 
       setMonthlyResolution(text);
       setResolutionInput(text);

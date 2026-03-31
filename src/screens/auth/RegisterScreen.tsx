@@ -8,8 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
-import { supabase } from '../../lib/supabaseClient';
-import { setupDefaultTeam } from '../../services/teamService';
+import { checkEmailExists } from '../../services/authService';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import { COLORS } from '../../constants/defaults';
@@ -21,7 +20,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterScreen() {
   const navigation = useNavigation<RegisterNav>();
-  const { signUp, isLoading, error, clearError } = useAuthStore();
+  const { signUp, isLoading, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
@@ -59,17 +58,13 @@ export default function RegisterScreen() {
     setEmailChecking(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const { data, error: rpcError } = await supabase.rpc('check_email_exists', {
-          check_email: trimmed,
-        });
-
-        if (rpcError) {
-          console.warn('[Register] email check RPC error:', rpcError.message);
+        const exists = await checkEmailExists(trimmed);
+        if (exists === null) {
           setEmailChecking(false);
           return;
         }
 
-        if (data === true) {
+        if (exists) {
           setEmailError('이미 가입된 이메일입니다.');
           setEmailSuccess('');
         } else {

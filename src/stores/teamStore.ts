@@ -1,10 +1,15 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabaseClient';
-import type { Team, TeamMemberWithUser, TeamMemberRole } from '../types/domain';
+import type { Team, TeamMemberWithUser } from '../types/domain';
+import {
+  createTeamWithMember,
+  deleteTeamById,
+  fetchTeamMembers,
+  fetchUserTeams,
+  leaveTeamById,
+  type TeamWithRole,
+} from '../services/teamService';
 
-export interface TeamWithRole extends Team {
-  role?: TeamMemberRole;
-}
+export type { TeamWithRole } from '../services/teamService';
 
 interface TeamState {
   /** 현재 선택된 팀 */
@@ -40,24 +45,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   fetchTeams: async (userId) => {
     set({ isLoading: true });
     try {
-      // team_members 테이블에서 유저가 속한 팀 ID 조회
-      const { data: memberships } = await supabase
-        .from('team_members')
-        .select('team_id, role')
-        .eq('user_id', userId);
-
-      if (memberships && memberships.length > 0) {
-        const teamIds = memberships.map((m) => m.team_id);
-        const { data: teams } = await supabase
-          .from('teams')
-          .select('id, name, invite_code, profile_image_url, created_at')
-          .in('id', teamIds);
-
-        const teamList: TeamWithRole[] = (teams ?? []).map(t => ({
-          ...t,
-          role: memberships.find(m => m.team_id === t.id)?.role as TeamMemberRole
-        }));
-        
+      const teamList = await fetchUserTeams(userId);
+      if (teamList.length > 0) {
         set({ teams: teamList });
 
         // 현재 팀이 이 유저의 팀 목록에 없으면 첫 번째 팀으로 재설정
@@ -78,15 +67,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   fetchMembers: async (teamId) => {
-    const { data } = await supabase
-      .from('team_members')
-      .select(`
-        *,
-        user:users(id, nickname, profile_image_url)
-      `)
-      .eq('team_id', teamId);
-
-    set({ members: (data as TeamMemberWithUser[]) ?? [] });
+    const members = await fetchTeamMembers(teamId);
+    set({ members: members as TeamMemberWithUser[] });
   },
 
   selectTeam: (team) => {
@@ -94,19 +76,10 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   createTeam: async (name, userId) => {
-    // RPC로 팀 생성 + 멤버 등록을 한 트랜잭션으로 처리
-    // (RLS SELECT 정책이 team_members 기반이라, INSERT 후 .select()가 안 되는 문제 해결)
-    const { data, error } = await supabase.rpc('create_team_with_member', {
-      team_name: name,
-      member_user_id: userId,
-    });
-
-    if (error || !data) {
-      console.error('[TeamStore] createTeam RPC error:', error?.message);
+    const team = await createTeamWithMember(name, userId);
+    if (!team) {
       return null;
     }
-
-    const team = data as Team;
 
     set((state) => ({
       teams: [...state.teams, team],
@@ -117,13 +90,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   deleteTeam: async (teamId, userId) => {
-    const { error } = await supabase.rpc('delete_team', {
-      p_team_id: teamId,
-      p_user_id: userId,
-    });
-
-    if (error) {
-      console.error('[TeamStore] deleteTeam error:', error.message);
+    const ok = await deleteTeamById(teamId, userId);
+    if (!ok) {
       return false;
     }
 
@@ -139,13 +107,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   leaveTeam: async (teamId, userId) => {
-    const { error } = await supabase.rpc('leave_team', {
-      p_team_id: teamId,
-      p_user_id: userId,
-    });
-
-    if (error) {
-      console.error('[TeamStore] leaveTeam error:', error.message);
+    const ok = await leaveTeamById(teamId, userId);
+    if (!ok) {
       return false;
     }
 

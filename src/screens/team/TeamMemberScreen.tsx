@@ -13,13 +13,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabaseClient';
 import { RootStackParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { COLORS } from '../../constants/defaults';
 import { TeamMemberWithUser } from '../../types/domain';
 import CyberFrame from '../../components/ui/CyberFrame';
+import { fetchTeamMembers } from '../../services/teamService';
 
 type TeamMemberScreenRouteProp = RouteProp<RootStackParamList, 'TeamMember'>;
 
@@ -47,17 +47,7 @@ export default function TeamMemberScreen() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: membersData, error: membersError } = await supabase
-        .from('team_members')
-        .select(`
-          *,
-          user:users(id, nickname, profile_image_url, name, gender, age)
-        `)
-        .eq('team_id', teamId);
-
-      if (membersError) throw membersError;
-      
-      const memberList = (membersData as TeamMemberWithUser[]) || [];
+      const memberList = ((await fetchTeamMembers(teamId, { detailed: true })) as TeamMemberWithUser[]) || [];
       const sortedMembers = memberList.sort((a, b) => {
         if (a.role === 'leader' && b.role !== 'leader') return -1;
         if (a.role !== 'leader' && b.role === 'leader') return 1;

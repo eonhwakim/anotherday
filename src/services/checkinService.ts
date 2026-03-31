@@ -69,16 +69,16 @@ export async function takePhoto(): Promise<string | null> {
     return result.assets[0].uri;
   } catch (e2) {
     console.error('[takePhoto] 갤러리도 실행 실패:', e2);
-    Alert.alert('오류', '카메라와 갤러리 모두 사용할 수 없습니다.\n앱 설정에서 권한을 확인해주세요.');
+    Alert.alert(
+      '오류',
+      '카메라와 갤러리 모두 사용할 수 없습니다.\n앱 설정에서 권한을 확인해주세요.',
+    );
     return null;
   }
 }
 
 /** Supabase Storage에 이미지 업로드 후 public URL 반환 */
-export async function uploadCheckinPhoto(
-  userId: string,
-  imageUri: string
-): Promise<string | null> {
+export async function uploadCheckinPhoto(userId: string, imageUri: string): Promise<string | null> {
   try {
     const fileName = `${userId}/${Date.now()}.jpg`;
 
@@ -86,21 +86,17 @@ export async function uploadCheckinPhoto(
     const response = await fetch(imageUri);
     const arrayBuffer = await response.arrayBuffer();
 
-    const { error } = await supabase.storage
-      .from('checkin-photos')
-      .upload(fileName, arrayBuffer, {
-        contentType: 'image/jpeg',
-        upsert: false,
-      });
+    const { error } = await supabase.storage.from('checkin-photos').upload(fileName, arrayBuffer, {
+      contentType: 'image/jpeg',
+      upsert: false,
+    });
 
     if (error) {
       console.error('[Checkin] Upload error:', error.message);
       return null;
     }
 
-    const { data: urlData } = supabase.storage
-      .from('checkin-photos')
-      .getPublicUrl(fileName);
+    const { data: urlData } = supabase.storage.from('checkin-photos').getPublicUrl(fileName);
 
     return urlData.publicUrl;
   } catch (e) {
@@ -117,7 +113,7 @@ export async function submitCheckin(
   goalId: string,
   date: string, // YYYY-MM-DD
   photoUrl: string | null,
-  memo: string | null
+  memo: string | null,
 ): Promise<boolean> {
   try {
     const { error } = await supabase.from('checkins').insert({
@@ -139,4 +135,3 @@ export async function submitCheckin(
     return false;
   }
 }
-

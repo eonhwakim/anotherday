@@ -1,6 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
 import { DEFAULT_GOALS, DEFAULT_TEAM_NAME } from '../constants/defaults';
-import type { Team } from '../types/domain';
+import type { Team, TeamMemberRole, TeamMemberWithUser } from '../types/domain';
+
+export interface TeamWithRole extends Team {
+  role?: TeamMemberRole;
+  profile_image_url?: string | null;
+}
 
 // ─── 팀 관련 서비스 ───────────────────────────────────────────
 
@@ -73,6 +78,102 @@ export async function joinTeamByCode(
   if (!data) return null;
 
   return data as Team;
+}
+
+export async function fetchUserTeams(userId: string): Promise<TeamWithRole[]> {
+  const { data: memberships, error: membershipError } = await supabase
+    .from('team_members')
+    .select('team_id, role')
+    .eq('user_id', userId);
+
+  if (membershipError) {
+    console.error('[TeamService] fetchUserTeams memberships error:', membershipError.message);
+    return [];
+  }
+
+  if (!memberships || memberships.length === 0) return [];
+
+  const teamIds = memberships.map((membership) => membership.team_id);
+  const { data: teams, error: teamsError } = await supabase
+    .from('teams')
+    .select('id, name, invite_code, profile_image_url, created_at')
+    .in('id', teamIds);
+
+  if (teamsError) {
+    console.error('[TeamService] fetchUserTeams teams error:', teamsError.message);
+    return [];
+  }
+
+  return (teams ?? []).map((team) => ({
+    ...team,
+    role: memberships.find((membership) => membership.team_id === team.id)?.role as TeamMemberRole,
+  }));
+}
+
+export async function fetchTeamMembers(
+  teamId: string,
+  options?: { detailed?: boolean },
+): Promise<TeamMemberWithUser[]> {
+  const selectClause = options?.detailed
+    ? `
+        *,
+        user:users(id, nickname, profile_image_url, name, gender, age)
+      `
+    : `
+        *,
+        user:users(id, nickname, profile_image_url)
+      `;
+
+  const { data, error } = await supabase.from('team_members').select(selectClause).eq('team_id', teamId);
+
+  if (error) {
+    console.error('[TeamService] fetchTeamMembers error:', error.message);
+    return [];
+  }
+
+  return (data as TeamMemberWithUser[]) ?? [];
+}
+
+export async function createTeamWithMember(name: string, userId: string): Promise<Team | null> {
+  const { data, error } = await supabase.rpc('create_team_with_member', {
+    team_name: name,
+    member_user_id: userId,
+  });
+
+  if (error || !data) {
+    console.error('[TeamService] createTeamWithMember error:', error?.message);
+    return null;
+  }
+
+  return data as Team;
+}
+
+export async function deleteTeamById(teamId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase.rpc('delete_team', {
+    p_team_id: teamId,
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.error('[TeamService] deleteTeamById error:', error.message);
+    return false;
+  }
+
+  return true;
+}
+
+export async function leaveTeamById(teamId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase.rpc('leave_team', {
+    p_team_id: teamId,
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.error('[TeamService] leaveTeamById error:', error.message);
+    return false;
+  }
+
+  return true;
 }
 
 /** 팀 프로필 수정 (이름, 프로필 이미지) */

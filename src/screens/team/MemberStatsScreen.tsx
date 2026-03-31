@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { supabase } from '../../lib/supabaseClient';
 import { RootStackParamList } from '../../types/navigation';
 import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
@@ -23,6 +22,7 @@ import {
   getGoalWeekRanges,
   getTrendInsight,
 } from '../../lib/statsUtils';
+import { getMonthlyResolution, getMonthlyRetrospective } from '../../services/monthlyService';
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -46,22 +46,12 @@ export default function MemberStatsScreen() {
     await fetchMyGoals(userId);
     await fetchMonthlyCheckins(userId, yearMonth);
     if (teamId) {
-      const { data: r1 } = await supabase
-        .from('monthly_resolutions')
-        .select('content')
-        .eq('user_id', userId)
-        .eq('team_id', teamId)
-        .eq('year_month', yearMonth)
-        .maybeSingle();
-      setResolution(r1?.content || '');
-      const { data: r2 } = await supabase
-        .from('monthly_retrospectives')
-        .select('content')
-        .eq('user_id', userId)
-        .eq('team_id', teamId)
-        .eq('year_month', yearMonth)
-        .maybeSingle();
-      setRetrospective(r2?.content || '');
+      const [resolutionContent, retrospectiveContent] = await Promise.all([
+        getMonthlyResolution(userId, yearMonth, teamId),
+        getMonthlyRetrospective(userId, yearMonth, teamId),
+      ]);
+      setResolution(resolutionContent);
+      setRetrospective(retrospectiveContent);
     }
   }, [userId, teamId, yearMonth]);
 

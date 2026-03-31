@@ -1,10 +1,17 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabaseClient';
 import type { User } from '../types/domain';
 import { useGoalStore } from './goalStore';
 import { useTeamStore } from './teamStore';
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  deleteUserAccount,
+  ensureProfile,
+  fetchUserProfile,
+  getCurrentSessionUser,
+  signInWithPassword,
+  signOutAuth,
+  signUpWithPassword,
+} from '../services/authService';
 
 interface AuthState {
   user: User | null;
@@ -21,30 +28,6 @@ interface AuthState {
   clearError: () => void;
 }
 
-/**
- * RPC를 통해 프로필 조회/생성 (SECURITY DEFINER로 RLS 우회)
- */
-async function ensureProfile(
-  userId: string,
-  email: string,
-  nickname?: string
-): Promise<User | null> {
-  const displayName = nickname || email.split('@')[0];
-
-  const { data, error } = await supabase.rpc('create_user_profile', {
-    user_id: userId,
-    user_email: email,
-    user_nickname: displayName,
-  });
-
-  if (error) {
-    console.error('[Auth] RPC create_user_profile error:', error.message);
-    return null;
-  }
-
-  return data as User;
-}
-
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
@@ -53,16 +36,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   /** 프로필만 다시 가져오기 (isLoading 안 건드림, 네비게이션 리셋 방지) */
   refreshProfile: async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (!error && data) {
-          set({ user: data as User });
+      const sessionUser = await getCurrentSessionUser();
+      if (sessionUser) {
+        const profile = await fetchUserProfile(sessionUser.id);
+        if (profile) {
+          set({ user: profile });
         }
       }
     } catch (e) {
@@ -76,12 +54,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   restoreSession: async () => {
     try {
       set({ isLoading: true, error: null });
-      const { data: { session } } = await supabase.auth.getSession();
+      const sessionUser = await getCurrentSessionUser();
 
-      if (session?.user) {
+      if (sessionUser) {
         const profile = await ensureProfile(
-          session.user.id,
-          session.user.email ?? ''
+          sessionUser.id,
+          sessionUser.email ?? ''
         );
         set({ user: profile });
       } else {
@@ -103,10 +81,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       useGoalStore.getState().reset();
       useTeamStore.getState().reset();
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await signInWithPassword(email, password);
 
       if (error) {
         set({ error: error.message, isLoading: false });
@@ -141,13 +116,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       useGoalStore.getState().reset();
       useTeamStore.getState().reset();
 
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { nickname },
-        },
-      });
+      const { data, error } = await signUpWithPassword(email, password, nickname);
 
       if (error) {
         set({ error: error.message, isLoading: false });
@@ -192,7 +161,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     // 실제 배포 시에는 주석 처리하거나 제거할 수 있음
     await AsyncStorage.removeItem('hasSeenGuide_v4');
     
-    await supabase.auth.signOut();
+    await signOutAuth();
     set({ user: null, error: null });
   },
 
@@ -200,15 +169,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       set({ isLoading: true, error: null });
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      const sessionUser = await getCurrentSessionUser();
+      if (!sessionUser) {
         set({ error: '로그인 세션이 없습니다.', isLoading: false });
         return false;
       }
 
-      const { error } = await supabase.rpc('delete_user_account', {
-        user_id: session.user.id,
-      });
+      const { error } = await deleteUserAccount(sessionUser.id);
 
       if (error) {
         console.error('[Auth] deleteAccount RPC error:', error.message);
@@ -218,7 +185,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       useGoalStore.getState().reset();
       useTeamStore.getState().reset();
-      await supabase.auth.signOut();
+      await signOutAuth();
       set({ user: null, error: null, isLoading: false });
       return true;
     } catch (e: any) {

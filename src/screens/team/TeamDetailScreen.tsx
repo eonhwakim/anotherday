@@ -7,59 +7,39 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  TextInput,
   ActivityIndicator,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from '../../lib/dayjs';
-import { supabase } from '../../lib/supabaseClient';
 import { RootStackParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { COLORS } from '../../constants/defaults';
-import { TeamMemberWithUser, MonthlyResolution, MonthlyRetrospective, UserGoal, Checkin } from '../../types/domain';
-import Button from '../../components/common/Button';
+import { TeamMemberWithUser } from '../../types/domain';
+import {
+  fetchTeamDetailMonthlyData,
+  type TeamDetailMemberGoalStatus,
+  type TeamDetailMemberStats,
+} from '../../services/statsService';
 
 type TeamDetailScreenRouteProp = RouteProp<RootStackParamList, 'TeamDetail'>;
-
-interface MemberStats {
-  totalGoals: number;
-  doneCount: number;
-  passCount: number;
-  missedCount: number;
-  completionRate: number;
-}
-
-interface MemberGoalStatus {
-  goalId: string;
-  name: string;
-  frequency: 'daily' | 'weekly_count';
-  targetCount: number | null;
-  done: number;
-  pass: number;
-  fail: number;
-  total: number;
-}
 
 export default function TeamDetailScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<TeamDetailScreenRouteProp>();
   const { teamId } = route.params;
   const { user } = useAuthStore();
-  const { teams, deleteTeam, fetchTeams } = useTeamStore();
+  const { teams } = useTeamStore();
 
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
   const [members, setMembers] = useState<TeamMemberWithUser[]>([]);
   const [resolutions, setResolutions] = useState<Record<string, string>>({});
   const [retrospectives, setRetrospectives] = useState<Record<string, string>>({});
-  const [memberStats, setMemberStats] = useState<Record<string, MemberStats>>({});
-  const [memberGoals, setMemberGoals] = useState<Record<string, MemberGoalStatus[]>>({});
+  const [memberStats, setMemberStats] = useState<Record<string, TeamDetailMemberStats>>({});
+  const [memberGoals, setMemberGoals] = useState<Record<string, TeamDetailMemberGoalStatus[]>>({});
   
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState('');
@@ -71,7 +51,6 @@ export default function TeamDetailScreen() {
   // const [editRetroText, setEditRetroText] = useState('');
 
   const currentTeamInfo = teams.find(t => t.id === teamId);
-  const myRole = currentTeamInfo?.role;
 
   useEffect(() => {
     if (currentTeamInfo) {
@@ -83,115 +62,12 @@ export default function TeamDetailScreen() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: membersData, error: membersError } = await supabase
-        .from('team_members')
-        .select(`*, user:users(id, nickname, profile_image_url)`)
-        .eq('team_id', teamId);
-      if (membersError) throw membersError;
-      
-      const memberList = membersData as TeamMemberWithUser[];
-      const sortedMembers = memberList.sort((a, b) => {
-        if (a.role === 'leader' && b.role !== 'leader') return -1;
-        if (a.role !== 'leader' && b.role === 'leader') return 1;
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      });
-      setMembers(sortedMembers);
-
-      const { data: resData, error: resError } = await supabase
-        .from('monthly_resolutions')
-        .select('*')
-        .eq('team_id', teamId)
-        .eq('year_month', yearMonth);
-      if (resError) throw resError;
-      const resMap: Record<string, string> = {};
-      resData?.forEach((r: MonthlyResolution) => { resMap[r.user_id] = r.content; });
-      setResolutions(resMap);
-
-      const { data: retroData, error: retroError } = await supabase
-        .from('monthly_retrospectives')
-        .select('*')
-        .eq('team_id', teamId)
-        .eq('year_month', yearMonth);
-      if (retroError) throw retroError;
-      const retroMap: Record<string, string> = {};
-      retroData?.forEach((r: MonthlyRetrospective) => { retroMap[r.user_id] = r.content; });
-      setRetrospectives(retroMap);
-
-      const memberIds = memberList.map(m => m.user_id);
-      const { data: teamGoalsData } = await supabase.from('goals').select('*').eq('team_id', teamId);
-      const teamGoalsMap = new Map(teamGoalsData?.map(g => [g.id, g.name]));
-
-      const startOfMonth = `${yearMonth}-01`;
-      const endOfMonth = dayjs(startOfMonth).endOf('month').format('YYYY-MM-DD');
-
-      const { data: userGoalsData } = await supabase
-        .from('user_goals')
-        .select('*')
-        .in('user_id', memberIds)
-        .eq('is_active', true);
-      const teamUserGoals = (userGoalsData as UserGoal[] || []).filter(ug => {
-        if (!teamGoalsMap.has(ug.goal_id)) return false;
-        if (ug.start_date && ug.start_date > endOfMonth) return false;
-        if (ug.end_date && ug.end_date < startOfMonth) return false;
-        return true;
-      });
-
-      const { data: checkinsData } = await supabase
-        .from('checkins')
-        .select('*')
-        .in('user_id', memberIds)
-        .gte('date', startOfMonth)
-        .lte('date', endOfMonth);
-      const checkins = checkinsData as Checkin[] || [];
-
-      const stats: Record<string, MemberStats> = {};
-      const goalsStatus: Record<string, MemberGoalStatus[]> = {};
-      const todayStr = dayjs().format('YYYY-MM-DD');
-
-      memberIds.forEach(uid => {
-        const myGoals = teamUserGoals.filter(g => g.user_id === uid);
-        const myCheckins = checkins.filter(c => c.user_id === uid);
-        const relevantCheckins = myCheckins.filter(c => myGoals.some(g => g.goal_id === c.goal_id));
-        const doneCount = relevantCheckins.filter(c => c.status === 'done').length;
-        const passCount = relevantCheckins.filter(c => c.status === 'pass').length;
-
-        const myGoalStatuses: MemberGoalStatus[] = myGoals.map(ug => {
-          const gCheckins = relevantCheckins.filter(c => c.goal_id === ug.goal_id);
-          const gDone = gCheckins.filter(c => c.status === 'done').length;
-          const gExplicitPass = gCheckins.filter(c => c.status === 'pass').length;
-          const goalStart = ug.start_date && ug.start_date > startOfMonth ? ug.start_date : startOfMonth;
-          const countEnd = todayStr < endOfMonth ? todayStr : endOfMonth;
-          const activeDays = goalStart <= countEnd ? dayjs(countEnd).diff(dayjs(goalStart), 'day') : 0;
-          const noCheckinDays = Math.max(0, activeDays - gDone - gExplicitPass);
-          // 매일 목표: 미인증 = 미달 / 주N회 목표: 미인증 = 자동 패스
-          const isWeekly = ug.frequency === 'weekly_count';
-          const gPass = gExplicitPass + (isWeekly ? noCheckinDays : 0);
-          const gFail = isWeekly ? 0 : noCheckinDays;
-          return {
-            goalId: ug.goal_id,
-            name: teamGoalsMap.get(ug.goal_id) || 'Unknown',
-            frequency: ug.frequency || 'daily',
-            targetCount: ug.target_count,
-            done: gDone,
-            pass: gPass,
-            fail: gFail,
-            total: activeDays,
-          };
-        });
-        
-        goalsStatus[uid] = myGoalStatuses;
-        const totalMissed = myGoalStatuses.reduce((sum, g) => sum + g.fail, 0);
-        stats[uid] = {
-          totalGoals: myGoals.length,
-          doneCount,
-          passCount,
-          missedCount: totalMissed,
-          completionRate: 0,
-        };
-      });
-      
-      setMemberStats(stats);
-      setMemberGoals(goalsStatus);
+      const data = await fetchTeamDetailMonthlyData(teamId, yearMonth);
+      setMembers(data.members as TeamMemberWithUser[]);
+      setResolutions(data.resolutions);
+      setRetrospectives(data.retrospectives);
+      setMemberStats(data.memberStats);
+      setMemberGoals(data.memberGoals);
     } catch (e) {
       console.error(e);
       Alert.alert('오류', '데이터를 불러오지 못했습니다.');
@@ -237,7 +113,6 @@ export default function TeamDetailScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>팀 멤버 ({members.length})</Text>
               {members.map((member) => {
-                const isMe = member.user_id === user?.id;
                 const resolution = resolutions[member.user_id];
                 const retrospective = retrospectives[member.user_id];
                 const stats = memberStats[member.user_id];

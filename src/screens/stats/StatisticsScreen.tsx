@@ -8,13 +8,13 @@ import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
-import { supabase } from '../../lib/supabaseClient';
 import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
 import WeeklyStatsTab from '../../components/stats/WeeklyStatsTab';
 import CyberFrame from '../../components/ui/CyberFrame';
 import ReviewModal from '../../components/stats/ReviewModal';
-import { getCalendarWeekRanges, calcWeekAchievement } from '../../lib/statsUtils';
+import { fetchMonthlyStatisticsSummary } from '../../services/statsService';
+import { saveMonthlyRetrospective } from '../../services/monthlyService';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 
 interface GoalItem {
@@ -93,182 +93,16 @@ export default function StatisticsScreen() {
   // ── Fetch monthly stats ──
   const fetchMonthlyStats = useCallback(async () => {
     if (!user) return;
-    const { ranges } = getCalendarWeekRanges(yearMonth);
-    if (ranges.length === 0) return;
-
-    const dataStart = ranges[0].s.format('YYYY-MM-DD');
-    const dataEnd = ranges[ranges.length - 1].e.format('YYYY-MM-DD');
-    const today = dayjs().format('YYYY-MM-DD');
-    const endedRanges = ranges.filter((wr) => wr.e.format('YYYY-MM-DD') < today);
 
     try {
-      // ── 1. 나의 체크인 + 목표 ──
-      const [{ data: myCheckins }, { data: myUserGoalsRaw }] = await Promise.all([
-        supabase
-          .from('checkins')
-          .select('goal_id, status, date')
-          .eq('user_id', user.id)
-          .gte('date', dataStart)
-          .lte('date', dataEnd),
-        supabase
-          .from('user_goals')
-          .select('goal_id, frequency, target_count, start_date, end_date, goals(name)')
-          .eq('user_id', user.id)
-          .eq('is_active', true),
-      ]);
-
-      const myGoalsFiltered = (myUserGoalsRaw ?? []).filter((ug: any) => {
-        // 통계 범위(dataStart ~ dataEnd) 내에 목표가 한 번이라도 유효한지 검사
-        if (ug.start_date && ug.start_date > dataEnd) return false;
-        if (ug.end_date && ug.end_date < dataStart) return false;
-        return true;
+      const summary = await fetchMonthlyStatisticsSummary({
+        userId: user.id,
+        yearMonth,
+        teamId: currentTeam?.id,
       });
-
-      // 월간 달성률
-      let myTotal = 0,
-        myFailed = 0;
-      endedRanges.forEach((wr) => {
-        const r = calcWeekAchievement(wr.s.format('YYYY-MM-DD'), myCheckins ?? [], myGoalsFiltered);
-        myTotal += r.totalGoals;
-        myFailed += r.failedGoals;
-      });
-      setMyRate(myTotal > 0 ? Math.round(((myTotal - myFailed) / myTotal) * 100) : null);
-
-      // 목표별 달성률
-      const goalDetailsList: MyGoalDetail[] = myGoalsFiltered.map((ug: any) => {
-        const singleGoal = [
-          {
-            goal_id: ug.goal_id,
-            frequency: ug.frequency,
-            target_count: ug.target_count,
-            start_date: ug.start_date,
-            end_date: ug.end_date,
-          },
-        ];
-        let achievedWeeks = 0,
-          totalActiveWeeks = 0;
-        endedRanges.forEach((wr) => {
-          const r = calcWeekAchievement(wr.s.format('YYYY-MM-DD'), myCheckins ?? [], singleGoal);
-          if (r.totalGoals > 0) {
-            totalActiveWeeks++;
-            if (r.isAllClear) achievedWeeks++;
-          }
-        });
-        return {
-          goalId: ug.goal_id,
-          name: ug.goals?.name ?? '목표',
-          frequency: ug.frequency,
-          targetCount: ug.target_count,
-          achievedWeeks,
-          totalActiveWeeks,
-          rate: totalActiveWeeks > 0 ? Math.round((achievedWeeks / totalActiveWeeks) * 100) : null,
-        };
-      });
-      setMyGoalDetails(goalDetailsList);
-
-      // ── 2. 팀원 데이터 ──
-      if (!currentTeam) {
-        setMemberDetails([]);
-        return;
-      }
-
-      const { data: members } = await supabase
-        .from('team_members')
-        .select('user_id, users(nickname)')
-        .eq('team_id', currentTeam.id);
-
-      const memberIds = (members ?? []).map((m: any) => m.user_id);
-      if (memberIds.length === 0) {
-        setMemberDetails([]);
-        return;
-      }
-
-      const [
-        { data: teamCheckins },
-        { data: teamUserGoalsRaw },
-        { data: allResolutions },
-        { data: allRetrospectives },
-      ] = await Promise.all([
-        supabase
-          .from('checkins')
-          .select('user_id, goal_id, status, date')
-          .in('user_id', memberIds)
-          .gte('date', dataStart)
-          .lte('date', dataEnd),
-        supabase
-          .from('user_goals')
-          .select('user_id, goal_id, frequency, target_count, start_date, end_date, goals(name)')
-          .in('user_id', memberIds)
-          .eq('is_active', true),
-        supabase
-          .from('monthly_resolutions')
-          .select('user_id, content')
-          .in('user_id', memberIds)
-          .eq('team_id', currentTeam.id)
-          .eq('year_month', yearMonth),
-        supabase
-          .from('monthly_retrospectives')
-          .select('user_id, content')
-          .in('user_id', memberIds)
-          .eq('team_id', currentTeam.id)
-          .eq('year_month', yearMonth),
-      ]);
-
-      const processed: MemberDetail[] = (members ?? [])
-        .map((m: any) => {
-          const uid = m.user_id;
-          const uCheckins = (teamCheckins ?? [])
-            .filter((c: any) => c.user_id === uid)
-            .map((c: any) => ({ goal_id: c.goal_id, status: c.status, date: c.date }));
-          const uGoalsRaw = (teamUserGoalsRaw ?? []).filter((g: any) => g.user_id === uid);
-          const uGoals = uGoalsRaw
-            .filter((ug: any) => {
-              if (ug.start_date && ug.start_date > dataEnd) return false;
-              if (ug.end_date && ug.end_date < dataStart) return false;
-              return true;
-            })
-            .map((g: any) => ({
-              goal_id: g.goal_id,
-              frequency: g.frequency,
-              target_count: g.target_count,
-              start_date: g.start_date,
-              end_date: g.end_date,
-            }));
-
-          let mTotal = 0,
-            mFailed = 0;
-          endedRanges.forEach((wr) => {
-            const r = calcWeekAchievement(wr.s.format('YYYY-MM-DD'), uCheckins, uGoals);
-            mTotal += r.totalGoals;
-            mFailed += r.failedGoals;
-          });
-
-          const goalItems: GoalItem[] = uGoalsRaw
-            .filter((ug: any) => {
-              if (ug.start_date && ug.start_date > dataEnd) return false;
-              if (ug.end_date && ug.end_date < dataStart) return false;
-              return true;
-            })
-            .map((g: any) => ({
-              goalId: g.goal_id,
-              name: g.goals?.name ?? '목표',
-              frequency: g.frequency,
-              targetCount: g.target_count,
-            }));
-
-          return {
-            userId: uid,
-            nickname: m.users?.nickname || '알 수 없음',
-            isMe: uid === user.id,
-            rate: mTotal > 0 ? Math.round(((mTotal - mFailed) / mTotal) * 100) : null,
-            goals: goalItems,
-            hanmadi: (allResolutions ?? []).find((r: any) => r.user_id === uid)?.content || '',
-            hoego: (allRetrospectives ?? []).find((r: any) => r.user_id === uid)?.content || '',
-          };
-        })
-        .sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
-
-      setMemberDetails(processed);
+      setMyRate(summary.myRate);
+      setMyGoalDetails(summary.myGoalDetails as MyGoalDetail[]);
+      setMemberDetails(summary.memberDetails as MemberDetail[]);
     } catch (e) {
       console.error(e);
     }
@@ -277,16 +111,16 @@ export default function StatisticsScreen() {
   const saveReview = async () => {
     if (!user || !currentTeam) return;
     try {
-      const { error } = await supabase
-        .from('monthly_retrospectives')
-        .upsert(
-          { user_id: user.id, team_id: currentTeam.id, year_month: yearMonth, content: tempText },
-          { onConflict: 'user_id, team_id, year_month' },
-        );
-      if (error) throw error;
+      const ok = await saveMonthlyRetrospective({
+        userId: user.id,
+        teamId: currentTeam.id,
+        yearMonth,
+        content: tempText,
+      });
+      if (!ok) throw new Error('save failed');
       setMemberDetails((prev) => prev.map((m) => (m.isMe ? { ...m, hoego: tempText } : m)));
       setEditReviewModalVisible(false);
-    } catch (e) {
+    } catch {
       Alert.alert('저장 실패', '회고 저장 중 오류가 발생했습니다.');
     }
   };
