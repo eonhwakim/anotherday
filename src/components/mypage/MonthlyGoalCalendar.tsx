@@ -1,13 +1,8 @@
 import React, { useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, UserGoal, Checkin } from '../../types/domain';
-import { COLORS } from '../../constants/defaults';
+import { colors } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
 
 interface MonthlyGoalCalendarProps {
@@ -51,10 +46,7 @@ export default function MonthlyGoalCalendar({
   };
 
   /** 전체 목표 ID (범례, 요약용) */
-  const allMyGoalIds = useMemo(
-    () => (myGoals || []).map((ug) => ug.goal_id),
-    [myGoals],
-  );
+  const allMyGoalIds = useMemo(() => (myGoals || []).map((ug) => ug.goal_id), [myGoals]);
 
   const primaryGoalName = useMemo(() => {
     if (allMyGoalIds.length === 0) return null;
@@ -83,12 +75,8 @@ export default function MonthlyGoalCalendar({
     const activeIds = getActiveGoalIdsForDate(dateStr);
     const dayCheckins = (checkins || []).filter((c) => c.date === dateStr);
 
-    const doneCount = dayCheckins.filter((c) =>
-      c.status === 'done'
-    ).length;
-    const explicitPassCount = dayCheckins.filter((c) =>
-      c.status === 'pass'
-    ).length;
+    const doneCount = dayCheckins.filter((c) => c.status === 'done').length;
+    const explicitPassCount = dayCheckins.filter((c) => c.status === 'pass').length;
 
     // 자동 패스: 주N회 목표 중 체크인 없는 것 (과거 날짜만)
     let autoPassCount = 0;
@@ -117,7 +105,14 @@ export default function MonthlyGoalCalendar({
       });
     }
 
-    return { completed, total, allDone: total > 0 && completed >= total, hasPass, activeIds, missed };
+    return {
+      completed,
+      total,
+      allDone: total > 0 && completed >= total,
+      hasPass,
+      activeIds,
+      missed,
+    };
   };
 
   return (
@@ -125,21 +120,11 @@ export default function MonthlyGoalCalendar({
       {/* 헤더: 월 이동 */}
       <View style={styles.monthHeader}>
         <TouchableOpacity onPress={onPrevMonth} style={styles.arrowBtn}>
-          <Ionicons
-            name="chevron-back"
-            size={18}
-            color={COLORS.text}
-          />
+          <Ionicons name="chevron-back" size={18} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.monthTitle}>
-          {dayjs(`${yearMonth}-01`).format('YYYY년 M월')}
-        </Text>
+        <Text style={styles.monthTitle}>{dayjs(`${yearMonth}-01`).format('YYYY년 M월')}</Text>
         <TouchableOpacity onPress={onNextMonth} style={styles.arrowBtn}>
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={COLORS.text}
-          />
+          <Ionicons name="chevron-forward" size={18} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -150,8 +135,8 @@ export default function MonthlyGoalCalendar({
             key={label}
             style={[
               styles.dowLabel,
-              i === 5 && { color: COLORS.primaryLight },
-              i === 6 && { color: COLORS.error },
+              i === 5 && { color: colors.primaryLight },
+              i === 6 && { color: colors.error },
             ]}
           >
             {label}
@@ -170,14 +155,13 @@ export default function MonthlyGoalCalendar({
             const dateStr = `${yearMonth}-${String(day).padStart(2, '0')}`;
             const isToday = dateStr === today;
             const isFuture = dayjs(dateStr).isAfter(dayjs(), 'day');
-            const { completed, total, allDone, hasPass, activeIds, missed } =
-              getDayStatus(dateStr);
+            const { completed, total, allDone, hasPass, activeIds, missed } = getDayStatus(dateStr);
             const someDone = completed > 0;
             const hasGoals = total > 0; // 해당 날짜에 유효 목표가 있는지
 
             // 해당 날짜의 첫 번째 유효 목표 이름
             const dayPrimaryGoalName = hasGoals
-              ? (teamGoals || []).find((g) => g.id === activeIds[0])?.name ?? null
+              ? ((teamGoals || []).find((g) => g.id === activeIds[0])?.name ?? null)
               : null;
 
             return (
@@ -194,12 +178,12 @@ export default function MonthlyGoalCalendar({
                 activeOpacity={0.6}
               >
                 <Text
-                style={[
-                  styles.dayNumber,
-                  isToday && styles.dayNumberToday,
-                  isFuture && styles.dayNumberFuture,
-                  di === 5 && { color: COLORS.primaryLight },
-                  di === 6 && { color: COLORS.error },
+                  style={[
+                    styles.dayNumber,
+                    isToday && styles.dayNumberToday,
+                    isFuture && styles.dayNumberFuture,
+                    di === 5 && { color: colors.primaryLight },
+                    di === 6 && { color: colors.error },
                     allDone && hasGoals && { color: '#4ADE80' },
                   ]}
                 >
@@ -208,20 +192,17 @@ export default function MonthlyGoalCalendar({
 
                 {/* 닉네임 + 목표 스티커 (해당 날짜에 유효 목표가 있을 때만) */}
                 {!isFuture && hasGoals && dayPrimaryGoalName && (
-                  <View style={[
-                    styles.sticker,
-                    allDone && styles.stickerDone
-                  ]}>
-                    <Text style={[
-                      styles.stickerText,
-                      allDone && { color: '#4ADE80' }
-                    ]} numberOfLines={1}>
+                  <View style={[styles.sticker, allDone && styles.stickerDone]}>
+                    <Text
+                      style={[styles.stickerText, allDone && { color: '#4ADE80' }]}
+                      numberOfLines={1}
+                    >
                       {nickname}
                     </Text>
-                    <Text style={[
-                      styles.stickerGoal,
-                      allDone && { color: 'rgba(74, 222, 128, 0.65)' }
-                    ]} numberOfLines={1}>
+                    <Text
+                      style={[styles.stickerGoal, allDone && { color: 'rgba(74, 222, 128, 0.65)' }]}
+                      numberOfLines={1}
+                    >
                       {dayPrimaryGoalName}
                     </Text>
                   </View>
@@ -231,35 +212,24 @@ export default function MonthlyGoalCalendar({
                 {!isFuture && hasGoals && (
                   <View style={styles.indicators}>
                     {allDone ? (
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={11}
-                        color="#4ADE80"
-                      />
+                      <Ionicons name="checkmark-circle" size={11} color="#4ADE80" />
                     ) : someDone ? (
                       <View style={styles.partialDot} />
                     ) : (
-                      dateStr === today && (
-                        <View style={styles.pendingDot} />
-                      )
-                    )}
-                    
-                    {missed > 0 && (
-                      <View style={styles.missedDot} />
+                      dateStr === today && <View style={styles.pendingDot} />
                     )}
 
-                    {hasPass && (
-                      <Text style={styles.passIndicator}>P</Text>
-                    )}
+                    {missed > 0 && <View style={styles.missedDot} />}
+
+                    {hasPass && <Text style={styles.passIndicator}>P</Text>}
                   </View>
                 )}
 
                 {/* 추가 목표 수 (해당 날짜 유효 목표 기준) */}
                 {!isFuture && activeIds.length > 1 && (
-                  <Text style={[
-                    styles.moreGoals,
-                    allDone && { color: 'rgba(74, 222, 128, 0.65)' }
-                  ]}>
+                  <Text
+                    style={[styles.moreGoals, allDone && { color: 'rgba(74, 222, 128, 0.65)' }]}
+                  >
                     +{activeIds.length - 1}
                   </Text>
                 )}
@@ -276,11 +246,11 @@ export default function MonthlyGoalCalendar({
           <Text style={styles.legendText}>완료</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
+          <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
           <Text style={styles.legendText}>패스</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: COLORS.error }]} />
+          <View style={[styles.legendDot, { backgroundColor: colors.error }]} />
           <Text style={styles.legendText}>미달</Text>
         </View>
       </View>
@@ -362,7 +332,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(74, 222, 128, 0.25)',
     shadowColor: '#4ADE80',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 2,
   },
@@ -430,7 +400,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: COLORS.error,
+    backgroundColor: colors.error,
   },
   passIndicator: {
     fontSize: 8,

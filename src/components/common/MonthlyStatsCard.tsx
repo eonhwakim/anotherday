@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, G } from 'react-native-svg';
-import { COLORS } from '../../constants/defaults';
+import { colors } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
 
 interface GoalStat {
@@ -41,7 +41,17 @@ interface MonthlyStatsProps {
 }
 
 /** 원형 프로그레스 바 */
-function CircularProgress({ rate, size = 60, strokeWidth = 6, color = COLORS.primary }: { rate: number, size?: number, strokeWidth?: number, color?: string }) {
+function CircularProgress({
+  rate,
+  size = 60,
+  strokeWidth = 6,
+  color = colors.primary,
+}: {
+  rate: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+}) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const strokeDashoffset = circumference - (rate / 100) * circumference;
@@ -81,16 +91,38 @@ function CircularProgress({ rate, size = 60, strokeWidth = 6, color = COLORS.pri
 }
 
 /** 수평 프로그레스 바 */
-function ProgressBar({ rate, height = 6, color = COLORS.primary }: { rate: number, height?: number, color?: string }) {
+function ProgressBar({
+  rate,
+  height = 6,
+  color = colors.primary,
+}: {
+  rate: number;
+  height?: number;
+  color?: string;
+}) {
   return (
-    <View style={{ height, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: height / 2, flex: 1, overflow: 'hidden' }}>
-      <View style={{ width: `${rate}%`, height: '100%', backgroundColor: color, borderRadius: height / 2 }} />
+    <View
+      style={{
+        height,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: height / 2,
+        flex: 1,
+        overflow: 'hidden',
+      }}
+    >
+      <View
+        style={{
+          width: `${rate}%`,
+          height: '100%',
+          backgroundColor: color,
+          borderRadius: height / 2,
+        }}
+      />
     </View>
   );
 }
 
-export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArrow }: MonthlyStatsProps) {
-  
+export default function MonthlyStatsCard({ monthLabel, stats, showArrow }: MonthlyStatsProps) {
   const renderGoalItem = (gs: GoalStat, isWeekly: boolean) => {
     const rate = gs.rate ?? 0;
     const barColor = rate >= 80 ? '#4ADE80' : rate >= 50 ? '#FBBF24' : '#EF4444';
@@ -105,7 +137,9 @@ export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArr
                 <Text style={styles.freqBadgeText}>주{gs.targetCount}회</Text>
               </View>
             )}
-            <Text style={styles.goalItemName} numberOfLines={1}>{gs.name}</Text>
+            <Text style={styles.goalItemName} numberOfLines={1}>
+              {gs.name}
+            </Text>
           </View>
           {startDateText ? <Text style={styles.startDateText}>{startDateText}</Text> : null}
         </View>
@@ -141,9 +175,7 @@ export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArr
     <View style={styles.statsCard}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{monthLabel} 통계</Text>
-        {showArrow && (
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-        )}
+        {showArrow && <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
       </View>
 
       {/* ─── 매일 목표 통계 ─── */}
@@ -158,7 +190,7 @@ export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArr
 
         {stats.daily.goals.length > 0 ? (
           <View style={styles.goalList}>
-            {stats.daily.goals.map(gs => renderGoalItem(gs, false))}
+            {stats.daily.goals.map((gs) => renderGoalItem(gs, false))}
           </View>
         ) : (
           <Text style={styles.emptyText}>설정된 매일 목표가 없어요</Text>
@@ -172,14 +204,16 @@ export default function MonthlyStatsCard({ monthLabel, stats, teamCount, showArr
         <View style={styles.sectionHeaderRow}>
           <View style={styles.sectionTitleCol}>
             <Text style={styles.sectionTitle}>주 N회 목표</Text>
-            <Text style={styles.sectionSubtitle}>매주(월~일)가 지나야 달성 여부를 알 수 있어요</Text>
+            <Text style={styles.sectionSubtitle}>
+              매주(월~일)가 지나야 달성 여부를 알 수 있어요
+            </Text>
           </View>
           <CircularProgress rate={stats.weekly.avgRate} color="#3B82F6" />
         </View>
 
         {stats.weekly.goals.length > 0 ? (
           <View style={styles.goalList}>
-            {stats.weekly.goals.map(gs => renderGoalItem(gs, true))}
+            {stats.weekly.goals.map((gs) => renderGoalItem(gs, true))}
           </View>
         ) : (
           <Text style={styles.emptyText}>설정된 주 N회 목표가 없어요</Text>
@@ -250,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
   },
-  
+
   // Goal Item Card Style
   goalItemCard: {
     backgroundColor: '#F9FAFB',
