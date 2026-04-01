@@ -8,7 +8,6 @@ import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
-import { COLORS } from '../../constants/defaults';
 import dayjs from '../../lib/dayjs';
 import WeeklyStatsTab from '../../components/stats/WeeklyStatsTab';
 import CyberFrame from '../../components/ui/CyberFrame';
@@ -16,6 +15,10 @@ import ReviewModal from '../../components/stats/ReviewModal';
 import { fetchMonthlyStatisticsSummary } from '../../services/statsService';
 import { saveMonthlyRetrospective } from '../../services/monthlyService';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
+import FrameCard from '../../components/ui/FrameCard';
+import ScreenHeader from '../../components/ui/ScreenHeader';
+import SectionHeader from '../../components/ui/SectionHeader';
+import { colors, ds, radius, spacing, typography } from '../../design/recipes';
 
 interface GoalItem {
   goalId: string;
@@ -136,14 +139,11 @@ export default function StatisticsScreen() {
   return (
     <View style={s.container}>
       <SafeAreaView style={s.safe} edges={['top']}>
+        <ScreenHeader
+          title="통계"
+          subtitle="월초와 월말의 부분주는 4일 미만이면 인접 월에 편입되어 현재 달 집계에서 제외돼요."
+        />
         <ScrollView ref={scrollRef} style={s.scroll} showsVerticalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={s.screenTitle}>통계</Text>
-            <Text style={s.subtitle}>
-              💡월초/월말 부분주가 4일 미만이면 인접 월에 편입 (해당 월에서 제외)
-            </Text>
-          </View>
-
           {/* ── 탭 전환 ── */}
           <CyberFrame style={s.tabFrame} contentStyle={s.tabContent} glassOnly={true}>
             <TouchableOpacity
@@ -165,7 +165,7 @@ export default function StatisticsScreen() {
               {/* ── 월 선택 ── */}
               <View style={s.monthRow}>
                 <TouchableOpacity style={s.monthBtn} onPress={goToPrev}>
-                  <Ionicons name="chevron-back" size={22} color={COLORS.primaryLight} />
+                  <Ionicons name="chevron-back" size={22} color={colors.primaryLight} />
                 </TouchableOpacity>
                 <Text style={s.monthLabel}>{monthLabel}</Text>
                 <TouchableOpacity
@@ -176,7 +176,7 @@ export default function StatisticsScreen() {
                   <Ionicons
                     name="chevron-forward"
                     size={22}
-                    color={canNext ? COLORS.primaryLight : 'rgba(26,26,26,0.25)'}
+                    color={canNext ? colors.primaryLight : 'rgba(26,26,26,0.25)'}
                   />
                 </TouchableOpacity>
               </View>
@@ -184,8 +184,8 @@ export default function StatisticsScreen() {
               {/* ═══ 우리 팀 달성률 차트 ═══ */}
               {currentTeam && memberDetails.length > 0 && (
                 <>
-                  <Text style={s.sectionTitle}>우리 팀 달성률</Text>
-                  <CyberFrame style={s.chartFrame} contentStyle={s.chartContent}>
+                  <SectionHeader title="우리 팀 달성률" inset />
+                  <FrameCard style={s.chartFrame} contentStyle={s.chartContent} padded={false}>
                     {memberDetails.map((m, idx) => {
                       const validRate = m.rate ?? 0;
                       return (
@@ -212,7 +212,7 @@ export default function StatisticsScreen() {
                                 s.chartBarFill,
                                 { width: `${validRate}%` },
                                 m.isMe
-                                  ? { backgroundColor: COLORS.primary }
+                                  ? { backgroundColor: colors.primary }
                                   : { backgroundColor: 'rgba(26,26,26,0.15)' },
                               ]}
                             />
@@ -223,13 +223,13 @@ export default function StatisticsScreen() {
                         </View>
                       );
                     })}
-                  </CyberFrame>
+                  </FrameCard>
                 </>
               )}
 
               {/* ═══ 나의 N월 ═══ */}
-              <Text style={s.sectionTitle}>나의 {monthNum}월</Text>
-              <CyberFrame style={s.memberCardFrame} contentStyle={s.memberCardContent}>
+              <SectionHeader title={`나의 ${monthNum}월`} inset />
+              <FrameCard style={s.memberCardFrame} contentStyle={s.memberCardContent} padded={false}>
                 {/* 달성률 */}
                 <View style={s.cardRateRow}>
                   <Text style={s.cardRateLabel}>{monthNum}월 달성률</Text>
@@ -264,13 +264,13 @@ export default function StatisticsScreen() {
                             <Text
                               style={[
                                 s.goalRate,
-                                { color: g.rate >= 100 ? COLORS.primary : '#1A1A1A' },
+                                { color: g.rate >= 100 ? colors.primary : colors.text },
                               ]}
                             >
                               {g.rate}%
                             </Text>
                             {g.rate >= 100 && (
-                              <Ionicons name="checkmark-circle" size={15} color={COLORS.primary} />
+                              <Ionicons name="checkmark-circle" size={15} color={colors.primary} />
                             )}
                           </View>
                         )}
@@ -299,7 +299,7 @@ export default function StatisticsScreen() {
                         }}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
-                        <Ionicons name="pencil" size={14} color={COLORS.textSecondary} />
+                        <Ionicons name="pencil" size={14} color={colors.textSecondary} />
                       </TouchableOpacity>
                     </View>
                     <Text style={[s.reviewText, !myMember?.hoego && s.placeholder]}>
@@ -307,17 +307,18 @@ export default function StatisticsScreen() {
                     </Text>
                   </View>
                 )}
-              </CyberFrame>
+              </FrameCard>
 
               {/* ═══ 팀원들의 N월 ═══ */}
               {currentTeam && otherMembers.length > 0 && (
                 <>
-                  <Text style={s.sectionTitle}>팀원들의 {monthNum}월</Text>
+                  <SectionHeader title={`팀원들의 ${monthNum}월`} inset />
                   {otherMembers.map((m, idx) => (
-                    <CyberFrame
+                    <FrameCard
                       key={m.userId}
                       style={s.memberCardFrame}
                       contentStyle={s.memberCardContent}
+                      padded={false}
                     >
                       {/* 이름 + 달성률 */}
                       <View style={s.cardRateRow}>
@@ -377,7 +378,7 @@ export default function StatisticsScreen() {
                           <Text style={s.reviewText}>{m.hoego}</Text>
                         </View>
                       ) : null}
-                    </CyberFrame>
+                    </FrameCard>
                   ))}
                 </>
               )}
@@ -405,23 +406,14 @@ export default function StatisticsScreen() {
 // ─── Styles ──────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: colors.screen },
   safe: { flex: 1 },
   scroll: { flex: 1 },
-  screenTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  subtitle: { fontSize: 12, color: 'rgba(26,26,26,0.50)', lineHeight: 20, fontWeight: '400' },
 
   // Tabs
-  tabFrame: { marginHorizontal: 16, marginBottom: 16, borderRadius: 12 },
+  tabFrame: { marginHorizontal: spacing[4], marginBottom: spacing[4], borderRadius: radius.md },
   tabContent: { flexDirection: 'row', padding: 4 },
-  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: radius.sm },
   tabBtnActive: {
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     shadowColor: '#000',
@@ -430,44 +422,33 @@ const s = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  tabText: { fontSize: 14, fontWeight: '600', color: 'rgba(26,26,26,0.5)' },
-  tabTextActive: { color: '#1A1A1A', fontWeight: '700' },
+  tabText: { ...typography.bodyStrong, color: colors.textSecondary },
+  tabTextActive: { color: colors.text, fontWeight: '700' },
 
   // Month selector
   monthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    ...ds.rowCenter,
     justifyContent: 'center',
     marginBottom: 8,
-    gap: 16,
+    gap: spacing[4],
   },
-  monthBtn: { padding: 8 },
+  monthBtn: { padding: spacing[2] },
   monthLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: colors.text,
     minWidth: 130,
     textAlign: 'center',
   },
 
-  // Section title
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    marginHorizontal: 16,
-    marginBottom: 4,
-    marginTop: 28,
-  },
-
   // Team Chart
-  chartFrame: { marginHorizontal: 16, marginTop: 8, marginBottom: 8 },
-  chartContent: { paddingVertical: 16, paddingHorizontal: 16, gap: 12 },
-  chartRow: { flexDirection: 'row', alignItems: 'center' },
-  chartLabelBox: { width: 70, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  chartRank: { fontSize: 20, fontWeight: '700', color: 'rgba(26,26,26,0.35)', width: 20 },
-  chartName: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', flex: 1 },
-  chartNameMe: { color: '#FF6B3D', fontWeight: '800' },
+  chartFrame: { marginHorizontal: spacing[4], marginTop: 8, marginBottom: 8 },
+  chartContent: { paddingVertical: spacing[4], paddingHorizontal: spacing[4], gap: spacing[3] },
+  chartRow: ds.rowCenter,
+  chartLabelBox: { width: 70, ...ds.rowCenter, gap: spacing[1] + 2 },
+  chartRank: { fontSize: 20, fontWeight: '700', color: colors.textFaint, width: 20 },
+  chartName: { ...typography.label, color: colors.text, textTransform: 'none', flex: 1 },
+  chartNameMe: { color: colors.primary, fontWeight: '800' },
   chartBarBg: {
     flex: 1,
     height: 12,
@@ -480,34 +461,37 @@ const s = StyleSheet.create({
   chartRateText: {
     width: 36,
     textAlign: 'right',
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    ...typography.label,
+    color: colors.text,
+    textTransform: 'none',
   },
-  chartRateTextMe: { color: '#FF6B3D', fontWeight: '800' },
+  chartRateTextMe: { color: colors.primary, fontWeight: '800' },
 
   // Member card (shared for me + each team member)
-  memberCardFrame: { marginHorizontal: 16, marginTop: 8, marginBottom: 8 },
+  memberCardFrame: { marginHorizontal: spacing[4], marginTop: 8, marginBottom: 8 },
   memberCardContent: { paddingHorizontal: 0, paddingVertical: 0 },
 
   // Rate row at top of each card
   cardRateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    ...ds.rowBetween,
     paddingHorizontal: 18,
     paddingVertical: 18,
   },
-  cardRateLabel: { fontSize: 16, fontWeight: '600', color: 'rgba(26,26,26,0.45)' },
+  cardRateLabel: { fontSize: 16, fontWeight: '600', color: colors.textSecondary },
   rateBig: { fontSize: 32, fontWeight: '900', letterSpacing: -1 },
   rateMedium: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
-  rateEmpty: { fontSize: 13, color: 'rgba(26,26,26,0.35)', fontWeight: '500' },
+  rateEmpty: {
+    ...typography.label,
+    color: colors.textFaint,
+    fontWeight: '500',
+    textTransform: 'none',
+  },
   ratePerfect: { fontSize: 14, fontWeight: '700', color: '#15803d' },
 
   // Member name row
-  memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  memberRankText: { fontSize: 20, fontWeight: '700', color: 'rgba(26,26,26,0.35)', width: 20 },
-  memberNickname: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
+  memberNameRow: { ...ds.rowCenter, gap: spacing[1] + 2 },
+  memberRankText: { fontSize: 20, fontWeight: '700', color: colors.textFaint, width: 20 },
+  memberNickname: { fontSize: 15, fontWeight: '700', color: colors.text },
 
   // Sub-sections within a card
   dividerSection: {
@@ -517,52 +501,47 @@ const s = StyleSheet.create({
     borderTopColor: 'rgba(0,0,0,0.05)',
   },
   subLabel: {
-    fontSize: 13,
+    ...typography.label,
     fontWeight: '700',
     color: 'rgba(26,26,26,0.40)',
     marginBottom: 8,
-    letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
 
   // Goal rows (my detailed view)
-  goalRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  goalInfo: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  goalRow: { ...ds.rowCenter, marginBottom: 8 },
+  goalInfo: { flex: 1, ...ds.rowCenter },
   myGoalChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,107,61,0.06)',
+    ...ds.rowCenter,
+    backgroundColor: colors.glass,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
   },
-  myGoalChipText: { fontSize: 13, fontWeight: '600', color: '#1A1A1A' },
-  myGoalChipFreq: { fontSize: 12, color: 'rgba(26,26,26,0.45)' },
-  goalRateWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  myGoalChipText: { ...typography.label, color: colors.text, textTransform: 'none' },
+  myGoalChipFreq: { ...typography.caption, color: colors.textSecondary },
+  goalRateWrap: { ...ds.rowCenter, gap: 4 },
   goalRate: { fontSize: 14, fontWeight: '800' },
-  goalRateGray: { fontSize: 12, color: 'rgba(26,26,26,0.35)', fontWeight: '500' },
+  goalRateGray: { ...typography.caption, color: colors.textFaint, fontWeight: '500' },
 
   // Goal chips (team member compact view)
   goalChipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   goalChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,107,61,0.06)',
+    ...ds.rowCenter,
+    backgroundColor: colors.glass,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
   },
-  goalChipText: { fontSize: 12, fontWeight: '600', color: '#1A1A1A' },
-  goalChipFreq: { fontSize: 11, color: 'rgba(26,26,26,0.45)' },
+  goalChipText: { ...typography.caption, fontWeight: '600', color: colors.text },
+  goalChipFreq: { fontSize: 11, color: colors.textSecondary },
   goalChipRate: { fontSize: 11, fontWeight: '700' },
 
   // Review (한마디 / 회고)
   reviewHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    ...ds.rowBetween,
     marginBottom: 8,
   },
-  reviewText: { fontSize: 14, color: '#1A1A1A', lineHeight: 20 },
-  placeholder: { color: 'rgba(26,26,26,0.30)' },
+  reviewText: { ...typography.body, color: colors.text, lineHeight: 20 },
+  placeholder: { color: colors.textMuted },
 });

@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS } from '../constants/defaults';
+import { colors } from '../design/tokens';
 
 const STORAGE_KEY = 'notification_daily_enabled';
 const GOAL_REMINDER_STORAGE_KEY = 'notification_goal_reminder_enabled';
@@ -20,37 +20,44 @@ Notifications.setNotificationHandler({
 
 // expo-notifications weekday: 1=Sunday, 2=Monday, ... 7=Saturday
 const DAILY_MESSAGES: Record<number, string[]> = {
-  2: [ // 월요일
+  2: [
+    // 월요일
     '새로운 한 주가 시작됐어요! 정상을 향해 한 걸음씩 올라가볼까요?',
     '월요일 시작! 이번 주도 함께 올라가봐요.',
     '"도전이 없으면 성취도 없다"',
   ],
-  3: [ // 화요일
+  3: [
+    // 화요일
     '어제의 한 걸음이 오늘의 발판이에요. 계속 올라가볼까요?',
     '화요일, 페이스를 잡아가는 날! 오늘도 한 발짝 더.',
     '"성공은 수많은 실패를 견뎌낸 결과이다"',
   ],
-  4: [ // 수요일
+  4: [
+    // 수요일
     '"도전은 사람을 강하게 만든다"',
     '수요일 도착! 절반을 넘었어요, 힘내봐요.',
     '오늘도 잊지말고 인증해서 목표를 채워가봐요!',
   ],
-  5: [ // 목요일
+  5: [
+    // 목요일
     '목요일, 정상이 보이기 시작해요! 조금만 더 힘내볼까요?',
     '거의 다 왔어요! 오늘도 꾸준히 한 걸음.',
     '"내일로 미루는 것은 옳지 않으며, 오늘 하지 못하면 내일도 할 수 없다."',
   ],
-  6: [ // 금요일
+  6: [
+    // 금요일
     '금요일이에요! 이번 주 마지막 스퍼트, 한번 달려볼까요?',
     '"산다는것 그것은 치열한 전투이다."',
     '오늘도 잊지말고 인증해서 목표를 채워가봐요!',
   ],
-  7: [ // 토요일
+  7: [
+    // 토요일
     '토요일에도 한 걸음! 꾸준함이 정상을 만들어요.',
     '주말이지만 목표는 쉬지 않아요. 가볍게 도전해볼까요?',
     '여유로운 토요일, 목표 하나 달성하고 뿌듯한 하루 보내요!',
   ],
-  1: [ // 일요일
+  1: [
+    // 일요일
     '일요일, 한 주의 마지막 날! 이번 주를 멋지게 마무리해봐요.',
     '오늘까지 달성하면 완벽한 한 주! 마지막 힘을 내봐요.',
     '"세상은 고통으로 가득하지만 그것을 극복하는 사람들로도 가득하다"',
@@ -74,7 +81,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
       name: 'default',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: COLORS.primary,
+      lightColor: colors.primary,
     });
   }
 
@@ -108,7 +115,7 @@ export async function scheduleDailyNotifications(): Promise<void> {
         title: 'Anotherday',
         body: pickMessage(weekday),
         sound: true,
-        color: COLORS.primary,
+        color: colors.primary,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -196,7 +203,7 @@ export async function scheduleGoalReminderNotification(
       title,
       body,
       sound: true,
-      color: COLORS.primary,
+      color: colors.primary,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -218,7 +225,7 @@ export async function sendTestNotification(): Promise<void> {
       title: 'Anotherday (테스트)',
       body: pickMessage(expoWeekday),
       sound: true,
-      color: COLORS.primary,
+      color: colors.primary,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -237,7 +244,7 @@ export async function sendTestGoalReminderNotification(): Promise<void> {
       title: '아직 인증하지 않은 목표가 있어요!',
       body: '운동, 독서 — 오늘 안에 인증해봐요 💪',
       sound: true,
-      color: COLORS.primary,
+      color: colors.primary,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

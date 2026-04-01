@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -17,13 +16,17 @@ import dayjs from '../../lib/dayjs';
 import { RootStackParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
-import { COLORS } from '../../constants/defaults';
 import { TeamMemberWithUser } from '../../types/domain';
 import {
   fetchTeamDetailMonthlyData,
   type TeamDetailMemberGoalStatus,
   type TeamDetailMemberStats,
 } from '../../services/statsService';
+import { colors, ds, radius, shadows, spacing, typography } from '../../design/recipes';
+import ScreenHeader from '../../components/ui/ScreenHeader';
+import SectionHeader from '../../components/ui/SectionHeader';
+import Badge from '../../components/ui/Badge';
+import Avatar from '../../components/ui/Avatar';
 
 type TeamDetailScreenRouteProp = RouteProp<RootStackParamList, 'TeamDetail'>;
 
@@ -40,17 +43,11 @@ export default function TeamDetailScreen() {
   const [retrospectives, setRetrospectives] = useState<Record<string, string>>({});
   const [memberStats, setMemberStats] = useState<Record<string, TeamDetailMemberStats>>({});
   const [memberGoals, setMemberGoals] = useState<Record<string, TeamDetailMemberGoalStatus[]>>({});
-  
+
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState('');
-  
-  // 수정 기능 제거: 모달 및 상태값 삭제
-  // const [editResModalVisible, setEditResModalVisible] = useState(false);
-  // const [editResText, setEditResText] = useState('');
-  // const [editRetroModalVisible, setEditRetroModalVisible] = useState(false);
-  // const [editRetroText, setEditRetroText] = useState('');
 
-  const currentTeamInfo = teams.find(t => t.id === teamId);
+  const currentTeamInfo = teams.find((t) => t.id === teamId);
 
   useEffect(() => {
     if (currentTeamInfo) {
@@ -76,42 +73,40 @@ export default function TeamDetailScreen() {
     }
   }, [teamId, yearMonth, user]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // 수정 기능 제거: 저장 핸들러 삭제
   // const handleSaveResolution = ...
   // const handleSaveRetrospective = ...
 
-  const goToPrevMonth = () => setYearMonth((prev) => dayjs(`${prev}-01`).subtract(1, 'month').format('YYYY-MM'));
-  const goToNextMonth = () => setYearMonth((prev) => dayjs(`${prev}-01`).add(1, 'month').format('YYYY-MM'));
+  const goToPrevMonth = () =>
+    setYearMonth((prev) => dayjs(`${prev}-01`).subtract(1, 'month').format('YYYY-MM'));
+  const goToNextMonth = () =>
+    setYearMonth((prev) => dayjs(`${prev}-01`).add(1, 'month').format('YYYY-MM'));
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{teamName || '팀 상세'}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <ScreenHeader title={teamName || '팀 상세'} onBack={() => navigation.goBack()} />
 
       <View style={styles.monthSelector}>
         <TouchableOpacity onPress={goToPrevMonth}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.textSecondary} />
+          <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
         <Text style={styles.monthText}>{dayjs(`${yearMonth}-01`).format('YYYY년 M월')}</Text>
         <TouchableOpacity onPress={goToNextMonth}>
-          <Ionicons name="chevron-forward" size={24} color={COLORS.textSecondary} />
+          <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content}>
         {loading ? (
-          <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
         ) : (
           <>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>팀 멤버 ({members.length})</Text>
+              <SectionHeader title={`팀 멤버 (${members.length})`} />
               {members.map((member) => {
                 const resolution = resolutions[member.user_id];
                 const retrospective = retrospectives[member.user_id];
@@ -122,45 +117,44 @@ export default function TeamDetailScreen() {
                   <View key={member.id} style={styles.memberCard}>
                     <View style={styles.memberHeader}>
                       <View style={styles.memberProfile}>
-                        {member.user.profile_image_url ? (
-                          <Image source={{ uri: member.user.profile_image_url }} style={styles.avatar} />
-                        ) : (
-                          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                            <Ionicons name="person" size={20} color={COLORS.textSecondary} />
-                          </View>
-                        )}
+                        <Avatar uri={member.user.profile_image_url} size={48} />
                         <View style={{ flex: 1 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <Text style={styles.nickname}>{member.user.nickname}</Text>
                             {member.role === 'leader' ? (
-                              <View style={styles.leaderBadge}><Text style={styles.leaderText}>LEADER</Text></View>
+                              <Badge label="LEADER" tone="leader" />
                             ) : (
-                              <View style={styles.memberBadge}><Text style={styles.memberText}>MEMBER</Text></View>
+                              <Badge label="MEMBER" tone="member" />
                             )}
                           </View>
                           <View style={styles.statsRow}>
                             <Text style={styles.statsText}>
-                              완료 {stats?.doneCount ?? 0} · 패스 {stats?.passCount ?? 0}{(stats?.missedCount ?? 0) > 0 ? ` · 미달 ${stats.missedCount}` : ''}
+                              완료 {stats?.doneCount ?? 0} · 패스 {stats?.passCount ?? 0}
+                              {(stats?.missedCount ?? 0) > 0 ? ` · 미달 ${stats.missedCount}` : ''}
                             </Text>
                           </View>
                           <View style={styles.resolutionBox}>
-                            <Text style={[styles.resolutionText, !resolution && styles.placeholderText]}>
+                            <Text
+                              style={[styles.resolutionText, !resolution && styles.placeholderText]}
+                            >
                               {resolution ? `"${resolution}"` : '아직 한마디가 없어요'}
                             </Text>
                           </View>
                         </View>
                       </View>
                       <TouchableOpacity
-                        onPress={() => navigation.navigate('MemberStats', {
-                          userId: member.user_id,
-                          teamId: teamId,
-                          nickname: member.user.nickname,
-                        })}
+                        onPress={() =>
+                          navigation.navigate('MemberStats', {
+                            userId: member.user_id,
+                            teamId: teamId,
+                            nickname: member.user.nickname,
+                          })
+                        }
                         style={styles.detailBtn}
                         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                       >
                         <Text style={styles.detailBtnText}>상세보기</Text>
-                        <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+                        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
                       </TouchableOpacity>
                     </View>
 
@@ -172,7 +166,9 @@ export default function TeamDetailScreen() {
                             <View style={styles.goalNameRow}>
                               <View style={styles.freqBadge}>
                                 <Text style={styles.freqBadgeText}>
-                                  {g.frequency === 'weekly_count' && g.targetCount ? `주${g.targetCount}회` : '매일'}
+                                  {g.frequency === 'weekly_count' && g.targetCount
+                                    ? `주${g.targetCount}회`
+                                    : '매일'}
                                 </Text>
                               </View>
                               <Text style={styles.goalName}>{g.name}</Text>
@@ -205,62 +201,129 @@ export default function TeamDetailScreen() {
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
-
-      {/* 모달 제거됨 */}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFAF7' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 107, 61, 0.10)' },
-  backBtn: { padding: 4 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
-  monthSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, paddingVertical: 16, backgroundColor: '#FFFAF7' },
-  monthText: { fontSize: 18, fontWeight: '600', color: '#1A1A1A' },
-  content: { flex: 1, padding: 16 },
-  section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 },
-  memberCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)', shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
-  memberHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  detailBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 8, paddingLeft: 8 },
-  detailBtnText: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '500' },
-  memberProfile: { flexDirection: 'row', gap: 12, flex: 1 },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255, 107, 61, 0.08)' },
-  avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  nickname: { fontSize: 16, fontWeight: '600', color: '#1A1A1A' },
-  leaderBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#FF6B3D', backgroundColor: 'rgba(255, 107, 61, 0.10)' },
-  leaderText: { fontSize: 10, fontWeight: '800', color: '#FF6B3D' },
-  memberBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(26,26,26,0.25)' },
-  memberText: { fontSize: 10, fontWeight: '800', color: 'rgba(26,26,26,0.45)' },
+  safe: ds.screen,
+  monthSelector: ds.monthSelector,
+  monthText: ds.monthLabel,
+  content: { flex: 1, padding: spacing[4] },
+  section: ds.section,
+  memberCard: {
+    ...ds.card,
+    ...ds.cardPadding,
+    marginBottom: spacing[3],
+    borderColor: colors.brandLight,
+  },
+  memberHeader: { ...ds.rowBetween, alignItems: 'flex-start' },
+  detailBtn: { ...ds.rowCenter, gap: 2, paddingVertical: spacing[2], paddingLeft: spacing[2] },
+  detailBtnText: { ...typography.label, color: colors.textSecondary, fontWeight: '500' },
+  memberProfile: { ...ds.rowCenter, alignItems: 'flex-start', gap: spacing[3], flex: 1 },
+  nickname: { ...typography.titleSm, color: colors.text, fontWeight: '600' },
   statsRow: { marginTop: 2, marginBottom: 4 },
-  statsText: { fontSize: 12, color: 'rgba(26,26,26,0.50)', fontWeight: '500' },
-  resolutionBox: { marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  resolutionText: { fontSize: 13, color: 'rgba(26,26,26,0.50)', fontStyle: 'italic' },
-  placeholderText: { color: 'rgba(26,26,26,0.30)' },
-  goalsList: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255, 107, 61, 0.08)', gap: 8 },
-  goalsLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(26,26,26,0.35)', marginBottom: 2 },
-  goalItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  goalNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 8 },
-  goalName: { fontSize: 13, color: '#1A1A1A', flexShrink: 1 },
-  freqBadge: { backgroundColor: 'rgba(255, 107, 61, 0.08)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, borderWidth: 0.5, borderColor: 'rgba(255, 107, 61, 0.18)' },
-  freqBadgeText: { fontSize: 10, fontWeight: '600', color: 'rgba(26,26,26,0.50)' },
-  goalStats: { flexDirection: 'row', gap: 6 },
-  goalDone: { fontSize: 11, color: '#4ADE80', backgroundColor: 'rgba(74, 222, 128, 0.10)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  goalPass: { fontSize: 11, color: '#E8960A', backgroundColor: 'rgba(255,181,71,0.10)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  goalFail: { fontSize: 11, fontWeight: '700', color: '#EF4444', backgroundColor: 'rgba(239,68,68,0.08)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' },
-  emptyGoalsText: { fontSize: 12, color: 'rgba(26,26,26,0.30)', textAlign: 'center', paddingVertical: 8 },
-  retroSection: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255, 107, 61, 0.08)' },
-  retroLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(26,26,26,0.35)', marginBottom: 4 },
-  retroBox: { backgroundColor: '#FFFAF7', padding: 10, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.10)' },
-  retroText: { fontSize: 13, color: '#1A1A1A', lineHeight: 18, flex: 1 },
+  statsText: { ...typography.caption, color: colors.textSecondary },
+  resolutionBox: { ...ds.rowCenter, marginTop: 4, gap: spacing[1] + 2 },
+  resolutionText: {
+    ...typography.label,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    textTransform: 'none',
+  },
+  placeholderText: { color: colors.textMuted },
+  goalsList: { ...ds.dividerTop, gap: spacing[2] },
+  goalsLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textFaint,
+    marginBottom: 2,
+  },
+  goalItem: ds.rowBetween,
+  goalNameRow: { ...ds.rowCenter, gap: spacing[1] + 2, flex: 1, marginRight: spacing[2] },
+  goalName: { ...typography.label, color: colors.text, textTransform: 'none', flexShrink: 1 },
+  freqBadge: ds.badgeFrequency,
+  freqBadgeText: ds.badgeFrequencyText,
+  goalStats: { ...ds.rowCenter, gap: spacing[1] + 2 },
+  goalDone: ds.statDone,
+  goalPass: ds.statPass,
+  goalFail: ds.statFail,
+  emptyGoalsText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing[2],
+  },
+  retroSection: ds.dividerTop,
+  retroLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textFaint,
+    marginBottom: 4,
+  },
+  retroBox: {
+    ...ds.softCard,
+    padding: spacing[2] + 2,
+    ...ds.rowBetween,
+    alignItems: 'flex-start',
+  },
+  retroText: {
+    ...typography.label,
+    color: colors.text,
+    textTransform: 'none',
+    lineHeight: 18,
+    flex: 1,
+  },
   dangerZone: { marginTop: 8, marginBottom: 8, alignItems: 'center' },
-  dangerDivider: { width: '100%', height: 1, backgroundColor: 'rgba(239,68,68,0.15)', marginBottom: 16 },
-  dangerBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)' },
+  dangerDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    marginBottom: 16,
+  },
+  dangerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+    backgroundColor: 'rgba(239,68,68,0.06)',
+  },
   dangerBtnText: { fontSize: 14, fontWeight: '600', color: '#EF4444' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalContent: { backgroundColor: '#FFFFFF', width: '100%', padding: 24, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.15)', shadowColor: '#FF6B3D', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 6 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginBottom: 16, textAlign: 'center' },
-  input: { backgroundColor: '#FFFAF7', borderRadius: 8, padding: 12, color: '#1A1A1A', fontSize: 16, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255, 107, 61, 0.12)' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.50)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: colors.screen,
+    width: '100%',
+    padding: spacing[6],
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    ...shadows.brandMd,
+  },
+  modalTitle: {
+    ...typography.titleMd,
+    color: colors.text,
+    marginBottom: spacing[4],
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: colors.screen,
+    borderRadius: radius.sm,
+    padding: spacing[3],
+    color: colors.text,
+    fontSize: 16,
+    marginBottom: spacing[5],
+    borderWidth: 1,
+    borderColor: colors.brandLight,
+  },
   modalButtons: { flexDirection: 'row', gap: 12 },
 });

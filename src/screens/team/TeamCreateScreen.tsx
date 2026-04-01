@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
-import { COLORS } from '../../constants/defaults';
+import { colors } from '../../design/tokens';
 
 /**
  * 팀 만들기 화면 (MVP 확장용 - 기본 구조만)
@@ -53,7 +53,7 @@ export default function TeamCreateScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: COLORS.text,
+    color: colors.text,
     marginBottom: 24,
   },
 });

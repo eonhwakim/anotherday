@@ -8,7 +8,7 @@ import { RootStackParamList } from '../../types/navigation';
 import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
 import dayjs from '../../lib/dayjs';
-import { COLORS } from '../../constants/defaults';
+import { colors } from '../../design/tokens';
 import { AreaChart, MountainBg, ProgressBar } from '../../components/stats/StatsShared';
 import {
   type GoalStat,
@@ -381,7 +381,7 @@ export default function MemberStatsScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>{nickname}님의 기록</Text>
         <View style={{ width: 24 }} />
@@ -391,7 +391,7 @@ export default function MemberStatsScreen() {
         {/* ── 월 선택 ── */}
         <View style={s.monthRow}>
           <TouchableOpacity style={s.monthBtn} onPress={goToPrev}>
-            <Ionicons name="chevron-back" size={22} color={COLORS.primaryLight} />
+            <Ionicons name="chevron-back" size={22} color={colors.primaryLight} />
           </TouchableOpacity>
           <Text style={s.monthLabel}>{monthLabel}</Text>
           <TouchableOpacity
@@ -402,7 +402,7 @@ export default function MemberStatsScreen() {
             <Ionicons
               name="chevron-forward"
               size={22}
-              color={canNext ? COLORS.primaryLight : 'rgba(26,26,26,0.25)'}
+              color={canNext ? colors.primaryLight : 'rgba(26,26,26,0.25)'}
             />
           </TouchableOpacity>
         </View>
@@ -424,11 +424,11 @@ export default function MemberStatsScreen() {
           <Text style={s.heroRateLabel}>이달의 평균 달성률</Text>
           <View style={s.heroChips}>
             <View style={s.heroChip}>
-              <Ionicons name="checkmark-circle" size={14} color="#4ADE80" />
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
               <Text style={s.heroChipText}>인증 {heroData.totalDone}회</Text>
             </View>
             <View style={s.heroChip}>
-              <Ionicons name="pause-circle" size={14} color="#FBBF24" />
+              <Ionicons name="pause-circle" size={14} color={colors.warning} />
               <Text style={s.heroChipText}>패스 {heroData.totalPass}회</Text>
             </View>
           </View>
@@ -446,7 +446,11 @@ export default function MemberStatsScreen() {
               </View>
               {weeklyPace.goals.map((g) => {
                 const color =
-                  g.rate >= 100 ? '#4ADE80' : g.rate >= 50 ? '#FBBF24' : 'rgba(26,26,26,0.20)';
+                  g.rate >= 100
+                    ? colors.success
+                    : g.rate >= 50
+                      ? colors.warning
+                      : 'rgba(26,26,26,0.20)';
                 const isWeekly = g.frequency === 'weekly_count';
                 return (
                   <View key={g.goalId} style={s.paceRow}>
