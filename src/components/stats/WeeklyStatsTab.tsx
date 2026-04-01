@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/defaults';
+import { colors } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
 import CyberFrame from '../ui/CyberFrame';
 import { dayjsMax, dayjsMin, getCalendarWeekRanges } from '../../lib/statsUtils';
@@ -121,7 +121,7 @@ export default function WeeklyStatsTab() {
           style={s.monthBtn}
           onPress={() => setWeekStart((p) => dayjs(p).subtract(1, 'week').format('YYYY-MM-DD'))}
         >
-          <Ionicons name="chevron-back" size={22} color={COLORS.primaryLight} />
+          <Ionicons name="chevron-back" size={22} color={colors.primaryLight} />
         </TouchableOpacity>
         <View style={s.weekLabelBox}>
           <Text style={s.weekLabelMain}>{weekLabelParts.week}</Text>
@@ -131,7 +131,7 @@ export default function WeeklyStatsTab() {
           style={s.monthBtn}
           onPress={() => setWeekStart((p) => dayjs(p).add(1, 'week').format('YYYY-MM-DD'))}
         >
-          <Ionicons name="chevron-forward" size={22} color={COLORS.primaryLight} />
+          <Ionicons name="chevron-forward" size={22} color={colors.primaryLight} />
         </TouchableOpacity>
       </View>
 

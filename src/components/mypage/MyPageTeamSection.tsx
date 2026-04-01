@@ -1,11 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import CyberFrame from '../../../components/ui/CyberFrame';
-import { COLORS } from '../../../constants/defaults';
-import type { Team } from '../../../types/domain';
-import type { TeamWithRole } from '../../../stores/teamStore';
+import type { Team } from '../../types/domain';
+import type { TeamWithRole } from '../../stores/teamStore';
+import FrameCard from '../ui/FrameCard';
+import Card from '../ui/Card';
+import Badge from '../ui/Badge';
+import SectionHeader from '../ui/SectionHeader';
+import Avatar from '../ui/Avatar';
+import EmptyState from '../ui/EmptyState';
+import { colors, radius, spacing } from '../../design/recipes';
 
 interface MyPageTeamSectionProps {
   teams: TeamWithRole[];
@@ -21,13 +26,11 @@ export default function MyPageTeamSection({
   onSelectTeam,
 }: MyPageTeamSectionProps) {
   return (
-    <CyberFrame style={styles.sectionFrame} contentStyle={styles.sectionCard} glassOnly={false}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.cardTitle}>소속 팀</Text>
-      </View>
+    <FrameCard style={styles.sectionFrame} contentStyle={styles.sectionCard} padded={false}>
+      <SectionHeader title="소속 팀" />
 
       {teams.length === 0 ? (
-        <Text style={styles.emptyText}>소속된 팀이 없습니다.</Text>
+        <EmptyState message="소속된 팀이 없습니다." />
       ) : (
         teams.map((team) => (
           <TouchableOpacity
@@ -35,27 +38,18 @@ export default function MyPageTeamSection({
             onPress={() => onOpenTeamMember(team)}
             activeOpacity={0.7}
           >
-            <CyberFrame
+            <Card
               style={[
                 styles.teamItemFrame,
                 currentTeam?.id === team.id && styles.activeTeamItemFrame,
               ]}
               contentStyle={styles.teamItemContent}
               glassOnly={true}
+              padded={false}
             >
               <TouchableOpacity onPress={() => onSelectTeam(team)} style={styles.teamImageWrap}>
                 {/* @ts-ignore */}
-                {team.profile_image_url ? (
-                  <Image
-                    // @ts-ignore
-                    source={{ uri: team.profile_image_url }}
-                    style={styles.teamCardImage}
-                  />
-                ) : (
-                  <View style={[styles.teamCardImage, styles.teamCardImagePlaceholder]}>
-                    <Ionicons name="people" size={20} color={COLORS.primaryLight} />
-                  </View>
-                )}
+                <Avatar uri={team.profile_image_url ?? null} size={44} icon="people" />
               </TouchableOpacity>
               <View style={styles.teamInfo}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -65,13 +59,9 @@ export default function MyPageTeamSection({
                     {team.name}
                   </Text>
                   {team.role === 'leader' ? (
-                    <View style={styles.leaderBadge}>
-                      <Text style={styles.leaderText}>LEADER</Text>
-                    </View>
+                    <Badge label="LEADER" tone="leader" />
                   ) : (
-                    <View style={styles.memberBadge}>
-                      <Text style={styles.memberText}>MEMBER</Text>
-                    </View>
+                    <Badge label="MEMBER" tone="member" />
                   )}
                 </View>
                 <Text style={styles.inviteCode}>초대코드: {team.invite_code}</Text>
@@ -85,63 +75,37 @@ export default function MyPageTeamSection({
                   }}
                   style={{ padding: 4 }}
                 >
-                  <Ionicons name="clipboard-outline" size={18} color={COLORS.primaryLight} />
+                  <Ionicons name="clipboard-outline" size={18} color={colors.primaryLight} />
                 </TouchableOpacity>
               )}
-            </CyberFrame>
+            </Card>
           </TouchableOpacity>
         ))
       )}
-    </CyberFrame>
+    </FrameCard>
   );
 }
 
 const styles = StyleSheet.create({
   sectionFrame: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 16,
+    marginHorizontal: spacing[4],
+    marginBottom: spacing[4],
+    borderRadius: radius.lg,
   },
   sectionCard: {
-    padding: 20,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: 'rgba(26,26,26,0.45)',
-    textAlign: 'center',
-    paddingVertical: 12,
+    padding: spacing[5],
   },
   teamImageWrap: {},
-  teamCardImage: {
-    width: 44,
-    height: 34,
-    borderRadius: 22,
-  },
-  teamCardImagePlaceholder: {
-    backgroundColor: 'rgba(255, 107, 61, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   teamItemFrame: {
     marginBottom: 8,
-    borderRadius: 12,
+    borderRadius: radius.md,
   },
   activeTeamItemFrame: {
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderTopColor: 'rgba(255, 255, 255, 1)',
     borderLeftColor: 'rgba(229, 229, 229, 1)',
     borderBottomColor: 'rgba(255, 135, 61, 0.22)',
+    borderColor: colors.brandMid,
     borderWidth: 0.6,
     shadowColor: '#929292ff',
     shadowOffset: { width: 1, height: 1 },
@@ -163,41 +127,16 @@ const styles = StyleSheet.create({
   teamName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: colors.text,
   },
   activeTeamText: {
-    color: '#FF6B3D',
+    color: colors.primary,
     fontWeight: '700',
   },
   inviteCode: {
     fontSize: 12,
-    color: 'rgba(26,26,26,0.35)',
+    color: colors.textMuted,
     marginTop: 2,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  leaderBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#FF6B3D',
-    backgroundColor: 'rgba(255, 107, 61, 0.10)',
-  },
-  leaderText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FF6B3D',
-  },
-  memberBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(26,26,26,0.25)',
-  },
-  memberText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: 'rgba(26,26,26,0.45)',
   },
 });

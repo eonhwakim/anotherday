@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
-import { COLORS } from '../../constants/defaults';
+import { colors } from '../../design/tokens';
 import type { GoalFrequency } from '../../types/domain';
 import CyberFrame from '../../components/ui/CyberFrame';
 import Input from '../../components/common/Input';
@@ -240,14 +240,14 @@ export default function AddRoutineScreen() {
                         style={styles.counterBtn}
                         onPress={() => setTargetCount(Math.max(1, targetCount - 1))}
                       >
-                        <Ionicons name="remove" size={20} color={COLORS.textSecondary} />
+                        <Ionicons name="remove" size={20} color={colors.textSecondary} />
                       </TouchableOpacity>
                       <Text style={styles.counterValue}>{`${targetCount}회`}</Text>
                       <TouchableOpacity
                         style={styles.counterBtn}
                         onPress={() => setTargetCount(Math.min(6, targetCount + 1))}
                       >
-                        <Ionicons name="add" size={20} color={COLORS.textSecondary} />
+                        <Ionicons name="add" size={20} color={colors.textSecondary} />
                       </TouchableOpacity>
                     </View>
                   </CyberFrame>
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 18,
     marginTop: 8,
   },

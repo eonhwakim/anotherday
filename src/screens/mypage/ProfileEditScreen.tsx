@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
 import { pickProfileImage, uploadProfileImage, updateProfile } from '../../services/userService';
-import { COLORS } from '../../constants/defaults';
+import { colors } from '../../design/tokens';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import CyberFrame from '../../components/ui/CyberFrame';
@@ -29,7 +29,7 @@ export default function ProfileEditScreen() {
   const [gender, setGender] = useState(user?.gender || '');
   const [age, setAge] = useState(user?.age?.toString() || '');
   const [imageUri, setImageUri] = useState(user?.profile_image_url || null);
-  
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -105,23 +105,19 @@ export default function ProfileEditScreen() {
           text: '삭제하기',
           style: 'destructive',
           onPress: () => {
-            Alert.alert(
-              '최종 확인',
-              '이 작업은 되돌릴 수 없습니다. 계정을 삭제할까요?',
-              [
-                { text: '취소', style: 'cancel' },
-                {
-                  text: '영구 삭제',
-                  style: 'destructive',
-                  onPress: async () => {
-                    const success = await deleteAccount();
-                    if (!success) {
-                      Alert.alert('오류', '계정 삭제에 실패했습니다. 다시 시도해주세요.');
-                    }
-                  },
+            Alert.alert('최종 확인', '이 작업은 되돌릴 수 없습니다. 계정을 삭제할까요?', [
+              { text: '취소', style: 'cancel' },
+              {
+                text: '영구 삭제',
+                style: 'destructive',
+                onPress: async () => {
+                  const success = await deleteAccount();
+                  if (!success) {
+                    Alert.alert('오류', '계정 삭제에 실패했습니다. 다시 시도해주세요.');
+                  }
                 },
-              ],
-            );
+              },
+            ]);
           },
         },
       ],
@@ -137,7 +133,7 @@ export default function ProfileEditScreen() {
         <ScrollView style={styles.scroll}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.title}>프로필 수정</Text>
             <View style={{ width: 24 }} />
@@ -149,7 +145,7 @@ export default function ProfileEditScreen() {
                 <Image source={{ uri: imageUri }} style={styles.profileImage} />
               ) : (
                 <View style={[styles.profileImage, styles.placeholderImage]}>
-                  <Ionicons name="person" size={36} color={COLORS.primaryLight} />
+                  <Ionicons name="person" size={36} color={colors.primaryLight} />
                 </View>
               )}
               <View style={styles.cameraIcon}>
@@ -165,7 +161,7 @@ export default function ProfileEditScreen() {
               onChangeText={setNickname}
               placeholder="닉네임을 입력하세요"
             />
-            
+
             <Input
               label="이름"
               value={name}
@@ -184,18 +180,14 @@ export default function ProfileEditScreen() {
                     activeOpacity={0.7}
                     onPress={() => setGender(g)}
                   >
-                    <CyberFrame 
-                      style={[
-                        styles.genderBtnFrame,
-                        isActive && styles.genderBtnFrameActive
-                      ]} 
+                    <CyberFrame
+                      style={[styles.genderBtnFrame, isActive && styles.genderBtnFrameActive]}
                       contentStyle={styles.genderBtnContent}
                       glassOnly={true}
                     >
-                      <Text style={[
-                        styles.genderText,
-                        isActive && styles.genderTextActive
-                      ]}>{g}</Text>
+                      <Text style={[styles.genderText, isActive && styles.genderTextActive]}>
+                        {g}
+                      </Text>
                     </CyberFrame>
                   </TouchableOpacity>
                 );
@@ -211,13 +203,17 @@ export default function ProfileEditScreen() {
             />
           </CyberFrame>
 
-          <CyberFrame style={styles.dangerFrame} contentStyle={styles.dangerContent} glassOnly={false}>
+          <CyberFrame
+            style={styles.dangerFrame}
+            contentStyle={styles.dangerContent}
+            glassOnly={false}
+          >
             <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
               <View style={styles.accountRowLeft}>
-                <Ionicons name="trash-outline" size={20} color={COLORS.error} />
-                <Text style={[styles.accountRowText, { color: COLORS.error }]}>탈퇴하기</Text>
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
+                <Text style={[styles.accountRowText, { color: colors.error }]}>탈퇴하기</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.error} />
+              <Ionicons name="chevron-forward" size={18} color={colors.error} />
             </TouchableOpacity>
           </CyberFrame>
 
@@ -227,11 +223,7 @@ export default function ProfileEditScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Button
-            title="저장하기"
-            onPress={handleSave}
-            loading={loading}
-          />
+          <Button title="저장하기" onPress={handleSave} loading={loading} />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -326,13 +318,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   genderBtnFrameActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', 
-    borderTopColor: 'rgba(255, 255, 255, 1)',     
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderTopColor: 'rgba(255, 255, 255, 1)',
     borderLeftColor: 'rgba(229, 229, 229, 1)',
     borderBottomColor: 'rgba(255, 135, 61, 0.22)',
     borderWidth: 0.6,
     shadowColor: '#FF6B3D',
-    shadowOffset: { width: 1, height: 1 },        
+    shadowOffset: { width: 1, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,

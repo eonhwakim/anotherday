@@ -1,9 +1,10 @@
 import React from 'react';
-import { TouchableOpacity, View, Text, StyleSheet, Image } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import CyberFrame from '../../../components/ui/CyberFrame';
-import type { User } from '../../../types/domain';
-import { COLORS } from '../../../constants/defaults';
+import type { User } from '../../types/domain';
+import FrameCard from '../ui/FrameCard';
+import Avatar from '../ui/Avatar';
+import { colors, radius, spacing, typography } from '../../design/recipes';
 
 interface MyPageProfileCardProps {
   user: User | null;
@@ -13,16 +14,9 @@ interface MyPageProfileCardProps {
 export default function MyPageProfileCard({ user, onPress }: MyPageProfileCardProps) {
   return (
     <TouchableOpacity onPress={onPress}>
-      <CyberFrame style={styles.profileFrame} contentStyle={styles.profileCard} glassOnly={false}>
+      <FrameCard style={styles.profileFrame} contentStyle={styles.profileCard} padded={false}>
         <View style={styles.avatarLarge}>
-          {user?.profile_image_url ? (
-            <Image
-              source={{ uri: user.profile_image_url }}
-              style={{ width: 56, height: 56, borderRadius: 28 }}
-            />
-          ) : (
-            <Ionicons name="person" size={28} color={COLORS.primaryLight} />
-          )}
+          <Avatar uri={user?.profile_image_url ?? null} size={56} />
         </View>
         <View style={styles.profileInfo}>
           <Text style={styles.nickname}>{user?.nickname ?? '-'}</Text>
@@ -35,34 +29,30 @@ export default function MyPageProfileCard({ user, onPress }: MyPageProfileCardPr
           )}
           <Text style={styles.email}>{user?.email ?? '-'}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-      </CyberFrame>
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+      </FrameCard>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   profileFrame: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 16,
+    marginHorizontal: spacing[4],
+    marginBottom: spacing[4],
+    borderRadius: radius.lg,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    gap: 16,
+    padding: spacing[4],
+    gap: spacing[4],
   },
   avatarLarge: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255, 107, 61, 0.10)',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.25)',
   },
   profileInfo: {
     flex: 1,
@@ -70,16 +60,18 @@ const styles = StyleSheet.create({
   nickname: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: colors.text,
     marginBottom: 2,
   },
   detailText: {
-    fontSize: 13,
-    color: 'rgba(26,26,26,0.50)',
+    ...typography.label,
+    color: colors.textSecondary,
+    textTransform: 'none',
     marginBottom: 2,
   },
   email: {
-    fontSize: 13,
-    color: 'rgba(26,26,26,0.35)',
+    ...typography.label,
+    color: colors.textMuted,
+    textTransform: 'none',
   },
 });
