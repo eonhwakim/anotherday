@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import CyberFrame from '../../../components/ui/CyberFrame';
-import dayjs from '../../../lib/dayjs';
-import type { MemberCheckinSummary } from '../../../types/domain';
+import CyberFrame from '../ui/CyberFrame';
+import dayjs from '../../lib/dayjs';
+import type { MemberCheckinSummary } from '../../types/domain';
 
 interface CalendarMemberCheckinsSectionProps {
   members: MemberCheckinSummary[];
@@ -171,7 +171,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 107, 61, 0.18)',
   },
-  memberAvatarImg: { width: 28, height: 28, borderRadius: 14 },
+  memberAvatarImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
   memberName: {
     fontSize: 14,
     fontWeight: '700',

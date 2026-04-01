@@ -20,7 +20,7 @@ export default function CheckinList({
   goals = [],
   myGoals = [],
 }: CheckinListProps) {
-  const formatted = dayjs(date).format('M월 D일');
+  const formatted = dayjs(date).format('M월 D일ll');
   const isFuture = dayjs(date).isAfter(dayjs(), 'day');
 
   const myActiveGoalIds = myGoals.map((ug) => ug.goal_id);

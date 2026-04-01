@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import CyberFrame from '../../../components/ui/CyberFrame';
-import type { CalendarDayMarking } from '../../../types/domain';
+import CyberFrame from '../ui/CyberFrame';
+import type { CalendarDayMarking } from '../../types/domain';
+import { colors } from '../../design/tokens';
 
 type DayMarking = CalendarDayMarking[string];
 
@@ -100,7 +101,7 @@ const styles = StyleSheet.create({
   dateSummaryTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: colors.text,
   },
   scoreContainer: {
     flexDirection: 'row',
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
   scoreLabelText: {
     fontSize: 10,
     fontWeight: '600',
-    color: 'rgba(255, 107, 61, 0.7)',
+    color: colors.primary,
   },
   scoreValueRow: {
     flexDirection: 'row',
@@ -134,12 +135,12 @@ const styles = StyleSheet.create({
   scoreDoneText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#FF6B3D',
+    color: colors.primary,
   },
   scoreSlash: {
     fontSize: 13,
     fontWeight: '400',
-    color: 'rgba(255, 107, 61, 0.4)',
+    color: colors.primary,
     marginHorizontal: 4,
   },
   scoreTotalText: {

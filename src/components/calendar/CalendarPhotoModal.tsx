@@ -43,7 +43,7 @@ export default function CalendarPhotoModal({
               style={[styles.reactionBtn, isReacted && styles.reactionBtnActive]}
             >
               <Image
-                source={require('../../../../assets/thumb-up.png')}
+                source={require('../../../assets/thumb-up.png')}
                 style={[styles.reactionIcon, isReacted && styles.reactionIconActive]}
                 resizeMode="contain"
               />
@@ -62,8 +62,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  photoContainer: { width: '90%', aspectRatio: 1, position: 'relative' },
-  photoFull: { width: '100%', height: '100%', borderRadius: 8 },
+  photoContainer: {
+    width: '90%',
+    aspectRatio: 1,
+    position: 'relative',
+  },
+  photoFull: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
   photoCloseBtn: {
     position: 'absolute',
     top: -40,

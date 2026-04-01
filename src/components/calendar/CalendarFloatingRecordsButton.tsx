@@ -12,7 +12,7 @@ export default function CalendarFloatingRecordsButton({
   return (
     <TouchableOpacity style={styles.floatingButtonWrapper} onPress={onPress} activeOpacity={0.8}>
       <Image
-        source={require('../../../../assets/floating-btn.png')}
+        source={require('../../../assets/floating-btn.png')}
         style={styles.floatingButtonImage}
         resizeMode="stretch"
       />

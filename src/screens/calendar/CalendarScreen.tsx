@@ -10,28 +10,28 @@ import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
 import { useTeamStore } from '../../stores/teamStore';
-import CheckinModal from '../../components/mypage/CheckinModal';
-import DailyRecordsModal from '../../components/mypage/DailyRecordsModal';
+
 import dayjs from '../../lib/dayjs';
+import { colors } from '../../design/tokens';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
-import CalendarDateSummaryCard from './components/CalendarDateSummaryCard';
-import CalendarMemberCheckinsSection from './components/CalendarMemberCheckinsSection';
-import CalendarPhotoModal from './components/CalendarPhotoModal';
-import CalendarFloatingRecordsButton from './components/CalendarFloatingRecordsButton';
+
+import CalendarDateSummaryCard from '../../components/calendar/CalendarDateSummaryCard';
+import CalendarMemberCheckinsSection from '../../components/calendar/CalendarMemberCheckinsSection';
+import CalendarPhotoModal from '../../components/calendar/CalendarPhotoModal';
+import CalendarFloatingRecordsButton from '../../components/calendar/CalendarFloatingRecordsButton';
+import DailyRecordsModal from '../../components/mypage/DailyRecordsModal';
 
 export default function CalendarScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam } = useTeamStore();
-  const { teamGoals, myGoals, fetchTeamGoals, fetchMyGoals } = useGoalStore();
+  const { fetchTeamGoals, fetchMyGoals } = useGoalStore();
   const {
-    monthlyCheckins,
     calendarMarkings,
     memberDateCheckins,
     fetchCalendarMarkings,
     fetchMemberDateCheckins,
     fetchMonthlyCheckins,
-    fetchMemberProgress,
     toggleReaction,
   } = useStatsStore();
 
@@ -41,7 +41,6 @@ export default function CalendarScreen() {
 
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
-  const [checkinModalVisible, setCheckinModalVisible] = useState(false);
   const [dailyRecordsModalVisible, setDailyRecordsModalVisible] = useState(false);
   const [photoModal, setPhotoModal] = useState<{ url: string; checkinId: string } | null>(null);
   const [lastTap, setLastTap] = useState<number | null>(null);
@@ -62,78 +61,6 @@ export default function CalendarScreen() {
     if (!currentCheckin || !user) return false;
     return currentCheckin.reactions?.some((r) => r.user_id === user.id) ?? false;
   }, [currentCheckin, user]);
-
-  const currentTeamUserGoals = React.useMemo(() => {
-    if (!teamGoals || teamGoals.length === 0) return [];
-    if (!myGoals || !user) return [];
-    const myOwnedGoalIds = new Set(
-      teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
-    );
-    return myGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
-  }, [teamGoals, myGoals, user]);
-
-  const goalsForCheckinModal = React.useMemo(() => {
-    const ugSource = currentTeamUserGoals;
-    const myOwnedGoalIds = new Set(
-      (teamGoals || []).filter((g) => g.owner_id === user?.id).map((g) => g.id),
-    );
-    const weekStart = dayjs(selectedDate).startOf('isoWeek').format('YYYY-MM-DD');
-    const weekEnd = dayjs(selectedDate).endOf('isoWeek').format('YYYY-MM-DD');
-    return (teamGoals || [])
-      .filter((g) => myOwnedGoalIds.has(g.id))
-      .filter((g) => {
-        const ug = ugSource.find((u) => u.goal_id === g.id);
-        if (!ug) return false;
-        if (ug.start_date && selectedDate < ug.start_date) return false;
-        return true;
-      })
-      .map((g) => {
-        const ug = ugSource.find((u) => u.goal_id === g.id);
-        const weeklyDoneCount = (monthlyCheckins || []).filter(
-          (c) =>
-            c.goal_id === g.id && c.date >= weekStart && c.date <= weekEnd && c.status === 'done',
-        ).length;
-        return {
-          goal: g,
-          frequency: (ug?.frequency ?? 'daily') as 'daily' | 'weekly_count',
-          isExcluded: ug ? !ug.is_active : false,
-          targetCount: ug?.target_count ?? null,
-          weeklyDoneCount,
-        };
-      });
-  }, [teamGoals, currentTeamUserGoals, selectedDate, user, monthlyCheckins]);
-
-  const selectedDateCheckins = React.useMemo(
-    () => (monthlyCheckins || []).filter((c) => c.date === selectedDate),
-    [monthlyCheckins, selectedDate],
-  );
-
-  const refreshCalendarData = useCallback(
-    async (targetDate: string) => {
-      if (!user) return;
-      await Promise.all([
-        fetchMyGoals(user.id),
-        fetchMonthlyCheckins(user.id, currentMonth),
-        fetchCalendarMarkings(user.id, currentMonth),
-        fetchMemberDateCheckins(currentTeam?.id, user.id, targetDate),
-        fetchMemberProgress(currentTeam?.id, user.id),
-      ]);
-    },
-    [
-      user,
-      currentMonth,
-      currentTeam,
-      fetchMyGoals,
-      fetchMonthlyCheckins,
-      fetchCalendarMarkings,
-      fetchMemberDateCheckins,
-      fetchMemberProgress,
-    ],
-  );
-
-  const handleCheckinDone = useCallback(async () => {
-    await refreshCalendarData(selectedDate);
-  }, [refreshCalendarData, selectedDate]);
 
   useFocusEffect(
     useCallback(() => {
@@ -217,15 +144,15 @@ export default function CalendarScreen() {
       const isMonday = dayjs(date.dateString).day() === 1;
       const showWeekLabel = isMonday && !isExcluded;
 
-      let textColor = '#1A1A1A';
+      let textColor = '';
       const isToday = state === 'today';
       const isSelected = marking?.selected;
       const isDisabled = state === 'disabled';
 
       if (marking?.textColor) textColor = marking.textColor;
-      if (isToday) textColor = '#FF6B3D';
+      if (isToday) textColor = colors.primary;
       if (isDisabled) textColor = 'rgba(26, 26, 26, 0.20)';
-      if (isSelected) textColor = marking?.selectedTextColor || '#FF6B3D';
+      if (isSelected) textColor = marking?.selectedTextColor || colors.primary;
 
       return (
         <View
@@ -247,7 +174,7 @@ export default function CalendarScreen() {
           >
             <Text style={[styles.dayText, { color: textColor }]}>{date.day}</Text>
             {marking?.marked && (
-              <View style={[styles.dot, { backgroundColor: marking.dotColor || '#FF6B3D' }]} />
+              <View style={[styles.dot, { backgroundColor: marking.dotColor || colors.primary }]} />
             )}
           </TouchableOpacity>
         </View>
@@ -276,7 +203,7 @@ export default function CalendarScreen() {
 
       marks[dStr] = {
         ...marks[dStr],
-        textColor: '#1A1A1A',
+        textColor: colors.text,
         disabled: false,
       };
       curr = curr.add(1, 'day');
@@ -291,7 +218,7 @@ export default function CalendarScreen() {
         if (!marks[dStr]) marks[dStr] = {};
         marks[dStr] = {
           ...marks[dStr],
-          textColor: '#3B82F6',
+          textColor: colors.blue,
           disabled: false,
         };
       }
@@ -303,8 +230,8 @@ export default function CalendarScreen() {
       marks[selectedDate] = {
         ...marks[selectedDate],
         selected: true,
-        selectedColor: 'rgba(255, 107, 61, 0.18)',
-        selectedTextColor: '#FF6B3D',
+        selectedColor: colors.primaryStrong,
+        selectedTextColor: colors.primary,
       };
     }
     return marks;
@@ -350,11 +277,11 @@ export default function CalendarScreen() {
               dayComponent={renderDay}
               theme={{
                 calendarBackground: 'transparent',
-                todayTextColor: '#FF6B3D',
-                selectedDayBackgroundColor: 'rgba(255, 107, 61, 0.18)',
-                selectedDayTextColor: '#FF6B3D',
-                arrowColor: '#FF6B3D',
-                monthTextColor: '#1A1A1A',
+                todayTextColor: colors.primary,
+                selectedDayBackgroundColor: colors.primaryStrong,
+                selectedDayTextColor: colors.primary,
+                arrowColor: colors.primary,
+                monthTextColor: colors.text,
                 dayTextColor: 'rgba(26, 26, 26, 0.80)',
                 textDisabledColor: 'rgba(26, 26, 26, 0.20)',
                 textDayFontWeight: '500',
@@ -396,15 +323,6 @@ export default function CalendarScreen() {
           onReactionPress={handleReactionPress}
         />
 
-        <CheckinModal
-          visible={checkinModalVisible}
-          date={selectedDate}
-          goalsWithFrequency={goalsForCheckinModal}
-          checkins={selectedDateCheckins}
-          onClose={() => setCheckinModalVisible(false)}
-          onCheckinDone={handleCheckinDone}
-        />
-
         <DailyRecordsModal
           visible={dailyRecordsModalVisible}
           date={selectedDate}
@@ -417,9 +335,17 @@ export default function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffffff' },
-  safe: { flex: 1, backgroundColor: 'transparent' },
-  scroll: { flex: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.screen,
+  },
+  safe: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  scroll: {
+    flex: 1,
+  },
   calendarContainer: {
     marginTop: 12,
     marginHorizontal: 12,
@@ -458,10 +384,10 @@ const styles = StyleSheet.create({
   },
   todayContainer: {
     borderWidth: 1.5,
-    borderColor: '#FF6B3D',
+    borderColor: colors.primary,
   },
   selectedDayContainer: {
-    backgroundColor: 'rgba(255, 107, 61, 0.18)',
+    backgroundColor: colors.primaryStrong,
   },
   dayText: {
     fontSize: 14,
