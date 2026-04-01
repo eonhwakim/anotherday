@@ -3,6 +3,31 @@ import dayjs from '../lib/dayjs';
 import { getCalendarWeekRanges } from '../lib/statsUtils';
 import type { Checkin, Goal, UserGoal } from '../types/domain';
 
+export async function fetchExtendableGoalsForMonth(
+  userId: string,
+  newMonthStr: string,
+): Promise<UserGoal[]> {
+  const prevMonthStr = dayjs(`${newMonthStr}-01`).subtract(1, 'month').format('YYYY-MM');
+  const prevMonthStart = dayjs(`${prevMonthStr}-01`).startOf('month').format('YYYY-MM-DD');
+  const prevMonthEnd = dayjs(`${prevMonthStr}-01`).endOf('month').format('YYYY-MM-DD');
+
+  const { data, error } = await supabase
+    .from('user_goals')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .gte('end_date', prevMonthStart)
+    .lte('end_date', prevMonthEnd);
+
+  if (error) {
+    console.error('fetchExtendableGoalsForMonth error:', error.message);
+    return [];
+  }
+
+  return (data ?? []) as UserGoal[];
+}
+
 export async function fetchLastMonthGoals(userId: string): Promise<UserGoal[]> {
   const today = dayjs().format('YYYY-MM-DD');
   const lastMonthStart = dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
@@ -55,27 +80,11 @@ export async function extendGoalsForNewMonth(
   newMonthStr: string,
 ): Promise<boolean> {
   const newMonthEnd = dayjs(`${newMonthStr}-01`).endOf('month').format('YYYY-MM-DD');
-  const prevMonthStr = dayjs(`${newMonthStr}-01`).subtract(1, 'month').format('YYYY-MM');
-  const prevMonthStart = dayjs(`${prevMonthStr}-01`).startOf('month').format('YYYY-MM-DD');
-  const prevMonthEnd = dayjs(`${prevMonthStr}-01`).endOf('month').format('YYYY-MM-DD');
-
-  const { data: targets, error: targetError } = await supabase
-    .from('user_goals')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .is('deleted_at', null)
-    .gte('end_date', prevMonthStart)
-    .lte('end_date', prevMonthEnd);
-
-  if (targetError) {
-    console.error('extendGoalsForNewMonth target query error:', targetError.message);
-    return false;
-  }
+  const targets = await fetchExtendableGoalsForMonth(userId, newMonthStr);
 
   if (!targets || targets.length === 0) return true;
 
-  const ids = targets.map((g: { id: string }) => g.id);
+  const ids = targets.map((g) => g.id);
   const { error } = await supabase.from('user_goals').update({ end_date: newMonthEnd }).in('id', ids);
 
   if (error) {

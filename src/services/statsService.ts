@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { MOUNTAIN_THRESHOLDS } from '../constants/defaults';
+import { colors } from '../design/tokens';
 import dayjs from '../lib/dayjs';
 import { calcWeekAchievement, dayjsMax, dayjsMin, getCalendarWeekRanges } from '../lib/statsUtils';
 import type {
@@ -302,7 +303,8 @@ export async function fetchCalendarMarkings(
 
     markings[dateStr] = {
       marked: true,
-      dotColor: dayStatus === 'all_done' || dayStatus === 'mixed' ? '#4ADE80' : '#EF4444',
+      dotColor:
+        dayStatus === 'all_done' || dayStatus === 'mixed' ? colors.successBright : colors.error,
       checkinCount: doneCount + passCount,
       dayStatus,
       doneCount,

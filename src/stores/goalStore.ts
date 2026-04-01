@@ -26,7 +26,7 @@ interface GoalState {
   fetchMyGoals: (userId: string) => Promise<void>;
   fetchLastMonthGoals: (userId: string) => Promise<void>;
   copyGoalsFromLastMonth: (userId: string) => Promise<void>;
-  extendGoalsForNewMonth: (userId: string, newMonthStr: string) => Promise<void>;
+  extendGoalsForNewMonth: (userId: string, newMonthStr: string) => Promise<boolean>;
   fetchTodayCheckins: (userId: string) => Promise<void>;
   createCheckin: (params: {
     userId: string;
@@ -79,8 +79,9 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   // ── 새 달 목표 연장 ──
   extendGoalsForNewMonth: async (userId, newMonthStr) => {
     const ok = await extendGoalsForNewMonth(userId, newMonthStr);
-    if (!ok) return;
+    if (!ok) return false;
     await get().fetchMyGoals(userId);
+    return true;
   },
 
   // ── 팀 목표 로드 ──
