@@ -7,7 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { COLORS } from '../../constants/defaults';
+import { colors, radius, shadows, spacing, typography } from '../../design/recipes';
 
 interface ButtonProps {
   title: string;
@@ -66,24 +66,20 @@ export default function Button({
 const styles = StyleSheet.create({
   container: {
     height: 52,
-    borderRadius: 18,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing[6],
     overflow: 'hidden',
   },
   primary: {
-    backgroundColor: '#FF6B3D',
-    shadowColor: '#FF6B3D',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.30,
-    shadowRadius: 12,
-    elevation: 4,
+    backgroundColor: colors.primary,
+    ...shadows.button,
   },
   secondary: {
-    backgroundColor: 'rgba(255, 107, 61, 0.06)',
+    backgroundColor: colors.glass,
     borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.15)',
+    borderColor: colors.glassBorder,
   },
   outline: {
     backgroundColor: 'transparent',
@@ -96,15 +92,15 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   text: {
+    ...typography.bodyStrong,
     fontSize: 16,
-    fontWeight: '700',
     letterSpacing: 0.5,
   },
   primaryText: {
     color: '#FFFFFF',
   },
   outlineText: {
-    color: '#FF6B3D',
+    color: colors.primary,
   },
   secondaryText: {
     color: 'rgba(26,26,26,0.55)',

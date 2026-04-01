@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { COLORS } from '../../constants/defaults';
+import { colors } from '../../design/tokens';
 
 // Android에서 BlurView의 렌더링 문제를 방지하기 위한 임시 방편 (기본 뷰로 대체)
 const SafeBlurView = Platform.OS === 'android' ? View : View;
@@ -37,12 +37,7 @@ export default function GlassModal({
   hideButtons = false,
 }: GlassModalProps) {
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -61,9 +56,7 @@ export default function GlassModal({
             )}
 
             {/* ── Body ── */}
-            <View style={styles.body}>
-              {children}
-            </View>
+            <View style={styles.body}>{children}</View>
 
             {/* ── Footer (Buttons) ── */}
             {!hideButtons && (
@@ -146,9 +139,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 16,
-    backgroundColor: COLORS.primaryLight, // 브랜드 컬러
+    backgroundColor: colors.primaryLight, // 브랜드 컬러
     alignItems: 'center',
-    shadowColor: COLORS.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

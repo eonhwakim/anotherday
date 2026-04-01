@@ -1,12 +1,6 @@
 import React from 'react';
-import {
-  TextInput,
-  View,
-  Text,
-  StyleSheet,
-  TextInputProps,
-} from 'react-native';
-import { COLORS } from '../../constants/defaults';
+import { TextInput, View, Text, StyleSheet, TextInputProps } from 'react-native';
+import { colors, spacing, typography } from '../../design/recipes';
 import CyberFrame from '../ui/CyberFrame';
 
 interface InputProps extends TextInputProps {
@@ -16,7 +10,14 @@ interface InputProps extends TextInputProps {
   rightElement?: React.ReactNode;
 }
 
-export default function Input({ label, error, success, rightElement, style, ...props }: InputProps) {
+export default function Input({
+  label,
+  error,
+  success,
+  rightElement,
+  style,
+  ...props
+}: InputProps) {
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -30,19 +31,11 @@ export default function Input({ label, error, success, rightElement, style, ...p
         glassOnly={true}
       >
         <TextInput
-          style={[
-            styles.input,
-            rightElement ? styles.inputWithRightElement : null,
-            style,
-          ]}
-          placeholderTextColor={COLORS.textMuted}
+          style={[styles.input, rightElement ? styles.inputWithRightElement : null, style]}
+          placeholderTextColor={colors.textMuted}
           {...props}
         />
-        {rightElement && (
-          <View style={styles.rightElementContainer}>
-            {rightElement}
-          </View>
-        )}
+        {rightElement && <View style={styles.rightElementContainer}>{rightElement}</View>}
       </CyberFrame>
       {error && <Text style={styles.error}>{error}</Text>}
       {!error && success && <Text style={styles.success}>{success}</Text>}
@@ -52,7 +45,7 @@ export default function Input({ label, error, success, rightElement, style, ...p
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: spacing[4],
   },
   inputWrapper: {
     borderRadius: 12,
@@ -62,18 +55,16 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginBottom: 8,
-    letterSpacing: 0.5,
+    ...typography.label,
+    color: colors.textSecondary,
+    marginBottom: spacing[2],
     textTransform: 'uppercase',
   },
   input: {
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing[4],
     paddingVertical: 14,
     fontSize: 16,
-    color: COLORS.text,
+    color: colors.text,
   },
   inputWithRightElement: {
     paddingRight: 40,
@@ -87,19 +78,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   inputWrapperError: {
-    borderColor: COLORS.error,
+    borderColor: colors.error,
   },
   inputWrapperSuccess: {
-    borderColor: '#4ADE80',
+    borderColor: colors.successBright,
   },
   error: {
     fontSize: 12,
-    color: COLORS.error,
+    color: colors.error,
     marginTop: 4,
   },
   success: {
     fontSize: 12,
-    color: '#4ADE80',
+    color: colors.successBright,
     marginTop: 4,
   },
 });

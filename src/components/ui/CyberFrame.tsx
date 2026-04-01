@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect, Line, Path } from 'react-native-svg';
+import { radius, shadows } from '../../design/recipes';
 
 // 은빛 메탈릭 팔레트
 const METAL = {
@@ -102,9 +103,9 @@ const cyberStyles = StyleSheet.create({
   wrapper: {
     alignSelf: 'stretch',
     marginTop: 8,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.65)', // 흰 배경에서 조금 더 불투명하게 조정
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
     shadowColor: METAL.silverLight,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -112,15 +113,11 @@ const cyberStyles = StyleSheet.create({
     elevation: 4,
   },
   glassWrapper: {
-    backgroundColor: 'rgba(255, 255, 255, 0.72)', // 반투명 배경
-    borderRadius: 24, // 둥근 모서리 조금 더 범용적인 크기로 변경
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)', // 밝은 흰색 테두리로 유리 반사 느낌
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    ...shadows.glass,
     overflow: 'hidden',
   },
   content: {
