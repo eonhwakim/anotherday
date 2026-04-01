@@ -17,14 +17,13 @@ import { AuthStackParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
-import { COLORS } from '../../constants/defaults';
-import Svg, { Defs, LinearGradient, RadialGradient, Stop, Rect, Circle } from 'react-native-svg';
+import { colors, typography, spacing } from '../../design/tokens';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen() {
   const navigation = useNavigation<LoginNav>();
-  const { signIn, isLoading, error, clearError } = useAuthStore();
+  const { signIn, isLoading, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -71,11 +70,13 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.wrapper}>
-      <View style={StyleSheet.absoluteFill}>
-      </View>
+      <View style={StyleSheet.absoluteFill}></View>
 
       <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>Another Day</Text>
             <Text style={styles.subtitle}>또 다른 하루를 쌓아가다</Text>
@@ -83,7 +84,15 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
-            <Input label="이메일" placeholder="email@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+            <Input
+              label="이메일"
+              placeholder="email@example.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
             <Input
               label="비밀번호"
               placeholder="비밀번호 입력"
@@ -92,18 +101,18 @@ export default function LoginScreen() {
               secureTextEntry={!showPassword}
               rightElement={
                 <TouchableOpacity
-                  onPress={() => setShowPassword(prev => !prev)}
+                  onPress={() => setShowPassword((prev) => !prev)}
                   activeOpacity={0.7}
                 >
                   <Ionicons
                     name={showPassword ? 'eye-off' : 'eye'}
                     size={18}
-                    color={COLORS.textSecondary}
+                    color={colors.textSecondary}
                   />
                 </TouchableOpacity>
               }
             />
-            
+
             <TouchableOpacity
               style={styles.checkboxContainer}
               onPress={() => setRememberEmail(!rememberEmail)}
@@ -112,20 +121,27 @@ export default function LoginScreen() {
               <Ionicons
                 name={rememberEmail ? 'checkbox' : 'square-outline'}
                 size={20}
-                color={rememberEmail ? COLORS.text : COLORS.textMuted}
+                color={rememberEmail ? colors.text : colors.textMuted}
               />
               <Text style={[styles.checkboxText, rememberEmail && styles.checkboxTextActive]}>
                 이메일 기억하기
               </Text>
             </TouchableOpacity>
 
-            <Button title="로그인" onPress={handleLogin} loading={isLoading} style={{ marginTop: 8 }} />
+            <Button
+              title="로그인"
+              onPress={handleLogin}
+              loading={isLoading}
+              style={{ marginTop: 8 }}
+            />
           </View>
 
-          <TouchableOpacity style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
+          <TouchableOpacity
+            style={styles.registerLink}
+            onPress={() => navigation.navigate('Register')}
+          >
             <Text style={styles.registerText}>
-              계정이 없으신가요?{' '}
-              <Text style={styles.registerBold}>회원가입</Text>
+              계정이 없으신가요? <Text style={styles.registerBold}>회원가입</Text>
             </Text>
           </TouchableOpacity>
         </KeyboardAvoidingView>
@@ -135,16 +151,49 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: COLORS.background },
-  container: { flex: 1, paddingHorizontal: 24, justifyContent: 'center' },
-  header: { alignItems: 'center', marginBottom: 48 },
-  title: { fontSize: 36, fontWeight: '800', color: COLORS.primary, marginBottom: 12, letterSpacing: 2 },
-  subtitle: { fontSize: 16, color: COLORS.text, fontWeight: '500' },
-  subtitle2: { fontSize: 14, color: COLORS.textSecondary, marginTop: 4 },
-  form: { marginBottom: 32 },
-  registerLink: { alignItems: 'center' },
-  registerText: { fontSize: 14, color: COLORS.textSecondary },
-  registerBold: { color: COLORS.secondary, fontWeight: '600' },
+  wrapper: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 48,
+  },
+  title: {
+    ...typography.titleLg,
+    color: colors.primary,
+    marginBottom: 12,
+    letterSpacing: spacing[1],
+  },
+  subtitle: {
+    ...typography.titleSm,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  subtitle2: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  form: {
+    marginBottom: 32,
+  },
+  registerLink: {
+    alignItems: 'center',
+  },
+  registerText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  registerBold: {
+    ...typography.bodyStrong,
+    color: colors.secondary,
+  },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -154,9 +203,9 @@ const styles = StyleSheet.create({
   checkboxText: {
     marginLeft: 8,
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
   },
   checkboxTextActive: {
-    color: COLORS.text,
+    color: colors.text,
   },
 });

@@ -1,6 +1,12 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert,
+  View,
+  Text,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,8 +17,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { checkEmailExists } from '../../services/authService';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
-import { COLORS } from '../../constants/defaults';
-import Svg, { Defs, LinearGradient, RadialGradient, Stop, Rect, Circle } from 'react-native-svg';
+import { colors, typography } from '../../design/tokens';
 
 type RegisterNav = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -106,18 +111,26 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.wrapper}>
-      <View style={StyleSheet.absoluteFill}>
-      </View>
+      <View style={StyleSheet.absoluteFill}></View>
 
       <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>회원가입</Text>
             <Text style={styles.subtitle}>Another Day에 오신 것을 환영합니다</Text>
           </View>
 
           <View style={styles.form}>
-            <Input label="닉네임" placeholder="팀원들에게 보여질 이름" value={nickname} onChangeText={setNickname} autoCapitalize="none" />
+            <Input
+              label="닉네임"
+              placeholder="팀원들에게 보여질 이름"
+              value={nickname}
+              onChangeText={setNickname}
+              autoCapitalize="none"
+            />
             <View>
               <Input
                 label="이메일"
@@ -137,14 +150,24 @@ export default function RegisterScreen() {
                 </View>
               )}
             </View>
-            <Input label="비밀번호" placeholder="6자 이상" value={password} onChangeText={setPassword} secureTextEntry />
-            <Button title="가입하기" onPress={handleRegister} loading={isLoading} style={{ marginTop: 8 }} />
+            <Input
+              label="비밀번호"
+              placeholder="6자 이상"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            <Button
+              title="가입하기"
+              onPress={handleRegister}
+              loading={isLoading}
+              style={{ marginTop: 8 }}
+            />
           </View>
 
           <TouchableOpacity style={styles.loginLink} onPress={() => navigation.goBack()}>
             <Text style={styles.loginText}>
-              이미 계정이 있으신가요?{' '}
-              <Text style={styles.loginBold}>로그인</Text>
+              이미 계정이 있으신가요? <Text style={styles.loginBold}>로그인</Text>
             </Text>
           </TouchableOpacity>
         </KeyboardAvoidingView>
@@ -154,15 +177,43 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: COLORS.background },
-  container: { flex: 1, paddingHorizontal: 24, justifyContent: 'center' },
-  header: { alignItems: 'center', marginBottom: 48 },
-  title: { fontSize: 30, fontWeight: '800', color: COLORS.text, marginBottom: 12, letterSpacing: 1 },
-  subtitle: { fontSize: 15, color: COLORS.textSecondary },
-  form: { marginBottom: 32 },
-  loginLink: { alignItems: 'center' },
-  loginText: { fontSize: 14, color: COLORS.textSecondary },
-  loginBold: { color: COLORS.secondary, fontWeight: '600' },
+  wrapper: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 48,
+  },
+  title: {
+    ...typography.titleLg,
+    color: colors.text,
+    marginBottom: 12,
+    letterSpacing: 1,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: colors.textSecondary,
+  },
+  form: {
+    marginBottom: 32,
+  },
+  loginLink: {
+    alignItems: 'center',
+  },
+  loginText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  loginBold: {
+    color: colors.secondary,
+    fontWeight: '600',
+  },
   checkingRow: {
     flexDirection: 'row',
     alignItems: 'center',

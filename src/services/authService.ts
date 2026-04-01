@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabaseClient';
 import type { User } from '../types/domain';
 
+const SESSION_TIMEOUT_MS = 3000;
+
 export async function ensureProfile(
   userId: string,
   email: string,
@@ -23,9 +25,21 @@ export async function ensureProfile(
 }
 
 export async function getCurrentSessionUser() {
+  const sessionResult = await Promise.race([
+    supabase.auth.getSession(),
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('session_restore_timeout')), SESSION_TIMEOUT_MS);
+    }),
+  ]).catch((error) => {
+    console.warn('[Auth] getSession timeout/fallback:', error);
+    return {
+      data: { session: null },
+    };
+  });
+
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = sessionResult;
 
   return session?.user ?? null;
 }
