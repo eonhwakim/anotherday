@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   loginBold: {
-    color: colors.secondary,
+    color: colors.brandWarm,
     fontWeight: '600',
   },
   checkingRow: {
