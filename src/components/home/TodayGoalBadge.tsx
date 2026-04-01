@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, Platform } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Circle as SvgCircle, Rect } from 'react-native-svg';
 import type { MemberProgress } from '../../types/domain';
-// ─── Badge constants ───
+
 const THUMB_UP =
   'M50 8C50 2 64 2 64 10L66 42 92 42C98 42 102 48 102 54C102 58 100 61 97 62C100 64 102 68 102 72C102 76 100 79 97 80C100 82 102 86 102 90C102 94 99 98 94 98L48 98C42 98 36 94 34 88L26 70C24 66 20 64 16 64L12 64C8 64 6 60 6 56L6 46C6 42 8 40 12 40L34 40C40 40 44 34 46 26Z';
 

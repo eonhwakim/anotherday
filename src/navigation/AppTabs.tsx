@@ -6,7 +6,7 @@ import HomeScreen from '../screens/home/HomeScreen';
 import CalendarScreen from '../screens/calendar/CalendarScreen';
 import StatisticsScreen from '../screens/stats/StatisticsScreen';
 import MyPageScreen from '../screens/mypage/MyPageScreen';
-import { COLORS } from '../constants/defaults';
+import { colors } from '../design/tokens';
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
@@ -15,15 +15,15 @@ export default function AppTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: '#FF6B3D',
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: 'rgba(26,26,26,0.35)',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
-          borderTopColor: 'rgba(255, 107, 61, 0.15)',
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           paddingTop: 6,
           height: 88,
-          shadowColor: '#FF6B3D',
+          shadowColor: colors.primary,
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.08,
           shadowRadius: 8,
@@ -45,7 +45,11 @@ export default function AppTabs() {
       })}
     >
       <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: '오늘' }} />
-      <Tab.Screen name="CalendarTab" component={CalendarScreen} options={{ tabBarLabel: '캘린더' }} />
+      <Tab.Screen
+        name="CalendarTab"
+        component={CalendarScreen}
+        options={{ tabBarLabel: '캘린더' }}
+      />
       <Tab.Screen name="StatsTab" component={StatisticsScreen} options={{ tabBarLabel: '통계' }} />
       <Tab.Screen name="MyPageTab" component={MyPageScreen} options={{ tabBarLabel: '마이' }} />
     </Tab.Navigator>

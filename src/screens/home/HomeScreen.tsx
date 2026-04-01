@@ -18,25 +18,20 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
-import MountainProgress from '../../components/home/MountainProgress';
-import TodayGoalList from '../../components/home/TodayGoalList';
 import CyberFrame from '../../components/ui/CyberFrame';
-// import DevGuideModal from '../../components/home/DevGuideModal';
-import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
-import CheckinModal from '../../components/mypage/CheckinModal';
+
 import dayjs from '../../lib/dayjs';
-import { COLORS } from '../../constants/defaults';
+import { colors } from '../../design/tokens';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  RadialGradient,
-  Stop,
-  Path,
-} from 'react-native-svg';
+import { fetchExtendableGoalsForMonth } from '../../services/goalService';
+
+import MountainProgress from '../../components/home/MountainProgress';
+import TodayGoalList from '../../components/home/TodayGoalList';
+import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
+import CheckinModal from '../../components/mypage/CheckinModal';
+// import DevGuideModal from '../../components/home/DevGuideModal';
 
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
@@ -59,11 +54,17 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
   const [isStampFinished, setIsStampFinished] = React.useState(false);
   const [timePeriod, setTimePeriod] = React.useState<'DAY' | 'SUNSET' | 'NIGHT'>('DAY');
-  const [isManualOverride, setIsManualOverride] = React.useState(false);
+  const [isManualOverride] = React.useState(false);
   // const [showGuideModal, setShowGuideModal] = React.useState(false);
   const [showMonthlyPrompt, setShowMonthlyPrompt] = React.useState(false);
   const [promptNewMonth, setPromptNewMonth] = React.useState<string>('');
+  const [extendableGoals, setExtendableGoals] = React.useState<typeof myGoals>([]);
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
+
+  const getMonthlyPromptStorageKey = useCallback(
+    (monthStr: string) => `monthly_goal_prompt_v1_${monthStr}`,
+    [],
+  );
 
   // ── 현재 팀에 해당하는 나의 목표만 필터링 (인증 모달용) ──
   const currentTeamUserGoals = React.useMemo(() => {
@@ -82,11 +83,6 @@ export default function HomeScreen() {
       (teamGoals || []).filter((g) => g.owner_id === user?.id).map((g) => g.id),
     );
     const todayStr = dayjs().format('YYYY-MM-DD');
-    // const weekStart = dayjs().startOf('isoWeek').format('YYYY-MM-DD');
-    // const weekEnd = dayjs().endOf('isoWeek').format('YYYY-MM-DD');
-
-    // monthlyCheckins 대신 todayCheckins를 활용하여 대략적인 주간 완료 수 계산 (정확한 주간 카운트가 필요하다면 statsStore의 monthlyCheckins를 가져와야 함)
-    // 여기서는 홈 화면이므로 주간 카운트 표시는 생략하거나 0으로 처리 (CheckinModal 내에서 처리됨)
 
     return (teamGoals || [])
       .filter((g) => myOwnedGoalIds.has(g.id))
@@ -101,7 +97,6 @@ export default function HomeScreen() {
         return {
           goal: g,
           frequency: (ug?.frequency ?? 'daily') as 'daily' | 'weekly_count',
-          isExcluded: ug ? !ug.is_active : false,
           targetCount: ug?.target_count ?? null,
           weeklyDoneCount: 0, // 홈 화면 플로팅 버튼에서는 주간 카운트 생략
         };
@@ -159,11 +154,14 @@ export default function HomeScreen() {
 
         if (!matchedMonth) return;
 
-        const storageKey = `monthly_goal_prompt_v1_${matchedMonth}`;
+        const storageKey = getMonthlyPromptStorageKey(matchedMonth);
         const alreadyShown = await AsyncStorage.getItem(storageKey);
         if (alreadyShown) return;
 
-        await AsyncStorage.setItem(storageKey, 'shown');
+        const targets = await fetchExtendableGoalsForMonth(user.id, matchedMonth);
+        if (targets.length === 0) return;
+
+        setExtendableGoals(targets);
         setPromptNewMonth(matchedMonth);
         setTimeout(() => setShowMonthlyPrompt(true), 800);
       } catch (e) {
@@ -172,16 +170,25 @@ export default function HomeScreen() {
     };
 
     checkMonthlyPrompt();
-  }, [user]);
+  }, [getMonthlyPromptStorageKey, user]);
 
   const handleMonthlyPromptContinue = async () => {
     if (!user || !promptNewMonth) return;
+    const ok = await extendGoalsForNewMonth(user.id, promptNewMonth);
+    if (!ok) return;
+
+    await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
     setShowMonthlyPrompt(false);
-    await extendGoalsForNewMonth(user.id, promptNewMonth);
+    setExtendableGoals([]);
+    await loadData();
   };
 
-  const handleMonthlyPromptNewPlan = () => {
+  const handleMonthlyPromptNewPlan = async () => {
+    if (promptNewMonth) {
+      await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
+    }
     setShowMonthlyPrompt(false);
+    setExtendableGoals([]);
   };
 
   // const handleCloseGuide = async (savePreference: boolean) => {
@@ -208,11 +215,6 @@ export default function HomeScreen() {
     const timer = setInterval(updateTime, 60000);
     return () => clearInterval(timer);
   }, [isManualOverride]);
-
-  const handleManualTimeChange = (period: 'DAY' | 'SUNSET' | 'NIGHT') => {
-    setIsManualOverride(true);
-    setTimePeriod(period);
-  };
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -274,7 +276,7 @@ export default function HomeScreen() {
       <MonthlyGoalPromptModal
         visible={showMonthlyPrompt}
         newMonthStr={promptNewMonth}
-        activeGoals={myGoals}
+        activeGoals={extendableGoals}
         goalNames={new Map(teamGoals.map((g) => [g.id, g.name]))}
         onContinue={handleMonthlyPromptContinue}
         onNewPlan={handleMonthlyPromptNewPlan}
@@ -297,18 +299,6 @@ export default function HomeScreen() {
         {timePeriod === 'NIGHT' && <View style={styles.nightOverlay} pointerEvents="none" />}
       </View>
 
-      {/* ── 장식 ── */}
-      <View style={styles.decorLayer}>
-        {timePeriod === 'SUNSET' && (
-          <HoloGlow
-            style={{ top: 80, right: 20 }}
-            color1={COLORS.holoPink}
-            color2={COLORS.holoMint}
-          />
-        )}
-        {timePeriod === 'NIGHT' && <HoloMoon style={{ top: 90, right: 30 }} />}
-      </View>
-
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
           ref={scrollRef}
@@ -318,7 +308,7 @@ export default function HomeScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.secondary}
+              tintColor={colors.brandWarm}
             />
           }
         >
@@ -364,8 +354,6 @@ export default function HomeScreen() {
               members={memberProgress}
               currentUserId={user?.id}
               startAnimation={isStampFinished}
-              isNight={timePeriod === 'NIGHT'}
-              timePeriod={timePeriod}
             />
           </View>
 
@@ -375,6 +363,7 @@ export default function HomeScreen() {
               members={memberProgress}
               currentUserId={user?.id}
               onAnimationFinish={() => setIsStampFinished(true)}
+              isNight={isNight}
             />
             <View style={{ height: 120 }} />
           </View>
@@ -397,7 +386,6 @@ export default function HomeScreen() {
       {/* ── 인증 체크인 모달 ── */}
       <CheckinModal
         visible={checkinModalVisible}
-        date={dayjs().format('YYYY-MM-DD')}
         goalsWithFrequency={goalsForCheckinModal}
         checkins={todayCheckins}
         onClose={() => setCheckinModalVisible(false)}
@@ -407,46 +395,10 @@ export default function HomeScreen() {
   );
 }
 
-// ─── 홀로그래픽 장식 ───
-function HoloGlow({ style, color1, color2 }: any) {
-  return (
-    <View style={[styles.decorItem, style]}>
-      <Svg width="140" height="140" viewBox="0 0 140 140">
-        <Defs>
-          <RadialGradient id="hGlow" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
-            <Stop offset="0%" stopColor={color1} stopOpacity="0.20" />
-            <Stop offset="40%" stopColor={color2} stopOpacity="0.08" />
-            <Stop offset="100%" stopColor={color1} stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
-        <Circle cx="70" cy="70" r="68" fill="url(#hGlow)" />
-        <Circle cx="70" cy="70" r="25" fill={color1} opacity="0.08" />
-      </Svg>
-    </View>
-  );
-}
-
-function HoloMoon({ style }: any) {
-  return (
-    <View style={[styles.decorItem, style]}>
-      <Svg width="90" height="90" viewBox="0 0 90 90">
-        <Defs>
-          <RadialGradient id="moonGlow" cx="0.4" cy="0.4" rx="0.6" ry="0.6">
-            <Stop offset="0%" stopColor={COLORS.holoLavender} stopOpacity="0.12" />
-            <Stop offset="100%" stopColor={COLORS.holoLavender} stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
-        <Circle cx="45" cy="45" r="42" fill="url(#moonGlow)" />
-        <Path d="M 55 12 A 28 28 0 1 0 55 78 A 22 22 0 1 1 55 12 Z" fill="rgba(240,240,255,0.10)" />
-      </Svg>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.screen,
   },
   bgLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -505,14 +457,14 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   greetingDay: {
-    color: '#4F4F4F',
+    color: colors.text,
   },
   greetingSunset: {
-    color: '#4F4F4F',
+    color: colors.text,
   },
   dateText: {
     fontSize: 12,
-    color: 'rgba(26,26,26,0.50)',
+    color: colors.textSecondary,
     fontWeight: '700',
     letterSpacing: 2.5,
     textTransform: 'uppercase',

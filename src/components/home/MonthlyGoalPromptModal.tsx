@@ -1,12 +1,6 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
-import { COLORS } from '../../constants/defaults';
+import { View, Text, Modal, StyleSheet, TouchableOpacity } from 'react-native';
+import { colors } from '../../design/tokens';
 import type { UserGoal } from '../../types/domain';
 
 interface Props {
@@ -39,7 +33,7 @@ export default function MonthlyGoalPromptModal({
           {activeGoals.length > 0 && (
             <View style={s.goalsBox}>
               <Text style={s.goalsLabel}>지난 달 목표</Text>
-              {activeGoals.slice(0, 5).map(g => (
+              {activeGoals.slice(0, 5).map((g) => (
                 <View key={g.id} style={s.goalRow}>
                   <Text style={s.goalBullet}>•</Text>
                   <Text style={s.goalName} numberOfLines={1}>
@@ -125,13 +119,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 5,
   },
-  goalBullet: { fontSize: 14, color: COLORS.primaryLight, marginRight: 6 },
+  goalBullet: { fontSize: 14, color: colors.primaryLight, marginRight: 6 },
   goalName: { fontSize: 14, color: '#333', flex: 1, fontWeight: '500' },
   goalFreq: { fontSize: 12, color: '#999', marginLeft: 6 },
   moreText: { fontSize: 12, color: '#aaa', marginTop: 4, textAlign: 'right' },
   continueBtn: {
     width: '100%',
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 20,

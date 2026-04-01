@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-} from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface GuideModalProps {
@@ -29,12 +21,7 @@ export default function GuideModal({ visible, onClose }: GuideModalProps) {
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={() => {}}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => {}}>
       <View style={styles.modalOverlay}>
         <View style={styles.guideModalContent}>
           <ScrollView
@@ -49,13 +36,16 @@ export default function GuideModal({ visible, onClose }: GuideModalProps) {
             />
             <Text style={styles.guideTitle}>꼭 읽어주세요</Text>
             <Text style={styles.guideText}>
-              이 앱은 <Text style={styles.highlight}>목표 수행 직후, 카메라로만</Text> 인증할 수 있어요.{'\n'}
+              이 앱은 <Text style={styles.highlight}>목표 수행 직후, 카메라로만</Text> 인증할 수
+              있어요.{'\n'}
               앨범 사진은 사용할 수 없습니다.
             </Text>
             <View style={styles.guideWarningBox}>
               <View style={styles.guideWarningItem}>
                 <Ionicons name="checkmark-circle" size={18} color="#4ADE80" />
-                <Text style={[styles.guideWarningText, { color: '#EF4444' }]}>목표 설정→직접 수행→즉시 카메라 인증</Text>
+                <Text style={[styles.guideWarningText, { color: '#EF4444' }]}>
+                  목표 설정→직접 수행→즉시 카메라 인증
+                </Text>
               </View>
               <View style={styles.guideWarningItem}>
                 <Ionicons name="close-circle" size={18} color="#EF4444" />
@@ -79,7 +69,11 @@ export default function GuideModal({ visible, onClose }: GuideModalProps) {
               <View style={[styles.guideCheckbox, neverShowAgain && styles.guideCheckboxActive]}>
                 {neverShowAgain && <Ionicons name="checkmark" size={13} color="#fff" />}
               </View>
-              <Text style={[styles.guideCheckLabel, neverShowAgain && styles.guideCheckLabelActive]}>다시 보지 않기</Text>
+              <Text
+                style={[styles.guideCheckLabel, neverShowAgain && styles.guideCheckLabelActive]}
+              >
+                다시 보지 않기
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.guideConfirmBtn} onPress={handleConfirm}>

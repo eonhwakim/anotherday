@@ -3,8 +3,7 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { CheckinWithGoal, Goal, UserGoal } from '../../types/domain';
 import dayjs from '../../lib/dayjs';
-import { COLORS } from '../../constants/defaults';
-
+import { colors } from '../../design/tokens';
 interface CheckinListProps {
   checkins: CheckinWithGoal[];
   date: string;
@@ -29,7 +28,7 @@ export default function CheckinList({
   const combinedList = myActiveGoalIds.map((goalId) => {
     const goal = goals.find((g) => g.id === goalId);
     const checkin = checkins.find((c) => c.goal_id === goalId);
-    
+
     return {
       goalId,
       goalName: goal?.name ?? '알 수 없는 목표',
@@ -58,9 +57,7 @@ export default function CheckinList({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.dateTitle}>
-        {formatted} 기록
-      </Text>
+      <Text style={styles.dateTitle}>{formatted} 기록</Text>
       {combinedList.map((item, idx) => {
         const { checkin, goalName } = item;
         const isDone = !!checkin;
@@ -74,24 +71,18 @@ export default function CheckinList({
                 <Image source={{ uri: checkin.photo_url }} style={styles.thumbnail} />
               ) : (
                 <View style={[styles.checkIcon, isPass ? styles.iconPass : styles.iconSuccess]}>
-                  <Ionicons 
-                    name={isPass ? 'pause' : 'checkmark'} 
-                    size={24} 
-                    color="#fff" 
-                  />
+                  <Ionicons name={isPass ? 'pause' : 'checkmark'} size={24} color="#fff" />
                 </View>
               )
             ) : (
               <View style={styles.checkIconPending}>
-                <Ionicons name="ellipse-outline" size={24} color={COLORS.textSecondary} />
+                <Ionicons name="ellipse-outline" size={24} color={colors.textSecondary} />
               </View>
             )}
 
             <View style={styles.info}>
-              <Text style={[styles.goalName, !isDone && styles.textPending]}>
-                {goalName}
-              </Text>
-              
+              <Text style={[styles.goalName, !isDone && styles.textPending]}>{goalName}</Text>
+
               {isDone ? (
                 <>
                   <Text style={styles.time}>
@@ -104,9 +95,7 @@ export default function CheckinList({
                   )}
                 </>
               ) : (
-                <Text style={styles.statusText}>
-                  {isFuture ? '예정' : '미완료'}
-                </Text>
+                <Text style={styles.statusText}>{isFuture ? '예정' : '미완료'}</Text>
               )}
             </View>
           </View>
@@ -124,13 +113,13 @@ const styles = StyleSheet.create({
   dateTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.text,
+    color: colors.text,
     marginBottom: 12,
     letterSpacing: 0.5,
   },
   emptyText: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     paddingVertical: 24,
   },
@@ -158,7 +147,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 6,
-    backgroundColor: COLORS.surfaceLight,
+    backgroundColor: colors.surfaceLight,
   },
   checkIcon: {
     width: 48,
@@ -194,24 +183,24 @@ const styles = StyleSheet.create({
   goalName: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
+    color: colors.text,
     marginBottom: 2,
   },
   textPending: {
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
   },
   time: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
   },
   memo: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   statusText: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     fontWeight: '500',
   },
 });

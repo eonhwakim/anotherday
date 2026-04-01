@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  Image,
-} from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface DevGuideModalProps {
@@ -28,12 +21,7 @@ export default function DevGuideModal({ visible, onClose }: DevGuideModalProps) 
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={() => {}}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => {}}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalWrapper}>
           <Image
@@ -60,7 +48,11 @@ export default function DevGuideModal({ visible, onClose }: DevGuideModalProps) 
               <View style={[styles.guideCheckbox, neverShowAgain && styles.guideCheckboxActive]}>
                 {neverShowAgain && <Ionicons name="checkmark" size={13} color="#fff" />}
               </View>
-              <Text style={[styles.guideCheckLabel, neverShowAgain && styles.guideCheckLabelActive]}>다시 보지 않기</Text>
+              <Text
+                style={[styles.guideCheckLabel, neverShowAgain && styles.guideCheckLabelActive]}
+              >
+                다시 보지 않기
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -104,7 +96,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     gap: 10,
     marginTop: 12,
-
   },
   guideCheckbox: {
     width: 20,

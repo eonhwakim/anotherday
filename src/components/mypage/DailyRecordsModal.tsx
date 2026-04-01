@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,12 @@ import {
   KeyboardAvoidingView,
   Image,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
+// import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/defaults';
+import { colors, radius, spacing, typography } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
 import CyberFrame from '../ui/CyberFrame';
+import Pill from '../ui/Pill';
 import { MemberCheckinSummary } from '../../types/domain';
 
 const SafeBlurView = Platform.OS === 'android' ? View : View;
@@ -35,18 +36,13 @@ export default function DailyRecordsModal({
 }: DailyRecordsModalProps) {
   const formattedDate = dayjs(date).format('M월 D일');
   const today = dayjs().format('YYYY-MM-DD');
-  
+
   const isFuture = date > today;
   const isToday = date === today;
   const isPast = date < today;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -54,7 +50,7 @@ export default function DailyRecordsModal({
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={styles.overlayBg} />
         </TouchableWithoutFeedback>
-        <SafeBlurView intensity={30} tint="light" style={styles.sheet}>
+        <SafeBlurView style={styles.sheet}>
           {/* 핸들 바 */}
           <View style={styles.handleBar} />
 
@@ -63,7 +59,7 @@ export default function DailyRecordsModal({
             <View style={{ width: 28 }} />
             <Text style={styles.headerTitle}>{formattedDate} 기록</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+              <Ionicons name="close" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -77,7 +73,10 @@ export default function DailyRecordsModal({
                     <View style={styles.memberHeader}>
                       <View style={styles.memberAvatar}>
                         {member.profileImageUrl ? (
-                          <Image source={{ uri: member.profileImageUrl }} style={styles.memberAvatarImg} />
+                          <Image
+                            source={{ uri: member.profileImageUrl }}
+                            style={styles.memberAvatarImg}
+                          />
                         ) : (
                           <Ionicons name="person" size={16} color="rgba(255,255,255,0.50)" />
                         )}
@@ -85,18 +84,21 @@ export default function DailyRecordsModal({
                       <Text style={styles.memberName}>{member.nickname}</Text>
                     </View>
 
-                    {(!member.goals || member.goals.length === 0) ? (
+                    {!member.goals || member.goals.length === 0 ? (
                       <Text style={styles.emptyGoalText}>목표가 없습니다.</Text>
                     ) : (
-                      <CyberFrame style={styles.memberCardFrame} contentStyle={styles.memberCardContent}>
+                      <CyberFrame
+                        style={styles.memberCardFrame}
+                        contentStyle={styles.memberCardContent}
+                      >
                         {member.goals.map((goal, index) => {
-                          const checkin = member.checkins.find(c => c.goal_id === goal.goalId);
+                          const checkin = member.checkins.find((c) => c.goal_id === goal.goalId);
                           const isDone = checkin?.status === 'done';
                           const isPass = checkin?.status === 'pass';
-                          
+
                           let statusText = '';
                           let badgeStyle = {};
-                          
+
                           if (isFuture) {
                             statusText = '예정';
                             badgeStyle = styles.badgeFuture;
@@ -109,23 +111,34 @@ export default function DailyRecordsModal({
                           } else if (isPast) {
                             statusText = '미달';
                             badgeStyle = styles.badgeMissed;
-                          } 
-                          else if (isToday) {
+                          } else if (isToday) {
                             // statusText = '진행중';
                             badgeStyle = styles.badgeInProgress;
                           }
 
                           return (
-                            <View key={goal.goalId} style={[styles.goalRow, index !== member.goals.length - 1 && styles.goalRowBorder]}>
+                            <View
+                              key={goal.goalId}
+                              style={[
+                                styles.goalRow,
+                                index !== member.goals.length - 1 && styles.goalRowBorder,
+                              ]}
+                            >
                               <View style={styles.goalInfo}>
-                                <Text style={styles.goalName} numberOfLines={1}>∙ {goal.name}</Text>
+                                <Text style={styles.goalName} numberOfLines={1}>
+                                  ∙ {goal.name}
+                                </Text>
                                 <Text style={styles.goalFreq}>
                                   {goal.frequency === 'daily' ? '매일' : `주 ${goal.targetCount}회`}
                                 </Text>
                               </View>
-                              <View style={[styles.statusBadge, badgeStyle]}>
-                                <Text style={styles.statusText}>{statusText}</Text>
-                              </View>
+                              {statusText ? (
+                                <Pill
+                                  label={statusText}
+                                  style={[styles.statusBadge, badgeStyle]}
+                                  textStyle={styles.statusText}
+                                />
+                              ) : null}
                             </View>
                           );
                         })}
@@ -147,69 +160,68 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.overlayBackdrop,
   },
   overlayBg: {
     flex: 1,
   },
   sheet: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: colors.sheetOverlay,
+    borderTopLeftRadius: radius.lg + 8,
+    borderTopRightRadius: radius.lg + 8,
     maxHeight: '75%',
-    paddingTop: 12,
+    paddingTop: spacing[3],
   },
   handleBar: {
     width: 40,
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.handleTint,
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 8,
+    marginBottom: spacing[2],
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[3],
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: colors.borderFaint,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
+    ...typography.titleMd,
+    color: colors.text,
   },
   closeBtn: {
     padding: 4,
   },
   body: {
-    padding: 20,
+    padding: spacing[5],
   },
   emptyText: {
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
-    marginTop: 40,
+    marginTop: spacing[10],
     fontSize: 15,
   },
   membersContainer: {
-    gap: 24,
+    gap: spacing[6],
   },
   memberSection: {
-    gap: 12,
+    gap: spacing[3],
   },
   memberHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing[2],
     marginBottom: 4,
   },
   memberAvatar: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: colors.avatarGlass,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -219,9 +231,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   memberName: {
+    ...typography.bodyStrong,
     fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
+    color: colors.text,
   },
   emptyGoalText: {
     color: 'rgba(15, 15, 15, 0.43)',
@@ -229,7 +241,7 @@ const styles = StyleSheet.create({
     paddingLeft: 36,
   },
   memberCardFrame: {
-    marginBottom: 8,
+    marginBottom: spacing[2],
     backgroundColor: 'rgba(255, 255, 255, 0.69)',
   },
   memberCardContent: {
@@ -239,57 +251,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 8,
+    padding: spacing[2],
   },
   goalRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: colors.borderFaint,
   },
   goalInfo: {
     flex: 1,
     paddingRight: 16,
   },
   goalName: {
+    ...typography.bodyStrong,
     fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
+    color: colors.text,
     marginBottom: 4,
   },
   goalFreq: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
+    ...typography.caption,
+    color: colors.textSecondary,
     marginLeft: 12,
   },
   statusBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing[3],
     paddingVertical: 6,
-    borderRadius: 12,
     borderWidth: 1,
   },
   statusText: {
+    ...typography.bodyStrong,
     fontSize: 13,
-    fontWeight: '600',
     color: '#fff',
   },
   badgeSuccess: {
-    backgroundColor: 'rgba(74, 222, 128, 0.43)',
-    borderColor: 'rgba(74, 222, 128, 0.3)',
+    backgroundColor: colors.statusSuccessBg,
+    borderColor: colors.statusSuccessBorder,
   },
   badgePass: {
-    backgroundColor: 'rgba(232, 151, 10, 0.45)',
-    borderColor: 'rgba(232, 150, 10, 0.3)',
+    backgroundColor: colors.statusPassBg,
+    borderColor: colors.statusPassBorder,
   },
   badgeMissed: {
-    backgroundColor: 'rgba(255, 68, 58, 0.35)',
-    borderColor: 'rgba(255, 69, 58, 0.3)',
+    backgroundColor: colors.statusErrorBg,
+    borderColor: colors.statusErrorBorder,
   },
   badgeFuture: {
-    backgroundColor: 'rgba(39, 38, 38, 0.24)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.statusFutureBg,
+    borderColor: colors.statusFutureBorder,
   },
   badgeInProgress: {
-    // backgroundColor: 'rgba(59, 131, 246, 0.33)',
-    // borderColor: 'rgba(59, 130, 246, 0.3)',
     borderWidth: 0,
   },
 });

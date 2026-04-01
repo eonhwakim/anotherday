@@ -14,7 +14,7 @@ import MemberStatsScreen from '../screens/team/MemberStatsScreen';
 import ProfileEditScreen from '../screens/mypage/ProfileEditScreen';
 import AppSettingsScreen from '../screens/mypage/AppSettingsScreen';
 import AddRoutineScreen from '../screens/mypage/AddRoutineScreen';
-import { COLORS } from '../constants/defaults';
+import { colors } from '../design/tokens';
 import { scheduleDailyNotifications } from '../utils/notifications';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -42,13 +42,13 @@ export default function RootNavigator() {
     if (!authLoading) {
       init();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, isReady]);
 
   // 로딩 화면
   if (authLoading || !isReady) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -82,6 +82,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
 });

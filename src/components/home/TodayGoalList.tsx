@@ -10,57 +10,48 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { MemberProgress } from '../../types/domain';
 import { useIsFocused } from '@react-navigation/native';
-
+import type { MemberProgress } from '../../types/domain';
+import { colors } from '../../design/tokens';
 import CyberFrame from '../ui/CyberFrame';
+import Pill from '../ui/Pill';
 import DynamicBadge from './TodayGoalBadge';
 
+interface MemberCardProps {
+  member: MemberProgress;
+  isMe: boolean;
+  animVal: Animated.Value;
+}
 interface TodayGoalListProps {
   members: MemberProgress[];
   currentUserId?: string;
   onAnimationFinish?: () => void;
+  isNight?: boolean;
 }
 
-// ─── Goal Chip ───
 interface GoalChipProps {
-  goalId: string;
   goalName: string;
   isDone: boolean;
   isPass: boolean;
-  isInactive: boolean;
 }
 
-function GoalChip({ goalId, goalName, isDone, isPass, isInactive }: GoalChipProps) {
-  const chipStyle = [
-    styles.goalChip,
-    isInactive && styles.goalChipInactive,
-    isPass && styles.goalChipPass,
-    isDone && styles.goalChipDone,
-  ];
+function GoalChip({ goalName, isDone, isPass }: GoalChipProps) {
+  const chipStyle = [styles.goalChip, isPass && styles.goalChipPass, isDone && styles.goalChipDone];
   const textStyle = [
     styles.goalChipText,
-    isInactive && styles.goalChipTextInactive,
     isPass && styles.goalChipTextPass,
     isDone && styles.goalChipTextDone,
   ];
 
   return (
-    <View key={goalId} style={chipStyle}>
-      {isDone && <Text style={styles.goalChipIcon}>✓</Text>}
-      <Text style={textStyle} numberOfLines={1}>
-        {isPass ? '(패스) ' : ''}
-        {goalName}
-      </Text>
-    </View>
+    <Pill
+      label={`${isPass ? '(패스) ' : ''}${goalName}`}
+      icon={isDone ? <Text style={styles.goalChipIcon}>✓</Text> : undefined}
+      numberOfLines={1}
+      style={chipStyle}
+      textStyle={textStyle}
+    />
   );
-}
-
-// ─── Member Card ───
-interface MemberCardProps {
-  member: MemberProgress;
-  isMe: boolean;
-  animVal: Animated.Value;
 }
 
 function MemberCard({ member, isMe, animVal }: MemberCardProps) {
@@ -102,15 +93,12 @@ function MemberCard({ member, isMe, animVal }: MemberCardProps) {
         {member.goalDetails.length > 0 ? (
           <View style={styles.goalChips}>
             {member.goalDetails.map((g) => {
-              const isInactive = g.isActive === false && !g.isDone && !g.isPass;
               return (
                 <GoalChip
                   key={g.goalId}
-                  goalId={g.goalId}
                   goalName={g.goalName}
                   isDone={g.isDone}
                   isPass={g.isPass ?? false}
-                  isInactive={isInactive}
                 />
               );
             })}
@@ -123,14 +111,13 @@ function MemberCard({ member, isMe, animVal }: MemberCardProps) {
   );
 }
 
-// ─── Main Component ───
 export default function TodayGoalList({
   members,
   currentUserId,
   onAnimationFinish,
+  isNight = false,
 }: TodayGoalListProps) {
   const isFocused = useIsFocused();
-
   const totalAll = members.reduce((s, m) => s + m.totalGoals, 0);
   const completedAll = members.reduce((s, m) => s + m.completedGoals, 0);
   const progress = totalAll > 0 ? completedAll / totalAll : 0;
@@ -180,16 +167,17 @@ export default function TodayGoalList({
       memberAnims.length = 0;
       members.forEach(() => memberAnims.push(new Animated.Value(wasEmpty ? 0 : 1)));
     }
-  }, [members.length]);
+  }, [members, memberAnims]);
 
   useEffect(() => {
     if (!isFocused) {
       hasBadgeAnimatedRef.current = false;
+      sequenceAnimRef.current?.stop();
+      staggerAnimRef.current?.stop();
       return;
     }
 
     if (hasBadgeAnimatedRef.current) {
-      memberAnims.forEach((a) => a.setValue(1));
       return;
     }
 
@@ -271,7 +259,17 @@ export default function TodayGoalList({
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [isFocused, progress, totalAll, badgeState]);
+  }, [
+    isFocused,
+    members.length,
+    badgeState,
+    memberAnims,
+    scaleAnim,
+    translateYAnim,
+    rotateAnim,
+    badgeOpacityAnim,
+    onAnimationFinish,
+  ]);
 
   const { width: screenWidth } = useWindowDimensions();
   const centerTranslateX = -(screenWidth / 2);
@@ -300,8 +298,8 @@ export default function TodayGoalList({
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.title}>TODAY'S MISSION</Text>
-          <Text style={styles.hintText}>
+          <Text style={[styles.title, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
+          <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
             오늘 계획이 없는 주 N회 목표를 "패스"하면 달성률이 올라가요!
           </Text>
         </View>
@@ -355,7 +353,6 @@ export default function TodayGoalList({
 }
 
 const styles = StyleSheet.create({
-  // ─── Layout ───
   container: {
     marginTop: 0,
     width: '100%',
@@ -375,17 +372,22 @@ const styles = StyleSheet.create({
     color: 'rgba(3, 3, 3, 0.59)',
     letterSpacing: 2,
   },
+  titleNight: {
+    color: 'rgba(255, 255, 255, 0.92)',
+  },
   hintText: {
     fontSize: 13,
     color: 'rgba(26, 26, 26, 0.47)',
     marginTop: 4,
     lineHeight: 15,
   },
+  hintTextNight: {
+    color: 'rgba(255, 255, 255, 0.78)',
+  },
   badgeWrapper: {
     position: 'relative',
   },
 
-  // ─── Trail ───
   trailContainer: {
     position: 'relative',
     paddingLeft: 26,
@@ -403,7 +405,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // ─── Member row ───
   memberRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -412,7 +413,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  // ─── Trail node ───
   trailNode: {
     position: 'absolute',
     left: -36 + 3,
@@ -434,8 +434,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   trailNodeDone: {
-    borderColor: '#4ADE80',
-    backgroundColor: '#4ADE80',
+    borderColor: colors.successBright,
+    backgroundColor: colors.successBright,
   },
   avatarImg: {
     width: 26,
@@ -457,12 +457,11 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#4ADE80',
+    backgroundColor: colors.successBright,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // ─── Member card ───
   memberCard: {
     flex: 1,
     width: '100%',
@@ -486,7 +485,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   memberNameMe: {
-    color: '#1A1A1A',
+    color: colors.text,
   },
   memberCount: {
     fontSize: 12,
@@ -495,31 +494,23 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 
-  // ─── Goal chips ───
   goalChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 5,
   },
   goalChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.54)',
   },
   goalChipDone: {
-    backgroundColor: 'rgba(253, 143, 110, 0.92)',
+    backgroundColor: colors.brandWarm,
   },
   goalChipPass: {
-    backgroundColor: 'rgba(246, 111, 69, 0.29)',
-  },
-  goalChipInactive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: colors.brandPale,
   },
   goalChipIcon: {
     marginRight: 3,
@@ -529,7 +520,7 @@ const styles = StyleSheet.create({
   goalChipText: {
     fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(26, 26, 26, 0.50)',
+    color: colors.textSecondary,
     maxWidth: 120,
   },
   goalChipTextDone: {
@@ -537,11 +528,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   goalChipTextPass: {
-    color: '#9a9a9ae2',
+    color: colors.textMuted,
   },
-  goalChipTextInactive: {
-    color: '#6e7178ff',
-  },
+
   noGoalText: {
     fontSize: 12,
     color: '#A8B2D1',
@@ -703,7 +692,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     letterSpacing: 1,
   },
 });
