@@ -232,6 +232,38 @@ export async function fetchMyGoalsForMonth(userId: string, yearMonth: string): P
   return (data ?? []) as UserGoal[];
 }
 
+export async function fetchWeeklyDoneCountsForGoals(params: {
+  userId: string;
+  goalIds: string[];
+  weekStart?: string;
+  weekEnd?: string;
+}): Promise<Record<string, number>> {
+  const { userId, goalIds, weekStart, weekEnd } = params;
+  if (goalIds.length === 0) return {};
+
+  const start = weekStart ?? dayjs().startOf('isoWeek').format('YYYY-MM-DD');
+  const end = weekEnd ?? dayjs().endOf('isoWeek').format('YYYY-MM-DD');
+
+  const { data, error } = await supabase
+    .from('checkins')
+    .select('goal_id')
+    .eq('user_id', userId)
+    .eq('status', 'done')
+    .in('goal_id', goalIds)
+    .gte('date', start)
+    .lte('date', end);
+
+  if (error) {
+    console.error('fetchWeeklyDoneCountsForGoals error:', error.message);
+    return {};
+  }
+
+  return (data ?? []).reduce<Record<string, number>>((acc, row: { goal_id: string }) => {
+    acc[row.goal_id] = (acc[row.goal_id] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
 export async function fetchMyGoalsForRange(
   userId: string,
   startDate: string,

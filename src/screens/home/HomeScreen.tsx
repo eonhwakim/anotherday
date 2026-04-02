@@ -25,7 +25,7 @@ import { colors } from '../../design/tokens';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
-import { fetchExtendableGoalsForMonth } from '../../services/goalService';
+import { fetchExtendableGoalsForMonth, fetchWeeklyDoneCountsForGoals } from '../../services/goalService';
 
 import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalList';
@@ -60,6 +60,7 @@ export default function HomeScreen() {
   const [promptNewMonth, setPromptNewMonth] = React.useState<string>('');
   const [extendableGoals, setExtendableGoals] = React.useState<typeof myGoals>([]);
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
+  const [weeklyDoneCounts, setWeeklyDoneCounts] = React.useState<Record<string, number>>({});
 
   const getMonthlyPromptStorageKey = useCallback(
     (monthStr: string) => `monthly_goal_prompt_v1_${monthStr}`,
@@ -99,10 +100,10 @@ export default function HomeScreen() {
           goal: g,
           frequency: (ug?.frequency ?? 'daily') as 'daily' | 'weekly_count',
           targetCount: ug?.target_count ?? null,
-          weeklyDoneCount: 0, // 홈 화면 플로팅 버튼에서는 주간 카운트 생략
+          weeklyDoneCount: weeklyDoneCounts[g.id] ?? 0,
         };
       });
-  }, [teamGoals, currentTeamUserGoals, user]);
+  }, [teamGoals, currentTeamUserGoals, user, weeklyDoneCounts]);
 
   const handleCheckinDone = async () => {
     if (!user) return;
@@ -230,6 +231,28 @@ export default function HomeScreen() {
     ];
     if (teamId) promises.push(fetchMembers(teamId));
     await Promise.all(promises);
+
+    const latestTeamGoals = useGoalStore.getState().teamGoals;
+    const latestMyGoals = useGoalStore.getState().myGoals;
+    const myOwnedGoalIds = new Set(
+      latestTeamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
+    );
+    const todayStr = dayjs().format('YYYY-MM-DD');
+    const weeklyGoalIds = latestMyGoals
+      .filter((ug) => ug.frequency === 'weekly_count')
+      .filter((ug) => myOwnedGoalIds.has(ug.goal_id))
+      .filter((ug) => {
+        if (ug.start_date && todayStr < ug.start_date) return false;
+        if (ug.end_date && todayStr > ug.end_date) return false;
+        return true;
+      })
+      .map((ug) => ug.goal_id);
+
+    const counts = await fetchWeeklyDoneCountsForGoals({
+      userId: user.id,
+      goalIds: weeklyGoalIds,
+    });
+    setWeeklyDoneCounts(counts);
 
     const progress = useStatsStore.getState().memberProgress;
     const myProgress = progress.find((p) => p.userId === user.id);
