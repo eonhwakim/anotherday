@@ -28,11 +28,11 @@ export default function MonthlyGoalPromptModal({
         <View style={s.card}>
           <Text style={s.emoji}>🗓️</Text>
           <Text style={s.title}>{monthNum}월이 시작됐어요!</Text>
-          <Text style={s.subtitle}>이번 달 목표를 어떻게 할까요?</Text>
+          <Text style={s.subtitle}>지난달 루틴을 이번 달 루틴으로 이어서 가져올까요?</Text>
 
           {activeGoals.length > 0 && (
             <View style={s.goalsBox}>
-              <Text style={s.goalsLabel}>지난 달 목표</Text>
+              <Text style={s.goalsLabel}>이어올 지난달 루틴</Text>
               {activeGoals.slice(0, 5).map((g) => (
                 <View key={g.id} style={s.goalRow}>
                   <Text style={s.goalBullet}>•</Text>
@@ -52,7 +52,9 @@ export default function MonthlyGoalPromptModal({
 
           <TouchableOpacity style={s.continueBtn} onPress={onContinue} activeOpacity={0.85}>
             <Text style={s.continueBtnText}>이어서 하기</Text>
-            <Text style={s.continueBtnSub}>지난 목표를 {monthNum}월에도 이어서 진행해요</Text>
+            <Text style={s.continueBtnSub}>
+              지난달 루틴을 복사해서 {monthNum}월 루틴으로 새로 만들어요
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.newPlanBtn} onPress={onNewPlan} activeOpacity={0.85}>

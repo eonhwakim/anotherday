@@ -90,6 +90,7 @@ export default function HomeScreen() {
         const ug = ugSource.find((u) => u.goal_id === g.id);
         if (!ug) return false;
         if (ug.start_date && todayStr < ug.start_date) return false;
+        if (ug.end_date && todayStr > ug.end_date) return false;
         return true;
       })
       .map((g) => {

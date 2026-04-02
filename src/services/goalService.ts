@@ -3,13 +3,63 @@ import dayjs from '../lib/dayjs';
 import { getCalendarWeekRanges } from '../lib/statsUtils';
 import type { Checkin, Goal, UserGoal } from '../types/domain';
 
+function getRoutineWindowForMonth(monthStr: string) {
+  const { ranges } = getCalendarWeekRanges(monthStr);
+  if (ranges.length > 0) {
+    return {
+      start: ranges[0].s.format('YYYY-MM-DD'),
+      end: ranges[ranges.length - 1].e.format('YYYY-MM-DD'),
+    };
+  }
+
+  return {
+    start: dayjs(`${monthStr}-01`).startOf('month').format('YYYY-MM-DD'),
+    end: dayjs(`${monthStr}-01`).endOf('month').format('YYYY-MM-DD'),
+  };
+}
+
+interface UserGoalPeriodRow {
+  id: string;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+async function findCurrentUserGoalPeriod(
+  userId: string,
+  goalId: string,
+  referenceDate = dayjs().format('YYYY-MM-DD'),
+): Promise<UserGoalPeriodRow | null> {
+  const { data, error } = await supabase
+    .from('user_goals')
+    .select('id, start_date, end_date')
+    .eq('user_id', userId)
+    .eq('goal_id', goalId)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('start_date', { ascending: false });
+
+  if (error) {
+    console.error('findCurrentUserGoalPeriod error:', error.message);
+    return null;
+  }
+
+  const rows = (data ?? []) as UserGoalPeriodRow[];
+  return (
+    rows.find((row) => {
+      const startsOnOrBeforeReference = !row.start_date || row.start_date <= referenceDate;
+      const endsOnOrAfterReference = !row.end_date || row.end_date >= referenceDate;
+      return startsOnOrBeforeReference && endsOnOrAfterReference;
+    }) ?? rows[0] ?? null
+  );
+}
+
 export async function fetchExtendableGoalsForMonth(
   userId: string,
   newMonthStr: string,
 ): Promise<UserGoal[]> {
   const prevMonthStr = dayjs(`${newMonthStr}-01`).subtract(1, 'month').format('YYYY-MM');
-  const prevMonthStart = dayjs(`${prevMonthStr}-01`).startOf('month').format('YYYY-MM-DD');
-  const prevMonthEnd = dayjs(`${prevMonthStr}-01`).endOf('month').format('YYYY-MM-DD');
+  const prevWindow = getRoutineWindowForMonth(prevMonthStr);
+  const nextWindow = getRoutineWindowForMonth(newMonthStr);
 
   const { data, error } = await supabase
     .from('user_goals')
@@ -17,15 +67,32 @@ export async function fetchExtendableGoalsForMonth(
     .eq('user_id', userId)
     .eq('is_active', true)
     .is('deleted_at', null)
-    .gte('end_date', prevMonthStart)
-    .lte('end_date', prevMonthEnd);
+    .eq('end_date', prevWindow.end);
 
   if (error) {
     console.error('fetchExtendableGoalsForMonth error:', error.message);
     return [];
   }
 
-  return (data ?? []) as UserGoal[];
+  const targets = (data ?? []) as UserGoal[];
+  if (targets.length === 0) return [];
+
+  const { data: nextMonthGoals, error: nextMonthError } = await supabase
+    .from('user_goals')
+    .select('goal_id')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .lte('start_date', nextWindow.end)
+    .or(`end_date.is.null,end_date.gte.${nextWindow.start}`);
+
+  if (nextMonthError) {
+    console.error('fetchExtendableGoalsForMonth next month query error:', nextMonthError.message);
+    return targets;
+  }
+
+  const existingGoalIds = new Set((nextMonthGoals ?? []).map((row: { goal_id: string }) => row.goal_id));
+  return targets.filter((goal) => !existingGoalIds.has(goal.goal_id));
 }
 
 export async function fetchLastMonthGoals(userId: string): Promise<UserGoal[]> {
@@ -79,16 +146,26 @@ export async function extendGoalsForNewMonth(
   userId: string,
   newMonthStr: string,
 ): Promise<boolean> {
-  const newMonthEnd = dayjs(`${newMonthStr}-01`).endOf('month').format('YYYY-MM-DD');
+  const nextWindow = getRoutineWindowForMonth(newMonthStr);
   const targets = await fetchExtendableGoalsForMonth(userId, newMonthStr);
 
   if (!targets || targets.length === 0) return true;
 
-  const ids = targets.map((g) => g.id);
-  const { error } = await supabase.from('user_goals').update({ end_date: newMonthEnd }).in('id', ids);
+  const inserts = targets.map((goal) => ({
+    user_id: userId,
+    goal_id: goal.goal_id,
+    is_active: true,
+    frequency: goal.frequency,
+    target_count: goal.target_count,
+    start_date: nextWindow.start,
+    end_date: nextWindow.end,
+    week_days: goal.week_days ?? null,
+  }));
+
+  const { error } = await supabase.from('user_goals').insert(inserts);
 
   if (error) {
-    console.error('extendGoalsForNewMonth update error:', error.message);
+    console.error('extendGoalsForNewMonth insert error:', error.message);
     return false;
   }
 
@@ -134,6 +211,88 @@ export async function fetchMyGoals(userId: string): Promise<UserGoal[]> {
   }
 
   return (data ?? []) as UserGoal[];
+}
+
+export async function fetchMyGoalsForMonth(userId: string, yearMonth: string): Promise<UserGoal[]> {
+  const window = getRoutineWindowForMonth(yearMonth);
+  const { data, error } = await supabase
+    .from('user_goals')
+    .select('*')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .lte('start_date', window.end)
+    .or(`end_date.is.null,end_date.gte.${window.start}`)
+    .order('start_date', { ascending: false });
+
+  if (error) {
+    console.error('fetchMyGoalsForMonth error:', error.message);
+    return [];
+  }
+
+  return (data ?? []) as UserGoal[];
+}
+
+export async function fetchMyGoalsForRange(
+  userId: string,
+  startDate: string,
+  endDate: string,
+): Promise<UserGoal[]> {
+  const { data, error } = await supabase
+    .from('user_goals')
+    .select('*')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .lte('start_date', endDate)
+    .or(`end_date.is.null,end_date.gte.${startDate}`)
+    .order('start_date', { ascending: false });
+
+  if (error) {
+    console.error('fetchMyGoalsForRange error:', error.message);
+    return [];
+  }
+
+  return (data ?? []) as UserGoal[];
+}
+
+export async function endTeamGoal(userId: string, goalId: string): Promise<boolean> {
+  const today = dayjs().format('YYYY-MM-DD');
+  const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+  const currentGoalRow = await findCurrentUserGoalPeriod(userId, goalId, today);
+
+  if (!currentGoalRow) return false;
+
+  const { count: todayCheckinCount, error: todayCheckinError } = await supabase
+    .from('checkins')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('goal_id', goalId)
+    .eq('date', today);
+
+  if (todayCheckinError) {
+    console.error('endTeamGoal today checkin count error:', todayCheckinError.message);
+    return false;
+  }
+
+  const requestedEndDate =
+    currentGoalRow.start_date === today || (todayCheckinCount && todayCheckinCount > 0)
+      ? today
+      : yesterday;
+  const nextEndDate =
+    currentGoalRow.end_date && currentGoalRow.end_date < requestedEndDate
+      ? currentGoalRow.end_date
+      : requestedEndDate;
+
+  const { error } = await supabase
+    .from('user_goals')
+    .update({ end_date: nextEndDate, is_active: false })
+    .eq('id', currentGoalRow.id);
+
+  if (error) {
+    console.error('endTeamGoal error:', error.message);
+    return false;
+  }
+
+  return true;
 }
 
 export async function fetchTodayCheckins(userId: string): Promise<Checkin[]> {
@@ -363,43 +522,35 @@ export async function addGoal(params: {
 }
 
 export async function removeTeamGoal(teamId: string, userId: string, goalId: string): Promise<boolean> {
-  const { count: userCheckinsCount, error: userCheckinError } = await supabase
-    .from('checkins')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('goal_id', goalId);
+  const today = dayjs().format('YYYY-MM-DD');
+  const currentGoalRow = await findCurrentUserGoalPeriod(userId, goalId, today);
 
-  if (userCheckinError) {
-    console.error('removeTeamGoal user checkins count error:', userCheckinError.message);
+  if (!currentGoalRow) return false;
+
+  const activeStart = currentGoalRow.start_date ?? today;
+  const activeEnd = currentGoalRow.end_date ?? today;
+
+  const { error: checkinDeleteError } = await supabase
+    .from('checkins')
+    .delete()
+    .eq('user_id', userId)
+    .eq('goal_id', goalId)
+    .gte('date', activeStart)
+    .lte('date', activeEnd);
+
+  if (checkinDeleteError) {
+    console.error('removeTeamGoal checkins delete error:', checkinDeleteError.message);
     return false;
   }
 
-  if (userCheckinsCount && userCheckinsCount > 0) {
-    const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
-    const { error: userGoalError } = await supabase
-      .from('user_goals')
-      .update({
-        deleted_at: new Date().toISOString(),
-        end_date: yesterday,
-      })
-      .eq('user_id', userId)
-      .eq('goal_id', goalId);
+  const { error: userGoalDeleteError } = await supabase
+    .from('user_goals')
+    .delete()
+    .eq('id', currentGoalRow.id);
 
-    if (userGoalError) {
-      console.error('removeTeamGoal user_goals update error:', userGoalError.message);
-      return false;
-    }
-  } else {
-    const { error: userGoalError } = await supabase
-      .from('user_goals')
-      .delete()
-      .eq('user_id', userId)
-      .eq('goal_id', goalId);
-
-    if (userGoalError) {
-      console.error('removeTeamGoal user_goals delete error:', userGoalError.message);
-      return false;
-    }
+  if (userGoalDeleteError) {
+    console.error('removeTeamGoal user_goals delete error:', userGoalDeleteError.message);
+    return false;
   }
 
   const { count: totalCheckinsCount, error: totalCheckinsError } = await supabase
@@ -421,17 +572,7 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
     return false;
   }
 
-  if ((totalCheckinsCount && totalCheckinsCount > 0) || (otherUsersCount && otherUsersCount > 0)) {
-    const { error: goalError } = await supabase
-      .from('goals')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', goalId);
-
-    if (goalError) {
-      console.error('removeTeamGoal goals update error:', goalError.message);
-      return false;
-    }
-  } else {
+  if ((!totalCheckinsCount || totalCheckinsCount === 0) && (!otherUsersCount || otherUsersCount === 0)) {
     const { error: goalError } = await supabase.from('goals').delete().eq('id', goalId);
     if (goalError) {
       console.error('removeTeamGoal goals delete error:', goalError.message);

@@ -43,9 +43,12 @@ export default function MyPageScreen() {
   const {
     teamGoals,
     myGoals,
+    monthGoals,
     fetchTeamGoals,
     fetchMyGoals,
+    fetchMyGoalsForMonth,
     fetchTodayCheckins,
+    endTeamGoal,
     removeTeamGoal,
   } = useGoalStore();
 
@@ -87,10 +90,19 @@ export default function MyPageScreen() {
     await Promise.all([
       fetchTeamGoals(teamId, user.id),
       fetchMyGoals(user.id),
+      fetchMyGoalsForMonth(user.id, dayjs().format('YYYY-MM')),
       fetchTodayCheckins(user.id),
     ]);
     await loadResolution();
-  }, [user, fetchTeams, fetchTeamGoals, fetchMyGoals, fetchTodayCheckins, loadResolution]);
+  }, [
+    user,
+    fetchTeams,
+    fetchTeamGoals,
+    fetchMyGoals,
+    fetchMyGoalsForMonth,
+    fetchTodayCheckins,
+    loadResolution,
+  ]);
 
   // 팀 변경 시 한마디 다시 로드
   React.useEffect(() => {
@@ -102,6 +114,12 @@ export default function MyPageScreen() {
       loadData();
     }, [loadData]),
   );
+
+  const handleEndGoal = async (goalId: string) => {
+    if (!user) return;
+    const activeTeam = useTeamStore.getState().currentTeam;
+    await endTeamGoal(activeTeam?.id ?? '', user.id, goalId);
+  };
 
   const handleRemoveGoal = async (goalId: string) => {
     if (!user) return;
@@ -208,20 +226,20 @@ export default function MyPageScreen() {
   // ── 현재 팀에 해당하는 나의 목표만 필터링 ──
   const currentTeamUserGoals = React.useMemo(() => {
     if (!teamGoals || teamGoals.length === 0) return [];
-    if (!myGoals || !user) return [];
+    if (!monthGoals || !user) return [];
 
     const myOwnedGoalIds = new Set(
       teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
     );
-    return myGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
-  }, [teamGoals, myGoals, user]);
+    return monthGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
+  }, [teamGoals, monthGoals, user]);
 
   // ── 마이페이지 목표설정에 보여줄 목표 (user_goals에도 존재하는 것만) ──
   const myVisibleGoals = React.useMemo(() => {
     if (!teamGoals || !user) return [];
-    const activeGoalIds = new Set(myGoals.map((ug) => ug.goal_id));
+    const activeGoalIds = new Set(currentTeamUserGoals.map((ug) => ug.goal_id));
     return teamGoals.filter((g) => g.owner_id === user.id && activeGoalIds.has(g.id));
-  }, [teamGoals, myGoals, user]);
+  }, [teamGoals, currentTeamUserGoals, user]);
 
   return (
     <View style={styles.container}>
@@ -245,6 +263,7 @@ export default function MyPageScreen() {
           <GoalSetting
             teamGoals={myVisibleGoals}
             myGoals={currentTeamUserGoals}
+            onEnd={handleEndGoal}
             onRemove={handleRemoveGoal}
             monthlyResolution={monthlyResolution}
           />

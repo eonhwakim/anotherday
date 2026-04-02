@@ -8,16 +8,24 @@ import { dayjsMax, dayjsMin, getCalendarWeekRanges } from '../../lib/statsUtils'
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
+import type { UserGoal } from '../../types/domain';
 import { fetchWeeklyStats } from '../../services/statsService';
+import { fetchMyGoalsForRange } from '../../services/goalService';
+
+function endedDateLabel(startDate?: string | null, endDate?: string | null) {
+  if (!startDate || !endDate) return null;
+  return `${dayjs(startDate).format('M.D')} ~ ${dayjs(endDate).format('M.D')}`;
+}
 
 export default function WeeklyStatsTab() {
   const { user } = useAuthStore();
   const { currentTeam } = useTeamStore();
-  const { teamGoals, myGoals } = useGoalStore();
+  const { teamGoals } = useGoalStore();
 
   const [weekStart, setWeekStart] = useState(dayjs().startOf('isoWeek').format('YYYY-MM-DD'));
   const [weeklyTeamData, setWeeklyTeamData] = useState<any[]>([]);
   const [weeklyCheckins, setWeeklyCheckins] = useState<any[]>([]);
+  const [myWeeklyGoalPeriods, setMyWeeklyGoalPeriods] = useState<UserGoal[]>([]);
 
   const allGoalMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -28,14 +36,17 @@ export default function WeeklyStatsTab() {
   const fetchWeeklyData = useCallback(async () => {
     if (!user || !currentTeam) return;
     try {
+      const weekEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
       const result = await fetchWeeklyStats({
         teamId: currentTeam.id,
         userId: user.id,
         weekStart,
         goalNameMap: allGoalMap,
       });
+      const myGoalPeriods = await fetchMyGoalsForRange(user.id, weekStart, weekEnd);
       setWeeklyTeamData(result.weeklyTeamData);
       setWeeklyCheckins(result.weeklyCheckins);
+      setMyWeeklyGoalPeriods(myGoalPeriods);
     } catch (e) {
       console.error(e);
     }
@@ -68,10 +79,10 @@ export default function WeeklyStatsTab() {
   }, [weekStart]);
 
   const myWeeklyGoals = useMemo(() => {
-    if (!myGoals || !user) return [];
+    if (!myWeeklyGoalPeriods || !user) return [];
     const wEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
 
-    const activeGoals = myGoals.filter((ug) => {
+    const activeGoals = myWeeklyGoalPeriods.filter((ug) => {
       if (ug.start_date && ug.start_date > wEnd) return false;
       if (ug.end_date && ug.end_date < weekStart) return false;
       return true;
@@ -86,6 +97,7 @@ export default function WeeklyStatsTab() {
 
         if (isDaily) {
           let effS = dayjsMax(dayjs(weekStart), dayjs(ug.start_date || weekStart));
+
           let effE = dayjsMin(dayjs(wEnd), dayjs(ug.end_date || wEnd));
           if (effS.isAfter(effE)) target = 0;
           else target = effE.diff(effS, 'day') + 1;
@@ -102,10 +114,13 @@ export default function WeeklyStatsTab() {
           doneCount,
           isAchieved,
           isDaily,
+          isEnded: ug.is_active === false || (!!ug.end_date && ug.end_date <= wEnd),
+          startDate: ug.start_date ?? null,
+          endDate: ug.end_date ?? null,
         };
       })
       .filter((g) => g.target > 0);
-  }, [myGoals, user, weekStart, weeklyCheckins, allGoalMap]);
+  }, [myWeeklyGoalPeriods, user, weekStart, weeklyCheckins, allGoalMap]);
 
   const isAllClear = myWeeklyGoals.length > 0 && myWeeklyGoals.every((g) => g.isAchieved);
   const myTotalGoals = myWeeklyGoals.length;
@@ -199,26 +214,41 @@ export default function WeeklyStatsTab() {
                       </Text>
                     </View>
                     <View style={s.teamMemberGoalStatus}>
-                      <Text style={s.teamMemberGoalCount}>
-                        <Text style={g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }}>
-                          {g.doneCount}
-                        </Text>
-                        <Text style={{ color: '#888' }}> / {g.target}</Text>
-                      </Text>
-                      {g.isAchieved ? (
-                        <View style={[s.badge, s.badgeSuccess]}>
-                          <Text style={s.badgeText}>완료</Text>
-                        </View>
-                      ) : isWeekEnded ? (
-                        <View style={[s.badge, s.badgeMissed]}>
-                          <Text style={s.badgeText}>미달</Text>
-                        </View>
-                      ) : (
-                        <View style={[s.badge, s.badgeInProgress]}>
-                          <Text style={[s.badgeText, { color: 'rgba(26,26,26,0.45)' }]}>
-                            집계중
+                      {g.isEnded ? (
+                        <>
+                          <Text style={s.teamMemberGoalEndedDate}>
+                            {endedDateLabel(g.startDate, g.endDate)}
                           </Text>
-                        </View>
+                          <View style={[s.badge, s.badgeEnded]}>
+                            <Text style={[s.badgeText, s.badgeTextEnded]}>종료됨</Text>
+                          </View>
+                        </>
+                      ) : (
+                        <>
+                          <Text style={s.teamMemberGoalCount}>
+                            <Text
+                              style={g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }}
+                            >
+                              {g.doneCount}
+                            </Text>
+                            <Text style={{ color: '#888' }}> / {g.target}</Text>
+                          </Text>
+                          {g.isAchieved ? (
+                            <View style={[s.badge, s.badgeSuccess]}>
+                              <Text style={s.badgeText}>완료</Text>
+                            </View>
+                          ) : isWeekEnded ? (
+                            <View style={[s.badge, s.badgeMissed]}>
+                              <Text style={s.badgeText}>미달</Text>
+                            </View>
+                          ) : (
+                            <View style={[s.badge, s.badgeInProgress]}>
+                              <Text style={[s.badgeText, { color: 'rgba(26,26,26,0.45)' }]}>
+                                집계중
+                              </Text>
+                            </View>
+                          )}
+                        </>
                       )}
                     </View>
                   </View>
@@ -297,28 +327,43 @@ export default function WeeklyStatsTab() {
                               </Text>
                             </View>
                             <View style={s.teamMemberGoalStatus}>
-                              <Text style={s.teamMemberGoalCount}>
-                                <Text
-                                  style={g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }}
-                                >
-                                  {g.doneCount}
-                                </Text>
-                                <Text style={{ color: '#888' }}> / {g.target}</Text>
-                              </Text>
-                              {g.isAchieved ? (
-                                <View style={[s.badge, s.badgeSuccess]}>
-                                  <Text style={s.badgeText}>완료</Text>
-                                </View>
-                              ) : isWeekEnded ? (
-                                <View style={[s.badge, s.badgeMissed]}>
-                                  <Text style={s.badgeText}>미달</Text>
-                                </View>
-                              ) : (
-                                <View style={[s.badge, s.badgeInProgress]}>
-                                  <Text style={[s.badgeText, { color: 'rgba(26,26,26,0.45)' }]}>
-                                    집계중
+                              {g.isEnded ? (
+                                <>
+                                  <Text style={s.teamMemberGoalEndedDate}>
+                                    {endedDateLabel(g.startDate, g.endDate)}
                                   </Text>
-                                </View>
+                                  <View style={[s.badge, s.badgeEnded]}>
+                                    <Text style={[s.badgeText, s.badgeTextEnded]}>종료됨</Text>
+                                  </View>
+                                </>
+                              ) : (
+                                <>
+                                  <Text style={s.teamMemberGoalCount}>
+                                    <Text
+                                      style={
+                                        g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }
+                                      }
+                                    >
+                                      {g.doneCount}
+                                    </Text>
+                                    <Text style={{ color: '#888' }}> / {g.target}</Text>
+                                  </Text>
+                                  {g.isAchieved ? (
+                                    <View style={[s.badge, s.badgeSuccess]}>
+                                      <Text style={s.badgeText}>완료</Text>
+                                    </View>
+                                  ) : isWeekEnded ? (
+                                    <View style={[s.badge, s.badgeMissed]}>
+                                      <Text style={s.badgeText}>미달</Text>
+                                    </View>
+                                  ) : (
+                                    <View style={[s.badge, s.badgeInProgress]}>
+                                      <Text style={[s.badgeText, { color: 'rgba(26,26,26,0.45)' }]}>
+                                        집계중
+                                      </Text>
+                                    </View>
+                                  )}
+                                </>
                               )}
                             </View>
                           </View>
@@ -472,6 +517,11 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  teamMemberGoalEndedDate: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.45)',
+  },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -494,5 +544,12 @@ const s = StyleSheet.create({
   badgeInProgress: {
     backgroundColor: 'rgba(26,26,26,0.03)',
     borderColor: 'rgba(0,0,0,0.05)',
+  },
+  badgeEnded: {
+    backgroundColor: 'rgba(26,26,26,0.03)',
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  badgeTextEnded: {
+    color: 'rgba(26,26,26,0.55)',
   },
 });

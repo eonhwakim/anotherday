@@ -273,8 +273,7 @@ export async function fetchCalendarMarkings(
   const { data: userGoals } = await supabase
     .from('user_goals')
     .select('goal_id, frequency, target_count, start_date, end_date')
-    .eq('user_id', userId)
-    .eq('is_active', true);
+    .eq('user_id', userId);
 
   const markings: CalendarDayMarking = {};
   const today = dayjs().format('YYYY-MM-DD');
@@ -402,8 +401,7 @@ export async function fetchMemberDateCheckins(
     const { data: userGoals } = await supabase
       .from('user_goals')
       .select('goal_id, frequency, target_count, start_date, end_date, goal:goals(name)')
-      .eq('user_id', uid)
-      .eq('is_active', true);
+      .eq('user_id', uid);
 
     const activeGoals = (userGoals ?? []).filter((goal: any) => isGoalActiveOnDate(goal, date));
     const activeGoalIds = activeGoals.map((goal: any) => goal.goal_id);
@@ -499,8 +497,7 @@ export async function fetchWeeklyStats(params: {
   const { data: teamUserGoals } = await supabase
     .from('user_goals')
     .select('user_id, goal_id, frequency, target_count, start_date, end_date')
-    .in('user_id', memberIds)
-    .eq('is_active', true);
+    .in('user_id', memberIds);
 
   const weeklyTeamData = (members ?? [])
     .map((member: any) => {
@@ -546,6 +543,8 @@ export async function fetchWeeklyStats(params: {
           doneCount,
           isAchieved: doneCount >= target,
           isDaily,
+          isEnded: !!goal.end_date && goal.end_date <= weekEnd,
+          endDate: goal.end_date ?? null,
         });
       });
 
@@ -607,8 +606,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
     supabase
       .from('user_goals')
       .select('goal_id, frequency, target_count, start_date, end_date, goals(name)')
-      .eq('user_id', userId)
-      .eq('is_active', true),
+      .eq('user_id', userId),
   ]);
 
   const myGoalsFiltered = (myUserGoalsRaw ?? []).filter((goal: any) => {
@@ -661,6 +659,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
       name: goal.goals?.name ?? '목표',
       frequency: goal.frequency,
       targetCount: goal.target_count,
+      isEnded: !!goal.end_date && goal.end_date <= dataEnd,
       achievedWeeks,
       totalActiveWeeks,
       rate: totalActiveWeeks > 0 ? Math.round((achievedWeeks / totalActiveWeeks) * 100) : null,
@@ -696,8 +695,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
     supabase
       .from('user_goals')
       .select('user_id, goal_id, frequency, target_count, start_date, end_date, goals(name)')
-      .in('user_id', memberIds)
-      .eq('is_active', true),
+      .in('user_id', memberIds),
     supabase
       .from('monthly_resolutions')
       .select('user_id, content')
@@ -757,6 +755,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
           name: goal.goals?.name ?? '목표',
           frequency: goal.frequency,
           targetCount: goal.target_count,
+          isEnded: !!goal.end_date && goal.end_date <= dataEnd,
         }));
 
       return {
@@ -830,8 +829,7 @@ export async function fetchTeamDetailMonthlyData(
   const { data: userGoalsData } = await supabase
     .from('user_goals')
     .select('*')
-    .in('user_id', memberIds)
-    .eq('is_active', true);
+    .in('user_id', memberIds);
 
   const teamUserGoals = ((userGoalsData ?? []) as any[]).filter((goal) => {
     if (!teamGoalsMap.has(goal.goal_id)) return false;

@@ -1,14 +1,17 @@
 import { create } from 'zustand';
 import type { Goal, UserGoal, Checkin } from '../types/domain';
 import { scheduleGoalReminderNotification } from '../utils/notifications';
+import dayjs from '../lib/dayjs';
 import {
   addGoal,
   copyGoalsFromLastMonth,
   createCheckin,
   deleteCheckin,
+  endTeamGoal,
   extendGoalsForNewMonth,
   fetchLastMonthGoals,
   fetchMyGoals,
+  fetchMyGoalsForMonth,
   fetchTeamGoals,
   fetchTodayCheckins,
   removeTeamGoal,
@@ -18,12 +21,14 @@ import {
 interface GoalState {
   teamGoals: Goal[];
   myGoals: UserGoal[];
+  monthGoals: UserGoal[];
   todayCheckins: Checkin[];
   lastMonthGoals: UserGoal[];
   isLoading: boolean;
 
   fetchTeamGoals: (teamId: string, userId?: string) => Promise<void>;
   fetchMyGoals: (userId: string) => Promise<void>;
+  fetchMyGoalsForMonth: (userId: string, yearMonth: string) => Promise<void>;
   fetchLastMonthGoals: (userId: string) => Promise<void>;
   copyGoalsFromLastMonth: (userId: string) => Promise<void>;
   extendGoalsForNewMonth: (userId: string, newMonthStr: string) => Promise<boolean>;
@@ -45,6 +50,7 @@ interface GoalState {
     targetCount?: number | null;
     duration?: 'continuous' | 'this_month';
   }) => Promise<boolean>;
+  endTeamGoal: (teamId: string, userId: string, goalId: string) => Promise<void>;
   removeTeamGoal: (teamId: string, userId: string, goalId: string) => Promise<void>;
   deleteCheckin: (checkinId: string) => Promise<void>;
   /** 스토어 초기화 (로그아웃 시) */
@@ -54,6 +60,7 @@ interface GoalState {
 export const useGoalStore = create<GoalState>((set, get) => ({
   teamGoals: [],
   myGoals: [],
+  monthGoals: [],
   todayCheckins: [],
   lastMonthGoals: [],
   isLoading: false,
@@ -94,6 +101,11 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   fetchMyGoals: async (userId) => {
     const goals = await fetchMyGoals(userId);
     set({ myGoals: goals });
+  },
+
+  fetchMyGoalsForMonth: async (userId, yearMonth) => {
+    const goals = await fetchMyGoalsForMonth(userId, yearMonth);
+    set({ monthGoals: goals });
   },
 
   // ── 오늘 체크인 로드 ──
@@ -153,11 +165,28 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     return true;
   },
 
-  // ── 목표 삭제 (Soft Delete 지원) ──
+  // ── 루틴 종료 (기록 유지) ──
+  endTeamGoal: async (teamId, userId, goalId) => {
+    const ok = await endTeamGoal(userId, goalId);
+    if (!ok) return;
+    await Promise.all([
+      get().fetchTeamGoals(teamId, userId),
+      get().fetchMyGoals(userId),
+      get().fetchMyGoalsForMonth(userId, dayjs().format('YYYY-MM')),
+      get().fetchTodayCheckins(userId),
+    ]);
+  },
+
+  // ── 루틴 완전 삭제 (현재 기간 + 현재 기간 기록 삭제) ──
   removeTeamGoal: async (teamId, userId, goalId) => {
     const ok = await removeTeamGoal(teamId, userId, goalId);
     if (!ok) return;
-    await Promise.all([get().fetchTeamGoals(teamId, userId), get().fetchMyGoals(userId)]);
+    await Promise.all([
+      get().fetchTeamGoals(teamId, userId),
+      get().fetchMyGoals(userId),
+      get().fetchMyGoalsForMonth(userId, dayjs().format('YYYY-MM')),
+      get().fetchTodayCheckins(userId),
+    ]);
   },
 
   // ── 체크인 삭제 ──
@@ -169,6 +198,7 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     set({
       teamGoals: [],
       myGoals: [],
+      monthGoals: [],
       todayCheckins: [],
       lastMonthGoals: [],
       isLoading: false,

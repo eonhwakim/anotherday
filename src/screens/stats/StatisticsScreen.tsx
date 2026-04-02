@@ -25,6 +25,7 @@ interface GoalItem {
   name: string;
   frequency: string;
   targetCount: number | null;
+  isEnded?: boolean;
 }
 
 interface MyGoalDetail extends GoalItem {
@@ -255,6 +256,11 @@ export default function StatisticsScreen() {
                               {' '}
                               · {freqLabel(g.frequency, g.targetCount)}
                             </Text>
+                            {g.isEnded ? (
+                              <View style={s.goalEndedBadge}>
+                                <Text style={s.goalEndedBadgeText}>종료됨</Text>
+                              </View>
+                            ) : null}
                           </View>
                         </View>
                         {g.rate === null ? (
@@ -357,6 +363,11 @@ export default function StatisticsScreen() {
                                   {' '}
                                   · {freqLabel(g.frequency, g.targetCount)}
                                 </Text>
+                                {g.isEnded ? (
+                                  <View style={s.goalEndedBadge}>
+                                    <Text style={s.goalEndedBadgeText}>종료됨</Text>
+                                  </View>
+                                ) : null}
                               </View>
                             ))}
                           </View>
@@ -517,6 +528,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
+    flexWrap: 'wrap',
+    gap: 4,
   },
   myGoalChipText: { ...typography.label, color: colors.text, textTransform: 'none' },
   myGoalChipFreq: { ...typography.caption, color: colors.textSecondary },
@@ -532,10 +545,25 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
+    flexWrap: 'wrap',
+    gap: 4,
   },
   goalChipText: { ...typography.caption, fontWeight: '600', color: colors.text },
   goalChipFreq: { fontSize: 11, color: colors.textSecondary },
   goalChipRate: { fontSize: 11, fontWeight: '700' },
+  goalEndedBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    backgroundColor: colors.surface,
+  },
+  goalEndedBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
 
   // Review (한마디 / 회고)
   reviewHeaderRow: {

@@ -34,7 +34,7 @@ export default function AddRoutineScreen() {
   const [isAdding, setIsAdding] = useState(false);
   const [frequency, setFrequency] = useState<GoalFrequency>('daily');
   const [targetCount, setTargetCount] = useState(3);
-  const [duration, setDuration] = useState<'continuous' | 'this_month'>('continuous');
+  const [duration, setDuration] = useState<'continuous' | 'this_month'>('this_month');
 
   const getComputedEndDate = () => {
     const today = dayjs();

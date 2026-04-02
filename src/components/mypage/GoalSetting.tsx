@@ -4,11 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Goal, UserGoal } from '../../types/domain';
 import FrameCard from '../ui/FrameCard';
 import CyberFrame from '../ui/CyberFrame';
+import dayjs from '../../lib/dayjs';
 import { colors, radius, spacing, typography } from '../../design/recipes';
 
 interface GoalSettingProps {
   teamGoals: Goal[];
   myGoals: UserGoal[];
+  onEnd: (goalId: string) => void;
   onRemove: (goalId: string) => void;
   monthlyResolution?: string;
 }
@@ -19,18 +21,71 @@ function freqLabel(ug: UserGoal): string {
   return '매일';
 }
 
+function periodLabel(ug: UserGoal): string | null {
+  if (!ug.start_date || !ug.end_date) return null;
+  return `${dayjs(ug.start_date).format('MM/DD')} ~ ${dayjs(ug.end_date).format('MM/DD')}`;
+}
+
+function startLabel(ug: UserGoal): string | null {
+  if (!ug.start_date) return null;
+  return `시작일:  ${dayjs(ug.start_date).format('MM/DD')}`;
+}
+
 export default function GoalSetting({
   teamGoals = [],
   myGoals = [],
+  onEnd,
   onRemove,
   monthlyResolution = '',
 }: GoalSettingProps) {
-  const getMyGoal = (goalId: string) => myGoals.find((ug) => ug.goal_id === goalId);
+  const todayStr = dayjs().format('YYYY-MM-DD');
+  const getMyGoal = (goalId: string) =>
+    myGoals.find((ug) => ug.goal_id === goalId && (!ug.end_date || ug.end_date >= todayStr)) ??
+    myGoals.find((ug) => ug.goal_id === goalId);
+  const sortedGoals = React.useMemo(() => {
+    return [...teamGoals].sort((a, b) => {
+      const aGoal = getMyGoal(a.id);
+      const bGoal = getMyGoal(b.id);
+      const aEnded =
+        !!aGoal && (aGoal.is_active === false || (!!aGoal.end_date && aGoal.end_date < todayStr));
+      const bEnded =
+        !!bGoal && (bGoal.is_active === false || (!!bGoal.end_date && bGoal.end_date < todayStr));
+
+      if (aEnded === bEnded) return 0;
+      return aEnded ? 1 : -1;
+    });
+  }, [teamGoals, myGoals, todayStr]);
 
   const handleLongPress = (goal: Goal) => {
-    Alert.alert('목표 삭제', `"${goal.name}" 목표를 삭제할까요?\n인증 기록은 유지됩니다.`, [
+    Alert.alert('루틴 관리', `"${goal.name}" 루틴을 어떻게 처리할까요?`, [
       { text: '취소', style: 'cancel' },
-      { text: '삭제', style: 'destructive', onPress: () => onRemove(goal.id) },
+      {
+        text: '루틴 종료',
+        onPress: () => {
+          Alert.alert(
+            '루틴 종료',
+            '오늘 이후 이 루틴을 더 이상 진행하지 않습니다.\n지금까지의 인증 기록과 통계는 유지됩니다.',
+            [
+              { text: '취소', style: 'cancel' },
+              { text: '종료', onPress: () => onEnd(goal.id) },
+            ],
+          );
+        },
+      },
+      {
+        text: '완전 삭제',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(
+            '완전 삭제',
+            '이번 기간의 루틴과 인증 기록을 함께 삭제합니다.\n테스트용 루틴 정리에만 사용하세요.',
+            [
+              { text: '취소', style: 'cancel' },
+              { text: '삭제', style: 'destructive', onPress: () => onRemove(goal.id) },
+            ],
+          );
+        },
+      },
     ]);
   };
 
@@ -67,21 +122,26 @@ export default function GoalSetting({
       ) : (
         <>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>등록된 루틴 (길게 누름: 삭제)</Text>
+            <Text style={styles.sectionTitle}>등록된 루틴 (길게 누름: 종료/삭제)</Text>
             <Text style={styles.hintLabel}>
-              주 N회 목표는 오늘 수행하지 않을 경우 ‘패스’로 인증해 주세요
+              종료는 기록을 남기고, 완전 삭제는 이번 기간 기록도 함께 지워요
             </Text>
           </View>
           <View style={styles.goalList}>
-            {teamGoals.map((goal, index) => {
+            {sortedGoals.map((goal, index) => {
               const userGoal = getMyGoal(goal.id);
+              const isEnded =
+                !!userGoal &&
+                (userGoal.is_active === false ||
+                  (!!userGoal.end_date && userGoal.end_date < todayStr));
 
               return (
                 <TouchableOpacity
                   key={goal.id}
-                  onLongPress={() => handleLongPress(goal)}
+                  onLongPress={isEnded ? undefined : () => handleLongPress(goal)}
                   activeOpacity={0.7}
                   delayLongPress={500}
+                  disabled={isEnded}
                 >
                   <CyberFrame
                     style={[styles.goalRowFrame, styles.brightGlass]}
@@ -92,8 +152,33 @@ export default function GoalSetting({
                       <Text style={styles.goalNumText}>{index + 1}</Text>
                     </View>
                     <View style={styles.goalRowContent}>
-                      <Text style={styles.goalRowName}>{goal.name}</Text>
-                      {userGoal && <Text style={styles.goalRowFreq}>{freqLabel(userGoal)}</Text>}
+                      <View style={styles.goalTextWrap}>
+                        <Text
+                          style={[styles.goalRowName, isEnded && styles.goalRowNameEnded]}
+                          numberOfLines={1}
+                        >
+                          {goal.name}
+                        </Text>
+                        {userGoal ? (
+                          <View style={styles.goalPeriodRow}>
+                            <Text style={styles.goalPeriod}>
+                              {isEnded ? periodLabel(userGoal) : startLabel(userGoal)}
+                            </Text>
+                            {isEnded ? (
+                              <View style={styles.endedBadge}>
+                                <Text style={styles.endedBadgeText}>종료됨</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        ) : null}
+                      </View>
+                      {userGoal ? (
+                        <View style={styles.goalMetaRight}>
+                          <Text style={[styles.goalRowFreq, isEnded && styles.goalRowFreqEnded]}>
+                            {freqLabel(userGoal)}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
                   </CyberFrame>
                 </TouchableOpacity>
@@ -220,17 +305,56 @@ const styles = StyleSheet.create({
   },
   goalRowContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    flex: 1,
+    gap: spacing[3],
+  },
+  goalTextWrap: {
     flex: 1,
   },
   goalRowName: {
     ...typography.bodyStrong,
     color: colors.text,
   },
+  goalRowNameEnded: {
+    color: colors.textSecondary,
+  },
+  goalMetaRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    minWidth: 64,
+  },
+  goalPeriod: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  goalPeriodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginTop: 2,
+    flexWrap: 'wrap',
+  },
   goalRowFreq: {
-    ...typography.label,
+    ...typography.body,
     color: colors.textSecondary,
     textTransform: 'none',
+    textAlign: 'right',
+  },
+  goalRowFreqEnded: {
+    color: colors.textFaint,
+  },
+  endedBadge: {
+    paddingHorizontal: spacing[2] + 2,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    backgroundColor: colors.surface,
+  },
+  endedBadgeText: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 });
