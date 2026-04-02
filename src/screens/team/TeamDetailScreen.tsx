@@ -181,7 +181,7 @@ export default function TeamDetailScreen() {
                           </View>
                         ))
                       ) : (
-                        <Text style={styles.emptyGoalsText}>설정된 목표가 없습니다.</Text>
+                        <Text style={styles.emptyGoalsText}>설정된 루틴이 없습니다.</Text>
                       )}
                     </View>
 

@@ -109,7 +109,7 @@ export default function WeeklyStatsTab() {
 
         return {
           goalId: ug.goal_id,
-          name: allGoalMap.get(ug.goal_id) ?? '목표',
+          name: allGoalMap.get(ug.goal_id) ?? '루틴',
           target,
           doneCount,
           isAchieved,
@@ -151,19 +151,19 @@ export default function WeeklyStatsTab() {
       </View>
 
       {/* ═══ 나의 주간 목표 ═══ */}
-      <Text style={s.sectionTitle}>나의 주간 목표</Text>
+      <Text style={s.sectionTitle}>나의 주간 루틴</Text>
       <View style={s.weeklyGoalsContainer}>
         {isAllClear ? (
           <CyberFrame glassOnly={true} style={s.allClearBox} contentStyle={s.allClearBoxContent}>
             <Text style={s.allClearEmoji}>🏆</Text>
             <Text style={s.allClearTitle}>이번 주 올클리어 달성!</Text>
-            <Text style={s.allClearSub}>모든 목표를 완벽하게 해냈어요</Text>
+            <Text style={s.allClearSub}>모든 루틴을 완벽하게 해냈어요</Text>
           </CyberFrame>
         ) : null}
 
         {myWeeklyGoals.length === 0 ? (
           <CyberFrame style={s.myCardFrame} contentStyle={s.cardContent}>
-            <Text style={s.emptySmall}>이번 주 진행 중인 목표가 없어요</Text>
+            <Text style={s.emptySmall}>이번 주 진행 중인 루틴이 없어요</Text>
           </CyberFrame>
         ) : (
           <CyberFrame style={s.myCardFrame} contentStyle={s.cardContent}>
@@ -172,7 +172,7 @@ export default function WeeklyStatsTab() {
               <View style={s.teamMemberHeaderRow}>
                 <View style={s.teamMemberNameBox}>
                   <Text style={[s.teamMemberName, s.teamMemberNameMe]}>나의 달성 현황</Text>
-                  <Text style={s.teamMemberSubText}>총 목표 {myTotalGoals}개</Text>
+                  <Text style={s.teamMemberSubText}>총 루틴 {myTotalGoals}개</Text>
                 </View>
                 <View style={s.teamMemberScore}>
                   {isAllClear ? (
@@ -279,11 +279,11 @@ export default function WeeklyStatsTab() {
                         <Text style={[s.teamMemberName, m.isMe && s.teamMemberNameMe]}>
                           {m.nickname} {m.isMe && '(나)'}
                         </Text>
-                        <Text style={s.teamMemberSubText}>총 목표 {m.totalGoals}개</Text>
+                        <Text style={s.teamMemberSubText}>총 루틴 {m.totalGoals}개</Text>
                       </View>
                       <View style={s.teamMemberScore}>
                         {m.totalGoals === 0 ? (
-                          <Text style={s.teamMemberScoreTextGray}>목표 없음</Text>
+                          <Text style={s.teamMemberScoreTextGray}>루틴 없음</Text>
                         ) : m.isAllClear ? (
                           <View style={s.teamMemberBadgeClear}>
                             <Text style={s.teamMemberBadgeTextClear}>🏆 올클리어</Text>

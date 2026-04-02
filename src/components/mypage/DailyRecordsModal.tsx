@@ -85,7 +85,7 @@ export default function DailyRecordsModal({
                     </View>
 
                     {!member.goals || member.goals.length === 0 ? (
-                      <Text style={styles.emptyGoalText}>목표가 없습니다.</Text>
+                      <Text style={styles.emptyGoalText}>루틴이 없습니다.</Text>
                     ) : (
                       <CyberFrame
                         style={styles.memberCardFrame}

@@ -91,7 +91,8 @@ export default function StatisticsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadStoreData();
-    }, [loadStoreData]),
+      fetchMonthlyStats();
+    }, [loadStoreData, fetchMonthlyStats]),
   );
 
   // ── Fetch monthly stats ──
@@ -230,7 +231,11 @@ export default function StatisticsScreen() {
 
               {/* ═══ 나의 N월 ═══ */}
               <SectionHeader title={`나의 ${monthNum}월`} inset />
-              <FrameCard style={s.memberCardFrame} contentStyle={s.memberCardContent} padded={false}>
+              <FrameCard
+                style={s.memberCardFrame}
+                contentStyle={s.memberCardContent}
+                padded={false}
+              >
                 {/* 달성률 */}
                 <View style={s.cardRateRow}>
                   <Text style={s.cardRateLabel}>{monthNum}월 달성률</Text>
@@ -246,7 +251,7 @@ export default function StatisticsScreen() {
                 {/* 목표 */}
                 {myGoalDetails.length > 0 && (
                   <View style={s.dividerSection}>
-                    <Text style={s.subLabel}>목표</Text>
+                    <Text style={s.subLabel}>루틴</Text>
                     {myGoalDetails.map((g) => (
                       <View key={g.goalId} style={s.goalRow}>
                         <View style={s.goalInfo}>
@@ -354,7 +359,7 @@ export default function StatisticsScreen() {
                       {/* 목표 chips */}
                       {m.goals.length > 0 && (
                         <View style={s.dividerSection}>
-                          <Text style={s.subLabel}>목표</Text>
+                          <Text style={s.subLabel}>루틴</Text>
                           <View style={s.goalChipsWrap}>
                             {m.goals.map((g) => (
                               <View key={g.goalId} style={s.goalChip}>

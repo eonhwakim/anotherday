@@ -282,8 +282,12 @@ export default function MyPageScreen() {
           />
 
           {/* ── 계정 관리 ── */}
-          <FrameCard style={styles.sectionFrame} contentStyle={styles.accountSection} padded={false}>
-            <SectionHeader title="계정 관리" subtitle="로그아웃과 계정 설정을 관리해요" inset />
+          <FrameCard
+            style={styles.sectionFrame}
+            contentStyle={styles.accountSection}
+            padded={false}
+          >
+            <SectionHeader title="계정 관리" inset />
 
             <TouchableOpacity style={styles.accountRow} onPress={handleLogout}>
               <View style={styles.accountRowLeft}>

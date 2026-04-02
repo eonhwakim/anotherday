@@ -33,7 +33,7 @@ export default function CalendarDateSummaryCard({
             >
               <View style={styles.scoreLabelRow}>
                 <Text style={styles.scoreLabelText}>완료</Text>
-                <Text style={styles.scoreLabelText}>총목표</Text>
+                <Text style={styles.scoreLabelText}>총루틴</Text>
               </View>
               <View style={styles.scoreValueRow}>
                 <Text style={styles.scoreDoneText}>{selectedMarking.doneCount ?? 0}</Text>

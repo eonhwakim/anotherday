@@ -20,6 +20,7 @@ interface ActiveUserGoalRow {
   target_count: number | null;
   start_date: string | null;
   end_date: string | null;
+  is_active?: boolean;
 }
 
 interface MemberRow {
@@ -272,7 +273,7 @@ export async function fetchCalendarMarkings(
 
   const { data: userGoals } = await supabase
     .from('user_goals')
-    .select('goal_id, frequency, target_count, start_date, end_date')
+    .select('goal_id, frequency, target_count, start_date, end_date, is_active')
     .eq('user_id', userId);
 
   const markings: CalendarDayMarking = {};
@@ -283,7 +284,10 @@ export async function fetchCalendarMarkings(
     const dateStr = dayjs(startDate).date(day).format('YYYY-MM-DD');
     if (dateStr > today) break;
 
-    const activeGoals = (userGoals ?? []).filter((goal: any) => isGoalActiveOnDate(goal, dateStr));
+    const activeGoals = (userGoals ?? []).filter((goal: any) => {
+      if (goal.is_active === false && dateStr >= today) return false;
+      return isGoalActiveOnDate(goal, dateStr);
+    });
     const totalGoals = activeGoals.length;
     if (totalGoals === 0) continue;
 
@@ -400,10 +404,14 @@ export async function fetchMemberDateCheckins(
 
     const { data: userGoals } = await supabase
       .from('user_goals')
-      .select('goal_id, frequency, target_count, start_date, end_date, goal:goals(name)')
+      .select('goal_id, frequency, target_count, start_date, end_date, is_active, goal:goals(name)')
       .eq('user_id', uid);
 
-    const activeGoals = (userGoals ?? []).filter((goal: any) => isGoalActiveOnDate(goal, date));
+    const today = dayjs().format('YYYY-MM-DD');
+    const activeGoals = (userGoals ?? []).filter((goal: any) => {
+      if (goal.is_active === false && date >= today) return false;
+      return isGoalActiveOnDate(goal, date);
+    });
     const activeGoalIds = activeGoals.map((goal: any) => goal.goal_id);
 
     const { data: checkins } = await supabase
@@ -659,7 +667,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
       name: goal.goals?.name ?? '목표',
       frequency: goal.frequency,
       targetCount: goal.target_count,
-      isEnded: !!goal.end_date && goal.end_date <= dataEnd,
+      isEnded: !!goal.end_date && goal.end_date <= today,
       achievedWeeks,
       totalActiveWeeks,
       rate: totalActiveWeeks > 0 ? Math.round((achievedWeeks / totalActiveWeeks) * 100) : null,
@@ -755,7 +763,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
           name: goal.goals?.name ?? '목표',
           frequency: goal.frequency,
           targetCount: goal.target_count,
-          isEnded: !!goal.end_date && goal.end_date <= dataEnd,
+          isEnded: !!goal.end_date && goal.end_date <= today,
         }));
 
       return {

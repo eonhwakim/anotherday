@@ -38,6 +38,7 @@ export default function MonthlyGoalCalendar({
   const getActiveGoalIdsForDate = (dateStr: string): string[] => {
     return (myGoals || [])
       .filter((ug) => {
+        if (ug.is_active === false && dateStr >= today) return false;
         if (ug.start_date && dateStr < ug.start_date) return false;
         if (ug.end_date && dateStr > ug.end_date) return false;
         return true;
