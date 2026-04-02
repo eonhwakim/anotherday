@@ -19,6 +19,51 @@ export default function CalendarDateSummaryCard({
   statsGuideMessage,
   isFuture,
 }: CalendarDateSummaryCardProps) {
+  const doneCount = selectedMarking?.doneCount ?? 0;
+  const passCount = selectedMarking?.passCount ?? 0;
+  const totalGoals = selectedMarking?.totalGoals ?? 0;
+  const missedCount = Math.max(0, totalGoals - (doneCount + passCount));
+  const scoreItems = [
+    missedCount > 0
+      ? {
+          key: 'missed',
+          label: '미달',
+          value: missedCount,
+          labelStyle: styles.scoreLabelMissed,
+          valueStyle: styles.scoreValueMissed,
+        }
+      : null,
+    passCount > 0
+      ? {
+          key: 'pass',
+          label: '패스',
+          value: passCount,
+          labelStyle: styles.scoreLabelPass,
+          valueStyle: styles.scoreValuePass,
+        }
+      : null,
+    {
+      key: 'done',
+      label: '완료',
+      value: doneCount,
+      labelStyle: styles.scoreLabelDone,
+      valueStyle: styles.scoreValueDone,
+    },
+    {
+      key: 'total',
+      label: '총루틴',
+      value: totalGoals,
+      labelStyle: styles.scoreLabelTotal,
+      valueStyle: styles.scoreValueTotal,
+    },
+  ].filter(Boolean) as {
+    key: string;
+    label: string;
+    value: number;
+    labelStyle: object;
+    valueStyle: object;
+  }[];
+
   return (
     <CyberFrame style={styles.dateSummaryFrame} contentStyle={styles.dateSummaryContent}>
       <View style={styles.dateSummaryHeader}>
@@ -26,21 +71,19 @@ export default function CalendarDateSummaryCard({
 
         {selectedMarking && selectedMarking.dayStatus !== 'future' && (
           <View style={styles.scoreContainer}>
-            <CyberFrame
-              glassOnly={true}
-              style={styles.scoreBadgeWrapper}
-              contentStyle={styles.scoreBadgeContent}
-            >
-              <View style={styles.scoreLabelRow}>
-                <Text style={styles.scoreLabelText}>완료</Text>
-                <Text style={styles.scoreLabelText}>총루틴</Text>
+            <View style={styles.scoreBadgeWrapper}>
+              <View style={styles.scoreGrid}>
+                {scoreItems.map((item, index) => (
+                  <View
+                    key={item.key}
+                    style={[styles.scoreCell, index > 0 && styles.scoreCellDivider]}
+                  >
+                    <Text style={[styles.scoreLabelText, item.labelStyle]}>{item.label}</Text>
+                    <Text style={[styles.scoreValueText, item.valueStyle]}>{item.value}</Text>
+                  </View>
+                ))}
               </View>
-              <View style={styles.scoreValueRow}>
-                <Text style={styles.scoreDoneText}>{selectedMarking.doneCount ?? 0}</Text>
-                <Text style={styles.scoreSlash}>/</Text>
-                <Text style={styles.scoreTotalText}>{selectedMarking.totalGoals ?? 0}</Text>
-              </View>
-            </CyberFrame>
+            </View>
           </View>
         )}
       </View>
@@ -106,47 +149,59 @@ const styles = StyleSheet.create({
   scoreContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     flexShrink: 1,
   },
   scoreBadgeWrapper: {
-    borderRadius: 12,
+    paddingVertical: 1,
   },
-  scoreBadgeContent: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  scoreLabelRow: {
+  scoreGrid: {
     flexDirection: 'row',
-    width: '100%',
-    marginBottom: 2,
-    gap: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreCell: {
+    minWidth: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  scoreCellDivider: {
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(26, 26, 26, 0.10)',
   },
   scoreLabelText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  scoreValueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-  },
-  scoreDoneText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  scoreSlash: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: colors.primary,
-    marginHorizontal: 4,
-  },
-  scoreTotalText: {
-    fontSize: 14,
     fontWeight: '700',
-    color: 'rgba(26, 26, 26, 0.6)',
+    marginBottom: 3,
+  },
+  scoreLabelMissed: {
+    color: colors.error,
+  },
+  scoreLabelPass: {
+    color: colors.warning,
+  },
+  scoreLabelDone: {
+    color: colors.success,
+  },
+  scoreLabelTotal: {
+    color: colors.textSecondary,
+  },
+  scoreValueText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  scoreValueMissed: {
+    color: colors.error,
+  },
+  scoreValuePass: {
+    color: colors.warning,
+  },
+  scoreValueDone: {
+    color: colors.success,
+  },
+  scoreValueTotal: {
+    color: colors.textSecondary,
   },
   noDataText: {
     fontSize: 13,
