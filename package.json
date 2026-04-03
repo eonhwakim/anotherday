@@ -17,6 +17,7 @@
     "submit:ios": "eas submit --platform ios --latest"
   },
   "dependencies": {
+    "@expo/metro-runtime": "^55.0.7",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.12.0",
@@ -33,16 +34,20 @@
     "expo-status-bar": "~3.0.9",
     "expo-updates": "~29.0.16",
     "react": "19.1.0",
+    "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-calendars": "^1.1314.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-url-polyfill": "^3.0.0",
+    "react-native-web": "^0.21.2",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "@types/react-dom": "^19",
+    "@types/react-native-web": "^0",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
     "eslint": "^9.39.1",

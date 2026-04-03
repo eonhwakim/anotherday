@@ -7,11 +7,11 @@
       "policy": "appVersion"
     },
     "orientation": "portrait",
-    "icon": "./assets/anotherday-icon-4.png",
+    "icon": "./assets/anotherday-icon-6.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/anotherday-icon-4.png",
+      "image": "./assets/anotherday-icon-6.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -31,7 +31,7 @@
     "android": {
       "package": "com.anotherday.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/anotherday-icon-4.png",
+        "foregroundImage": "./assets/anotherday-icon-6.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -42,7 +42,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/anotherday-icon-4.png"
+      "favicon": "./assets/anotherday-icon-6.png"
     },
     "plugins": [
       [
