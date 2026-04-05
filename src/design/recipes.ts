@@ -49,7 +49,7 @@ export const ds = StyleSheet.create({
     backgroundColor: colors.screen,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     ...shadows.brandSm,
   },
   glassCard: {
@@ -66,13 +66,13 @@ export const ds = StyleSheet.create({
     backgroundColor: colors.surfaceSoft,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
   },
   dividerTop: {
     marginTop: spacing[3],
     paddingTop: spacing[3],
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.borderLight,
   },
   rowCenter: {
     flexDirection: 'row',
@@ -112,7 +112,7 @@ export const ds = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 4,
     borderWidth: 0.5,
-    borderColor: colors.borderStrong,
+    borderColor: colors.borderLight,
   },
   badgeFrequencyText: {
     fontSize: 10,
