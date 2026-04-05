@@ -300,7 +300,7 @@ export default function TodayGoalList({
         <View>
           <Text style={[styles.title, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
           <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
-            오늘 계획이 없는 주 N회 루틴을 "패스"하면 달성률이 올라가요!
+            오늘 계획이 없는 주 N회 루틴은 "패스" 인증 해주세요!
           </Text>
         </View>
         <Animated.View

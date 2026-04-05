@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Image,
 } from 'react-native';
-// import { BlurView } from 'expo-blur';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
@@ -19,7 +19,7 @@ import CyberFrame from '../ui/CyberFrame';
 import Pill from '../ui/Pill';
 import { MemberCheckinSummary } from '../../types/domain';
 
-const SafeBlurView = Platform.OS === 'android' ? View : View;
+const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
 
 interface DailyRecordsModalProps {
   visible: boolean;

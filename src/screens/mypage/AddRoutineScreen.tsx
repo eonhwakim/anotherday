@@ -122,7 +122,7 @@ export default function AddRoutineScreen() {
       if (calendarMonth !== statMonth) {
         message = `현재 날짜는 캘린더상 ${calendarMonth}이지만, 통계 주차 규칙(4일 이상 포함)에 따라 ${statMonth} 통계로 편입됩니다.\n\n따라서 이 루틴은 ${statMonth}의 마지막 통계 주차인 [${endDateStr}]까지 적용됩니다. 추가하시겠습니까?`;
       } else {
-        message = `월초/월말 통계 주차 편입 규칙에 따라, 이 루틴은 이번 달 마지막 통계 주차인 [${endDateStr}]까지 적용됩니다. 추가하시겠습니까?`;
+        message = `월초/월말 통계 주차 편입 규칙에 따라,\n 이 루틴은 이번 달 마지막 통계 주차인\n[${endDateStr}]까지 적용됩니다. 추가하시겠습니까?`;
       }
 
       Alert.alert('이번달까지 루틴 추가', message, [
@@ -229,28 +229,33 @@ export default function AddRoutineScreen() {
                 </View>
 
                 {frequency === 'weekly_count' && (
-                  <CyberFrame
-                    style={styles.targetCountFrame}
-                    contentStyle={styles.targetCountContent}
-                    glassOnly={true}
-                  >
-                    <Text style={styles.targetCountLabel}>일주일에 몇 번 할까요?</Text>
-                    <View style={styles.counterWrap}>
-                      <TouchableOpacity
-                        style={styles.counterBtn}
-                        onPress={() => setTargetCount(Math.max(1, targetCount - 1))}
-                      >
-                        <Ionicons name="remove" size={20} color={colors.textSecondary} />
-                      </TouchableOpacity>
-                      <Text style={styles.counterValue}>{`${targetCount}회`}</Text>
-                      <TouchableOpacity
-                        style={styles.counterBtn}
-                        onPress={() => setTargetCount(Math.min(6, targetCount + 1))}
-                      >
-                        <Ionicons name="add" size={20} color={colors.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                  </CyberFrame>
+                  <>
+                    <CyberFrame
+                      style={styles.targetCountFrame}
+                      contentStyle={styles.targetCountContent}
+                      glassOnly={true}
+                    >
+                      <Text style={styles.targetCountLabel}>일주일에 몇 번 할까요?</Text>
+                      <View style={styles.counterWrap}>
+                        <TouchableOpacity
+                          style={styles.counterBtn}
+                          onPress={() => setTargetCount(Math.max(1, targetCount - 1))}
+                        >
+                          <Ionicons name="remove" size={20} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                        <Text style={styles.counterValue}>{`${targetCount}회`}</Text>
+                        <TouchableOpacity
+                          style={styles.counterBtn}
+                          onPress={() => setTargetCount(Math.min(6, targetCount + 1))}
+                        >
+                          <Ionicons name="add" size={20} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                    </CyberFrame>
+                    <Text style={styles.helperText}>
+                      💡 오늘 계획이 없는 주 N회 루틴은 "패스" 인증 해주세요!
+                    </Text>
+                  </>
                 )}
               </CyberFrame>
 

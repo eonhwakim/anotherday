@@ -78,7 +78,7 @@ export default function GoalSetting({
         onPress: () => {
           Alert.alert(
             '완전 삭제',
-            '이번 기간의 루틴과 인증 기록을 함께 삭제합니다.\n테스트용 루틴 정리에만 사용하세요.',
+            '루틴과 인증 기록이 모두 삭제됩니다.\n그래도 삭제 하시겠습니까?',
             [
               { text: '취소', style: 'cancel' },
               { text: '삭제', style: 'destructive', onPress: () => onRemove(goal.id) },
@@ -94,7 +94,7 @@ export default function GoalSetting({
       <View style={styles.titleRow}>
         <Text style={styles.title}>목표 설정</Text>
       </View>
-      <Text style={styles.subtitle}>목표를 추가하면 오늘부터 적용됩니다</Text>
+      <Text style={styles.subtitle}>* 목표를 추가하면 오늘부터 적용됩니다</Text>
 
       <View style={styles.resolutionSection}>
         <View style={styles.sectionHeader}>
@@ -124,7 +124,7 @@ export default function GoalSetting({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>등록된 루틴 (길게 누름: 종료/삭제)</Text>
             <Text style={styles.hintLabel}>
-              종료는 기록을 남기고, 완전 삭제는 이번 기간 기록도 함께 지워요
+              종료는 기록을 남기고, 완전 삭제는 기록도 모두 삭제됩니다.
             </Text>
           </View>
           <View style={styles.goalList}>

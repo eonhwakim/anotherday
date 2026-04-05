@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { User } from '../types/domain';
 import { useGoalStore } from './goalStore';
 import { useTeamStore } from './teamStore';
+import { useStatsStore } from './statsStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   deleteUserAccount,
@@ -80,6 +81,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // 이전 유저 데이터 초기화 (로그인 전 스토어 리셋)
       useGoalStore.getState().reset();
       useTeamStore.getState().reset();
+      useStatsStore.getState().reset();
 
       const { data, error } = await signInWithPassword(email, password);
 
@@ -115,6 +117,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // 이전 유저 데이터 초기화
       useGoalStore.getState().reset();
       useTeamStore.getState().reset();
+      useStatsStore.getState().reset();
 
       const { data, error } = await signUpWithPassword(email, password, nickname);
 
@@ -156,6 +159,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     // 모든 스토어 초기화 (이전 사용자 데이터 제거)
     useGoalStore.getState().reset();
     useTeamStore.getState().reset();
+    useStatsStore.getState().reset();
     
     // 테스트용: 로그아웃 시 안내 모달 기록 초기화 (개발 편의성 및 신규 유저 시뮬레이션)
     // 실제 배포 시에는 주석 처리하거나 제거할 수 있음
@@ -185,6 +189,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       useGoalStore.getState().reset();
       useTeamStore.getState().reset();
+      useStatsStore.getState().reset();
       await signOutAuth();
       set({ user: null, error: null, isLoading: false });
       return true;

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CyberFrame from '../ui/CyberFrame';
 import dayjs from '../../lib/dayjs';
 import type { MemberCheckinSummary } from '../../types/domain';
-import { colors } from '../../design/tokens';
+import CalendarScoreTable from './CalendarScoreTable';
 
 interface CalendarMemberCheckinsSectionProps {
   members: MemberCheckinSummary[];
@@ -30,86 +30,27 @@ export default function CalendarMemberCheckinsSection({
           style={styles.memberCardFrame}
           contentStyle={styles.memberCardContent}
         >
-          {(() => {
-            const missedCount = Math.max(
-              0,
-              member.totalGoals - (member.doneCount + member.passCount),
-            );
-            const scoreItems = [
-              missedCount > 0
-                ? {
-                    key: 'missed',
-                    label: '미달',
-                    value: missedCount,
-                    labelStyle: styles.scoreLabelMissed,
-                    valueStyle: styles.scoreValueMissed,
-                  }
-                : null,
-              member.passCount > 0
-                ? {
-                    key: 'pass',
-                    label: '패스',
-                    value: member.passCount,
-                    labelStyle: styles.scoreLabelPass,
-                    valueStyle: styles.scoreValuePass,
-                  }
-                : null,
-              {
-                key: 'done',
-                label: '완료',
-                value: member.doneCount,
-                labelStyle: styles.scoreLabelDone,
-                valueStyle: styles.scoreValueDone,
-              },
-              {
-                key: 'total',
-                label: '총루틴',
-                value: member.totalGoals,
-                labelStyle: styles.scoreLabelTotal,
-                valueStyle: styles.scoreValueTotal,
-              },
-            ].filter(Boolean) as {
-              key: string;
-              label: string;
-              value: number;
-              labelStyle: object;
-              valueStyle: object;
-            }[];
-
-            return (
-              <View style={styles.memberHeader}>
-                <View style={styles.memberIdentity}>
-                  <View style={styles.memberAvatar}>
-                    {member.profileImageUrl ? (
-                      <Image
-                        source={{ uri: member.profileImageUrl }}
-                        style={styles.memberAvatarImg}
-                      />
-                    ) : (
-                      <Ionicons name="person" size={16} color="rgba(255,255,255,0.50)" />
-                    )}
-                  </View>
-                  <Text style={styles.memberName}>{member.nickname}</Text>
-                </View>
-
-                <View style={styles.scoreContainer}>
-                  <View style={styles.scoreBadgeWrapper}>
-                    <View style={styles.scoreGrid}>
-                      {scoreItems.map((item, index) => (
-                        <View
-                          key={item.key}
-                          style={[styles.scoreCell, index > 0 && styles.scoreCellDivider]}
-                        >
-                          <Text style={[styles.scoreLabelText, item.labelStyle]}>{item.label}</Text>
-                          <Text style={[styles.scoreValueText, item.valueStyle]}>{item.value}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                </View>
+          <View style={styles.memberHeader}>
+            <View style={styles.memberIdentity}>
+              <View style={styles.memberAvatar}>
+                {member.profileImageUrl ? (
+                  <Image source={{ uri: member.profileImageUrl }} style={styles.memberAvatarImg} />
+                ) : (
+                  <Ionicons name="person" size={16} color="rgba(255,255,255,0.50)" />
+                )}
               </View>
-            );
-          })()}
+              <Text style={styles.memberName}>{member.nickname}</Text>
+            </View>
+
+            <View style={styles.scoreContainer}>
+              <CalendarScoreTable
+                doneCount={member.doneCount}
+                passCount={member.passCount}
+                totalGoals={member.totalGoals}
+                compact={true}
+              />
+            </View>
+          </View>
 
           {member.checkins.length === 0 && (
             <Text style={styles.memberEmpty}>{isFuture ? '예정' : '기록 없음'}</Text>
@@ -257,57 +198,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexShrink: 1,
     justifyContent: 'flex-end',
-  },
-  scoreBadgeWrapper: {
-    paddingVertical: 2,
-  },
-  scoreGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreCell: {
-    minWidth: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  scoreCellDivider: {
-    borderLeftWidth: 1,
-    borderLeftColor: 'rgba(26, 26, 26, 0.10)',
-  },
-  scoreLabelText: {
-    fontSize: 10,
-    fontWeight: '700',
-    marginBottom: 3,
-  },
-  scoreLabelMissed: {
-    color: colors.error,
-  },
-  scoreLabelPass: {
-    color: colors.warning,
-  },
-  scoreLabelDone: {
-    color: colors.success,
-  },
-  scoreLabelTotal: {
-    color: colors.textSecondary,
-  },
-  scoreValueText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  scoreValueMissed: {
-    color: colors.error,
-  },
-  scoreValuePass: {
-    color: colors.warning,
-  },
-  scoreValueDone: {
-    color: colors.success,
-  },
-  scoreValueTotal: {
-    color: colors.textSecondary,
   },
   checkinRow: {
     flexDirection: 'row',

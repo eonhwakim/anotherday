@@ -12,7 +12,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-// import { BlurView } from 'expo-blur';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, Checkin } from '../../types/domain';
 import { useGoalStore } from '../../stores/goalStore';
@@ -24,7 +24,7 @@ import CyberFrame from '../ui/CyberFrame';
 import Pill from '../ui/Pill';
 
 // Android에서 BlurView의 렌더링 문제를 방지하기 위한 임시 방편 (기본 뷰로 대체)
-const SafeBlurView = Platform.OS === 'android' ? View : View;
+const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
 
 interface GoalWithFrequency {
   goal: Goal;
@@ -64,38 +64,46 @@ export default function CheckinModal({
   const formattedDate = dayjs(today).format('M월 D일 (ddd)');
 
   const isGoalDone = (goalId: string) => checkins.some((c) => c.goal_id === goalId);
+  const refreshAfterMutation = async () => {
+    await onCheckinDone?.();
+  };
+
+  const runWithLoading = async (task: () => Promise<void>) => {
+    setIsLoading(true);
+    try {
+      await task();
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   /** 주 N회 목표 패스 취소 */
   const handleCancelPass = async (checkinId: string) => {
-    if (!user) return;
-    setIsLoading(true);
     try {
-      await deleteCheckin(checkinId);
-      onCheckinDone?.();
+      await runWithLoading(async () => {
+        await deleteCheckin(checkinId);
+        await refreshAfterMutation();
+      });
     } catch (e) {
       console.error('[Checkin] handleCancelCheckin error:', e);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   /** 주 N회 목표: 패스 토글 (체크인 생성/삭제) */
   const handlePassToggle = async (goalId: string) => {
     if (!user) return;
-    setIsLoading(true);
     try {
-      // 패스 체크인 생성
-      await createCheckin({
-        userId: user.id,
-        goalId,
-        date: today,
-        status: 'pass',
+      await runWithLoading(async () => {
+        await createCheckin({
+          userId: user.id,
+          goalId,
+          date: today,
+          status: 'pass',
+        });
+        await refreshAfterMutation();
       });
-      onCheckinDone?.();
     } catch (e) {
       console.error('[Checkin] handlePassToggle error:', e);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -120,41 +128,36 @@ export default function CheckinModal({
       return;
     }
 
-    // 2) 이제부터 로딩 표시
-    setIsLoading(true);
-
     try {
-      // 3) 사진 업로드 (실패해도 체크인은 진행)
-      let photoUrl: string | null = null;
-      try {
-        photoUrl = await uploadCheckinPhoto(user.id, imageUri);
-      } catch (uploadErr) {
-        console.warn('[Checkin] 사진 업로드 실패, 사진 없이 진행:', uploadErr);
-      }
+      await runWithLoading(async () => {
+        let photoUrl: string | null = null;
+        try {
+          photoUrl = await uploadCheckinPhoto(user.id, imageUri);
+        } catch (uploadErr) {
+          console.warn('[Checkin] 사진 업로드 실패, 사진 없이 진행:', uploadErr);
+        }
 
-      // 4) 체크인 생성
-      const success = await createCheckin({
-        userId: user.id,
-        goalId,
-        date: today,
-        photoUrl,
+        const success = await createCheckin({
+          userId: user.id,
+          goalId,
+          date: today,
+          photoUrl,
+        });
+
+        if (success) {
+          Alert.alert(
+            '인증 완료!',
+            photoUrl ? '사진 인증이 완료되었어요.' : '인증이 완료되었어요. (사진 업로드 실패)',
+          );
+          await refreshAfterMutation();
+          onClose();
+        } else {
+          Alert.alert('알림', '이미 인증이 완료된 목표입니다.');
+        }
       });
-
-      if (success) {
-        Alert.alert(
-          '인증 완료!',
-          photoUrl ? '사진 인증이 완료되었어요.' : '인증이 완료되었어요. (사진 업로드 실패)',
-        );
-        onCheckinDone?.();
-        onClose();
-      } else {
-        Alert.alert('알림', '이미 인증이 완료된 목표입니다.');
-      }
     } catch (e: any) {
       console.error('[Checkin] handleSuccess error:', e);
       Alert.alert('오류', `인증 처리 중 문제가 발생했어요.\n${e?.message ?? ''}`);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -173,7 +176,7 @@ export default function CheckinModal({
 
           {/* 헤더 */}
           <View style={styles.header}>
-            <View style={{ width: 28 }} />
+            <View style={styles.headerSpacer} />
             <Text style={styles.headerTitle}>{formattedDate}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={22} color={colors.textSecondary} />
@@ -333,6 +336,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 12,
+  },
+  headerSpacer: {
+    width: 28,
   },
   headerTitle: {
     fontSize: 17,

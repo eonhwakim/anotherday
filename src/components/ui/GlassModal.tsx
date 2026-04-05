@@ -13,7 +13,7 @@ import { BlurView } from 'expo-blur';
 import { colors } from '../../design/tokens';
 
 // Android에서 BlurView의 렌더링 문제를 방지하기 위한 임시 방편 (기본 뷰로 대체)
-const SafeBlurView = Platform.OS === 'android' ? View : View;
+const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
 
 export interface GlassModalProps {
   visible: boolean;
