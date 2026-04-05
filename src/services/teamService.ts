@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { ServiceError } from '../lib/serviceError';
 import type { Team, TeamMemberRole, TeamMemberWithUser } from '../types/domain';
 
 export interface TeamWithRole extends Team {
@@ -14,8 +15,7 @@ export async function joinTeamByCode(inviteCode: string, userId: string): Promis
   });
 
   if (error) {
-    console.error('[TeamService] joinTeamByCode RPC error:', error.message);
-    return null;
+    throw new ServiceError('팀 참가에 실패했습니다.', 'joinTeamByCode', error.message);
   }
 
   if (!data) return null;
@@ -30,8 +30,7 @@ export async function fetchUserTeams(userId: string): Promise<TeamWithRole[]> {
     .eq('user_id', userId);
 
   if (membershipError) {
-    console.error('[TeamService] fetchUserTeams memberships error:', membershipError.message);
-    return [];
+    throw new ServiceError('팀 목록을 불러오지 못했습니다.', 'fetchUserTeams', membershipError.message);
   }
 
   if (!memberships || memberships.length === 0) return [];
@@ -43,8 +42,7 @@ export async function fetchUserTeams(userId: string): Promise<TeamWithRole[]> {
     .in('id', teamIds);
 
   if (teamsError) {
-    console.error('[TeamService] fetchUserTeams teams error:', teamsError.message);
-    return [];
+    throw new ServiceError('팀 정보를 불러오지 못했습니다.', 'fetchUserTeams', teamsError.message);
   }
 
   return (teams ?? []).map((team) => ({
@@ -73,8 +71,7 @@ export async function fetchTeamMembers(
     .eq('team_id', teamId);
 
   if (error) {
-    console.error('[TeamService] fetchTeamMembers error:', error.message);
-    return [];
+    throw new ServiceError('팀원 목록을 불러오지 못했습니다.', 'fetchTeamMembers', error.message);
   }
 
   return (data as TeamMemberWithUser[]) ?? [];
@@ -87,8 +84,7 @@ export async function createTeamWithMember(name: string, userId: string): Promis
   });
 
   if (error || !data) {
-    console.error('[TeamService] createTeamWithMember error:', error?.message);
-    return null;
+    throw new ServiceError('팀 생성에 실패했습니다.', 'createTeamWithMember', error?.message);
   }
 
   return data as Team;
@@ -101,8 +97,7 @@ export async function deleteTeamById(teamId: string, userId: string): Promise<bo
   });
 
   if (error) {
-    console.error('[TeamService] deleteTeamById error:', error.message);
-    return false;
+    throw new ServiceError('팀 삭제에 실패했습니다.', 'deleteTeamById', error.message);
   }
 
   return true;
@@ -115,8 +110,7 @@ export async function leaveTeamById(teamId: string, userId: string): Promise<boo
   });
 
   if (error) {
-    console.error('[TeamService] leaveTeamById error:', error.message);
-    return false;
+    throw new ServiceError('팀 탈퇴에 실패했습니다.', 'leaveTeamById', error.message);
   }
 
   return true;

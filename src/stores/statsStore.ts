@@ -6,6 +6,7 @@ import type {
   MemberCheckinSummary,
   CalendarDayMarking,
 } from '../types/domain';
+import { handleServiceError } from '../lib/serviceError';
 import {
   fetchCalendarMarkings,
   fetchCheckinsForDate,
@@ -50,37 +51,51 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   monthlyCheckins: [],
   memberDateCheckins: [],
 
-  // ── 멤버 진행상황 (산 애니메이션) ──
   fetchMemberProgress: async (teamId, userId) => {
-    const progress = await fetchMemberProgress(teamId, userId);
-    set({ memberProgress: progress });
+    try {
+      const progress = await fetchMemberProgress(teamId, userId);
+      set({ memberProgress: progress });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
   },
 
-  // ── 캘린더 마킹 ──
   fetchCalendarMarkings: async (userId, yearMonth) => {
-    const markings = await fetchCalendarMarkings(userId, yearMonth);
-    set({ calendarMarkings: markings });
+    try {
+      const markings = await fetchCalendarMarkings(userId, yearMonth);
+      set({ calendarMarkings: markings });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
   },
 
-  // ── 날짜별 체크인 ──
   fetchCheckinsForDate: async (userId, date) => {
-    const checkins = await fetchCheckinsForDate(userId, date);
-    set({ selectedDateCheckins: checkins });
+    try {
+      const checkins = await fetchCheckinsForDate(userId, date);
+      set({ selectedDateCheckins: checkins });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
   },
 
-  // ── 월간 체크인 ──
   fetchMonthlyCheckins: async (userId, yearMonth) => {
-    const checkins = await fetchMonthlyCheckins(userId, yearMonth);
-    set({ monthlyCheckins: checkins });
+    try {
+      const checkins = await fetchMonthlyCheckins(userId, yearMonth);
+      set({ monthlyCheckins: checkins });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
   },
 
-  // ── 팀 멤버 날짜별 체크인 ──
   fetchMemberDateCheckins: async (teamId, userId, date) => {
-    const summaries = await fetchMemberDateCheckins(teamId, userId, date);
-    set({ memberDateCheckins: summaries });
+    try {
+      const summaries = await fetchMemberDateCheckins(teamId, userId, date);
+      set({ memberDateCheckins: summaries });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
   },
 
-  // ── 리액션 토글 (낙관적 업데이트) ──
   toggleReaction: async (checkinId, user) => {
     const userId = user.id;
 
@@ -122,7 +137,8 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     try {
       await toggleReaction(checkinId, userId, isReacted);
     } catch (e) {
-      console.error('toggleReaction error:', e);
+      handleServiceError(e);
+      set({ memberDateCheckins: currentMemberCheckins });
     }
   },
 

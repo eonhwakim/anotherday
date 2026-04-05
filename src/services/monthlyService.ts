@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { ServiceError } from '../lib/serviceError';
 
 export async function getMonthlyResolution(
   userId: string,
@@ -15,8 +16,7 @@ export async function getMonthlyResolution(
 
   const { data, error } = await query.maybeSingle();
   if (error) {
-    console.error('[Monthly] getMonthlyResolution error:', error.message);
-    return '';
+    throw new ServiceError('한마디를 불러오지 못했습니다.', 'getMonthlyResolution', error.message);
   }
 
   return data?.content || '';
@@ -39,15 +39,13 @@ export async function saveMonthlyResolution(params: {
 
   const { data: row, error: selectError } = await selectQuery.maybeSingle();
   if (selectError) {
-    console.error('[Monthly] saveMonthlyResolution select error:', selectError.message);
-    return false;
+    throw new ServiceError('한마디 저장에 실패했습니다.', 'saveMonthlyResolution', selectError.message);
   }
 
   if (row) {
     const { error } = await supabase.from('monthly_resolutions').update({ content }).eq('id', row.id);
     if (error) {
-      console.error('[Monthly] saveMonthlyResolution update error:', error.message);
-      return false;
+      throw new ServiceError('한마디 저장에 실패했습니다.', 'saveMonthlyResolution', error.message);
     }
     return true;
   }
@@ -59,8 +57,7 @@ export async function saveMonthlyResolution(params: {
     content,
   });
   if (error) {
-    console.error('[Monthly] saveMonthlyResolution insert error:', error.message);
-    return false;
+    throw new ServiceError('한마디 저장에 실패했습니다.', 'saveMonthlyResolution', error.message);
   }
 
   return true;
@@ -80,8 +77,7 @@ export async function getMonthlyRetrospective(
     .maybeSingle();
 
   if (error) {
-    console.error('[Monthly] getMonthlyRetrospective error:', error.message);
-    return '';
+    throw new ServiceError('회고를 불러오지 못했습니다.', 'getMonthlyRetrospective', error.message);
   }
 
   return data?.content || '';
@@ -101,8 +97,7 @@ export async function saveMonthlyRetrospective(params: {
   );
 
   if (error) {
-    console.error('[Monthly] saveMonthlyRetrospective error:', error.message);
-    return false;
+    throw new ServiceError('회고 저장에 실패했습니다.', 'saveMonthlyRetrospective', error.message);
   }
 
   return true;

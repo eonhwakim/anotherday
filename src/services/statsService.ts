@@ -3,6 +3,7 @@ import { MOUNTAIN_THRESHOLDS } from '../constants/defaults';
 import { colors } from '../design/tokens';
 import dayjs from '../lib/dayjs';
 import { calcWeekAchievement, dayjsMax, dayjsMin, getCalendarWeekRanges } from '../lib/statsUtils';
+import { ServiceError } from '../lib/serviceError';
 import type {
   CalendarDayMarking,
   Checkin,
@@ -331,8 +332,7 @@ export async function fetchCheckinsForDate(
     .order('created_at');
 
   if (error) {
-    console.error('fetchCheckinsForDate error:', error.message);
-    return [];
+    throw new ServiceError('체크인 내역을 불러오지 못했습니다.', 'fetchCheckinsForDate', error.message);
   }
 
   return (data ?? []) as CheckinWithGoal[];
@@ -366,8 +366,7 @@ export async function fetchMonthlyCheckins(userId: string, yearMonth: string): P
     .order('date');
 
   if (error) {
-    console.error('fetchMonthlyCheckins error:', error.message);
-    return [];
+    throw new ServiceError('월간 체크인을 불러오지 못했습니다.', 'fetchMonthlyCheckins', error.message);
   }
 
   return (data ?? []) as Checkin[];
@@ -480,8 +479,7 @@ export async function toggleReaction(
       .delete()
       .match({ checkin_id: checkinId, user_id: userId });
     if (error) {
-      console.error('toggleReaction delete error:', error.message);
-      return false;
+      throw new ServiceError('리액션 처리에 실패했습니다.', 'toggleReaction', error.message);
     }
     return true;
   }
@@ -491,8 +489,7 @@ export async function toggleReaction(
     user_id: userId,
   });
   if (error) {
-    console.error('toggleReaction insert error:', error.message);
-    return false;
+    throw new ServiceError('리액션 처리에 실패했습니다.', 'toggleReaction', error.message);
   }
 
   return true;

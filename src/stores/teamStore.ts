@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Team, TeamMemberWithUser } from '../types/domain';
+import { handleServiceError } from '../lib/serviceError';
 import {
   createTeamWithMember,
   deleteTeamById,
@@ -49,7 +50,6 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       if (teamList.length > 0) {
         set({ teams: teamList });
 
-        // 현재 팀이 이 유저의 팀 목록에 없으면 첫 번째 팀으로 재설정
         const current = get().currentTeam;
         const currentStillValid = current && teamList.some((t) => t.id === current.id);
         if (!currentStillValid && teamList.length > 0) {
@@ -61,14 +61,20 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       } else {
         set({ teams: [], currentTeam: null, members: [] });
       }
+    } catch (e) {
+      handleServiceError(e, { silent: true });
     } finally {
       set({ isLoading: false });
     }
   },
 
   fetchMembers: async (teamId) => {
-    const members = await fetchTeamMembers(teamId);
-    set({ members: members as TeamMemberWithUser[] });
+    try {
+      const members = await fetchTeamMembers(teamId);
+      set({ members: members as TeamMemberWithUser[] });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
   },
 
   selectTeam: (team) => {
@@ -76,51 +82,60 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   createTeam: async (name, userId) => {
-    const team = await createTeamWithMember(name, userId);
-    if (!team) {
+    try {
+      const team = await createTeamWithMember(name, userId);
+      if (!team) return null;
+
+      set((state) => ({
+        teams: [...state.teams, team],
+        currentTeam: team,
+      }));
+
+      return team;
+    } catch (e) {
+      handleServiceError(e);
       return null;
     }
-
-    set((state) => ({
-      teams: [...state.teams, team],
-      currentTeam: team,
-    }));
-
-    return team;
   },
 
   deleteTeam: async (teamId, userId) => {
-    const ok = await deleteTeamById(teamId, userId);
-    if (!ok) {
+    try {
+      const ok = await deleteTeamById(teamId, userId);
+      if (!ok) return false;
+
+      set((state) => {
+        const newTeams = state.teams.filter((t) => t.id !== teamId);
+        const newCurrent = state.currentTeam?.id === teamId
+          ? (newTeams[0] ?? null)
+          : state.currentTeam;
+        return { teams: newTeams, currentTeam: newCurrent, members: [] };
+      });
+
+      return true;
+    } catch (e) {
+      handleServiceError(e);
       return false;
     }
-
-    set((state) => {
-      const newTeams = state.teams.filter((t) => t.id !== teamId);
-      const newCurrent = state.currentTeam?.id === teamId
-        ? (newTeams[0] ?? null)
-        : state.currentTeam;
-      return { teams: newTeams, currentTeam: newCurrent, members: [] };
-    });
-
-    return true;
   },
 
   leaveTeam: async (teamId, userId) => {
-    const ok = await leaveTeamById(teamId, userId);
-    if (!ok) {
+    try {
+      const ok = await leaveTeamById(teamId, userId);
+      if (!ok) return false;
+
+      set((state) => {
+        const newTeams = state.teams.filter((t) => t.id !== teamId);
+        const newCurrent = state.currentTeam?.id === teamId
+          ? (newTeams[0] ?? null)
+          : state.currentTeam;
+        return { teams: newTeams, currentTeam: newCurrent, members: [] };
+      });
+
+      return true;
+    } catch (e) {
+      handleServiceError(e);
       return false;
     }
-
-    set((state) => {
-      const newTeams = state.teams.filter((t) => t.id !== teamId);
-      const newCurrent = state.currentTeam?.id === teamId
-        ? (newTeams[0] ?? null)
-        : state.currentTeam;
-      return { teams: newTeams, currentTeam: newCurrent, members: [] };
-    });
-
-    return true;
   },
 
   reset: () => {

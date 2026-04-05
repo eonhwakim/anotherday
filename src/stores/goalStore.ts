@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Goal, UserGoal, Checkin } from '../types/domain';
+import { handleServiceError } from '../lib/serviceError';
 import { scheduleGoalReminderNotification } from '../utils/notifications';
 import dayjs from '../lib/dayjs';
 import {
@@ -65,82 +66,110 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   lastMonthGoals: [],
   isLoading: false,
 
-  // ── 지난 달 목표 로드 (Carry Over용) ──
   fetchLastMonthGoals: async (userId) => {
-    const goals = await fetchLastMonthGoals(userId);
-    set({ lastMonthGoals: goals });
+    try {
+      const goals = await fetchLastMonthGoals(userId);
+      set({ lastMonthGoals: goals });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
   },
 
-  // ── 지난 달 목표 그대로 가져오기 ──
   copyGoalsFromLastMonth: async (userId) => {
-    const goals = get().lastMonthGoals;
-    if (goals.length === 0) return;
+    try {
+      const goals = get().lastMonthGoals;
+      if (goals.length === 0) return;
 
-    const ok = await copyGoalsFromLastMonth(userId, goals);
-    if (!ok) return;
+      const ok = await copyGoalsFromLastMonth(userId, goals);
+      if (!ok) return;
 
-    await get().fetchMyGoals(userId);
-    set({ lastMonthGoals: [] });
+      await get().fetchMyGoals(userId);
+      set({ lastMonthGoals: [] });
+    } catch (e) {
+      handleServiceError(e);
+    }
   },
 
-  // ── 새 달 목표 연장 ──
   extendGoalsForNewMonth: async (userId, newMonthStr) => {
-    const ok = await extendGoalsForNewMonth(userId, newMonthStr);
-    if (!ok) return false;
-    await get().fetchMyGoals(userId);
-    return true;
+    try {
+      const ok = await extendGoalsForNewMonth(userId, newMonthStr);
+      if (!ok) return false;
+      await get().fetchMyGoals(userId);
+      return true;
+    } catch (e) {
+      handleServiceError(e);
+      return false;
+    }
   },
 
-  // ── 팀 목표 로드 ──
   fetchTeamGoals: async (teamId, userId) => {
-    const goals = await fetchTeamGoals(teamId, userId);
-    set({ teamGoals: goals });
+    try {
+      const goals = await fetchTeamGoals(teamId, userId);
+      set({ teamGoals: goals });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
   },
 
-  // ── 내 목표 로드 ──
   fetchMyGoals: async (userId) => {
-    const goals = await fetchMyGoals(userId);
-    set({ myGoals: goals });
+    try {
+      const goals = await fetchMyGoals(userId);
+      set({ myGoals: goals });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
   },
 
   fetchMyGoalsForMonth: async (userId, yearMonth) => {
-    const goals = await fetchMyGoalsForMonth(userId, yearMonth);
-    set({ monthGoals: goals });
-  },
-
-  // ── 오늘 체크인 로드 ──
-  fetchTodayCheckins: async (userId) => {
-    const checkins = await fetchTodayCheckins(userId);
-    set({ todayCheckins: checkins });
-  },
-
-  // ── 체크인 생성 ──
-  createCheckin: async ({ userId, goalId, date, photoUrl, memo, status = 'done' }) => {
-    const ok = await createCheckin({ userId, goalId, date, photoUrl, memo, status });
-    if (!ok) return false;
-    await get().fetchTodayCheckins(userId);
-
-    // 미완료 목표 알림 (statsStore의 memberProgress 참조)
-    const { useStatsStore } = await import('./statsStore');
-    const myProgress = useStatsStore.getState().memberProgress.find((p) => p.userId === userId);
-    if (myProgress) {
-      const uncompleted = myProgress.goalDetails
-        .filter((g) => g.isActive && !g.isDone && !g.isPass && g.goalId !== goalId)
-        .map((g) => g.goalName);
-      scheduleGoalReminderNotification(uncompleted).catch(() => {});
+    try {
+      const goals = await fetchMyGoalsForMonth(userId, yearMonth);
+      set({ monthGoals: goals });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
     }
-
-    return true;
   },
 
-  // ── 목표 토글 ──
+  fetchTodayCheckins: async (userId) => {
+    try {
+      const checkins = await fetchTodayCheckins(userId);
+      set({ todayCheckins: checkins });
+    } catch (e) {
+      handleServiceError(e, { silent: true });
+    }
+  },
+
+  createCheckin: async ({ userId, goalId, date, photoUrl, memo, status = 'done' }) => {
+    try {
+      const ok = await createCheckin({ userId, goalId, date, photoUrl, memo, status });
+      if (!ok) return false;
+      await get().fetchTodayCheckins(userId);
+
+      const { useStatsStore } = await import('./statsStore');
+      const myProgress = useStatsStore.getState().memberProgress.find((p) => p.userId === userId);
+      if (myProgress) {
+        const uncompleted = myProgress.goalDetails
+          .filter((g) => g.isActive && !g.isDone && !g.isPass && g.goalId !== goalId)
+          .map((g) => g.goalName);
+        scheduleGoalReminderNotification(uncompleted).catch(() => {});
+      }
+
+      return true;
+    } catch (e) {
+      handleServiceError(e);
+      return false;
+    }
+  },
+
   toggleUserGoal: async (userId, goalId) => {
-    const ok = await toggleUserGoal(userId, goalId);
-    if (!ok) return;
-    await get().fetchMyGoals(userId);
+    try {
+      const ok = await toggleUserGoal(userId, goalId);
+      if (!ok) return;
+      await get().fetchMyGoals(userId);
+    } catch (e) {
+      handleServiceError(e);
+    }
   },
 
-  // ── 목표 추가 ──
   addGoal: async ({
     teamId,
     userId,
@@ -149,49 +178,63 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     targetCount = null,
     duration = 'continuous',
   }) => {
-    const ok = await addGoal({
-      teamId,
-      userId,
-      name,
-      frequency,
-      targetCount,
-      duration,
-      existingGoals: get().teamGoals,
-    });
-    if (!ok) return false;
+    try {
+      const ok = await addGoal({
+        teamId,
+        userId,
+        name,
+        frequency,
+        targetCount,
+        duration,
+        existingGoals: get().teamGoals,
+      });
+      if (!ok) return false;
 
-    await get().fetchMyGoals(userId);
-    if (teamId) await get().fetchTeamGoals(teamId, userId);
-    return true;
+      await get().fetchMyGoals(userId);
+      if (teamId) await get().fetchTeamGoals(teamId, userId);
+      return true;
+    } catch (e) {
+      handleServiceError(e);
+      return false;
+    }
   },
 
-  // ── 루틴 종료 (기록 유지) ──
   endTeamGoal: async (teamId, userId, goalId) => {
-    const ok = await endTeamGoal(userId, goalId);
-    if (!ok) return;
-    await Promise.all([
-      get().fetchTeamGoals(teamId, userId),
-      get().fetchMyGoals(userId),
-      get().fetchMyGoalsForMonth(userId, dayjs().format('YYYY-MM')),
-      get().fetchTodayCheckins(userId),
-    ]);
+    try {
+      const ok = await endTeamGoal(userId, goalId);
+      if (!ok) return;
+      await Promise.all([
+        get().fetchTeamGoals(teamId, userId),
+        get().fetchMyGoals(userId),
+        get().fetchMyGoalsForMonth(userId, dayjs().format('YYYY-MM')),
+        get().fetchTodayCheckins(userId),
+      ]);
+    } catch (e) {
+      handleServiceError(e);
+    }
   },
 
-  // ── 루틴 완전 삭제 (현재 기간 + 현재 기간 기록 삭제) ──
   removeTeamGoal: async (teamId, userId, goalId) => {
-    const ok = await removeTeamGoal(teamId, userId, goalId);
-    if (!ok) return;
-    await Promise.all([
-      get().fetchTeamGoals(teamId, userId),
-      get().fetchMyGoals(userId),
-      get().fetchMyGoalsForMonth(userId, dayjs().format('YYYY-MM')),
-      get().fetchTodayCheckins(userId),
-    ]);
+    try {
+      const ok = await removeTeamGoal(teamId, userId, goalId);
+      if (!ok) return;
+      await Promise.all([
+        get().fetchTeamGoals(teamId, userId),
+        get().fetchMyGoals(userId),
+        get().fetchMyGoalsForMonth(userId, dayjs().format('YYYY-MM')),
+        get().fetchTodayCheckins(userId),
+      ]);
+    } catch (e) {
+      handleServiceError(e);
+    }
   },
 
-  // ── 체크인 삭제 ──
   deleteCheckin: async (checkinId) => {
-    await deleteCheckin(checkinId);
+    try {
+      await deleteCheckin(checkinId);
+    } catch (e) {
+      handleServiceError(e);
+    }
   },
 
   reset: () => {

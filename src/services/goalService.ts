@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import dayjs from '../lib/dayjs';
 import { getCalendarWeekRanges } from '../lib/statsUtils';
+import { ServiceError } from '../lib/serviceError';
 import type { Checkin, Goal, UserGoal } from '../types/domain';
 
 function getRoutineWindowForMonth(monthStr: string) {
@@ -39,8 +40,7 @@ async function findCurrentUserGoalPeriod(
     .order('start_date', { ascending: false });
 
   if (error) {
-    console.error('findCurrentUserGoalPeriod error:', error.message);
-    return null;
+    throw new ServiceError('목표 정보를 불러오지 못했습니다.', 'findCurrentUserGoalPeriod', error.message);
   }
 
   const rows = (data ?? []) as UserGoalPeriodRow[];
@@ -70,8 +70,7 @@ export async function fetchExtendableGoalsForMonth(
     .eq('end_date', prevWindow.end);
 
   if (error) {
-    console.error('fetchExtendableGoalsForMonth error:', error.message);
-    return [];
+    throw new ServiceError('연장 가능한 목표를 확인하지 못했습니다.', 'fetchExtendableGoalsForMonth', error.message);
   }
 
   const targets = (data ?? []) as UserGoal[];
@@ -87,8 +86,7 @@ export async function fetchExtendableGoalsForMonth(
     .or(`end_date.is.null,end_date.gte.${nextWindow.start}`);
 
   if (nextMonthError) {
-    console.error('fetchExtendableGoalsForMonth next month query error:', nextMonthError.message);
-    return targets;
+    throw new ServiceError('다음 달 목표를 확인하지 못했습니다.', 'fetchExtendableGoalsForMonth', nextMonthError.message);
   }
 
   const existingGoalIds = new Set((nextMonthGoals ?? []).map((row: { goal_id: string }) => row.goal_id));
@@ -109,8 +107,7 @@ export async function fetchLastMonthGoals(userId: string): Promise<UserGoal[]> {
     .gte('end_date', lastMonthStart);
 
   if (error) {
-    console.error('fetchLastMonthGoals error:', error.message);
-    return [];
+    throw new ServiceError('지난 달 목표를 불러오지 못했습니다.', 'fetchLastMonthGoals', error.message);
   }
 
   return (data ?? []) as UserGoal[];
@@ -135,8 +132,7 @@ export async function copyGoalsFromLastMonth(userId: string, goals: UserGoal[]):
 
   const { error } = await supabase.from('user_goals').upsert(updates);
   if (error) {
-    console.error('copyGoalsFromLastMonth error:', error.message);
-    return false;
+    throw new ServiceError('목표 복사에 실패했습니다.', 'copyGoalsFromLastMonth', error.message);
   }
 
   return true;
@@ -165,8 +161,7 @@ export async function extendGoalsForNewMonth(
   const { error } = await supabase.from('user_goals').insert(inserts);
 
   if (error) {
-    console.error('extendGoalsForNewMonth insert error:', error.message);
-    return false;
+    throw new ServiceError('목표 연장에 실패했습니다.', 'extendGoalsForNewMonth', error.message);
   }
 
   return true;
@@ -188,8 +183,7 @@ export async function fetchTeamGoals(teamId: string, userId?: string): Promise<G
 
   const { data, error } = await query;
   if (error) {
-    console.error('fetchTeamGoals error:', error.message);
-    return [];
+    throw new ServiceError('목표 목록을 불러오지 못했습니다.', 'fetchTeamGoals', error.message);
   }
 
   return (data ?? []) as Goal[];
@@ -206,8 +200,7 @@ export async function fetchMyGoals(userId: string): Promise<UserGoal[]> {
     .or(`end_date.is.null,end_date.gte.${today}`);
 
   if (error) {
-    console.error('fetchMyGoals error:', error.message);
-    return [];
+    throw new ServiceError('내 목표를 불러오지 못했습니다.', 'fetchMyGoals', error.message);
   }
 
   return (data ?? []) as UserGoal[];
@@ -225,8 +218,7 @@ export async function fetchMyGoalsForMonth(userId: string, yearMonth: string): P
     .order('start_date', { ascending: false });
 
   if (error) {
-    console.error('fetchMyGoalsForMonth error:', error.message);
-    return [];
+    throw new ServiceError('월간 목표를 불러오지 못했습니다.', 'fetchMyGoalsForMonth', error.message);
   }
 
   return (data ?? []) as UserGoal[];
@@ -254,8 +246,7 @@ export async function fetchWeeklyDoneCountsForGoals(params: {
     .lte('date', end);
 
   if (error) {
-    console.error('fetchWeeklyDoneCountsForGoals error:', error.message);
-    return {};
+    throw new ServiceError('주간 완료 횟수를 불러오지 못했습니다.', 'fetchWeeklyDoneCountsForGoals', error.message);
   }
 
   return (data ?? []).reduce<Record<string, number>>((acc, row: { goal_id: string }) => {
@@ -279,8 +270,7 @@ export async function fetchMyGoalsForRange(
     .order('start_date', { ascending: false });
 
   if (error) {
-    console.error('fetchMyGoalsForRange error:', error.message);
-    return [];
+    throw new ServiceError('목표를 불러오지 못했습니다.', 'fetchMyGoalsForRange', error.message);
   }
 
   return (data ?? []) as UserGoal[];
@@ -301,8 +291,7 @@ export async function endTeamGoal(userId: string, goalId: string): Promise<boole
     .eq('date', today);
 
   if (todayCheckinError) {
-    console.error('endTeamGoal today checkin count error:', todayCheckinError.message);
-    return false;
+    throw new ServiceError('루틴 종료 처리에 실패했습니다.', 'endTeamGoal', todayCheckinError.message);
   }
 
   const requestedEndDate =
@@ -320,8 +309,7 @@ export async function endTeamGoal(userId: string, goalId: string): Promise<boole
     .eq('id', currentGoalRow.id);
 
   if (error) {
-    console.error('endTeamGoal error:', error.message);
-    return false;
+    throw new ServiceError('루틴 종료 처리에 실패했습니다.', 'endTeamGoal', error.message);
   }
 
   return true;
@@ -336,8 +324,7 @@ export async function fetchTodayCheckins(userId: string): Promise<Checkin[]> {
     .eq('date', today);
 
   if (error) {
-    console.error('fetchTodayCheckins error:', error.message);
-    return [];
+    throw new ServiceError('오늘의 체크인을 불러오지 못했습니다.', 'fetchTodayCheckins', error.message);
   }
 
   return (data ?? []) as Checkin[];
@@ -363,8 +350,7 @@ export async function createCheckin(params: {
     .maybeSingle();
 
   if (existingError) {
-    console.error('createCheckin existing query error:', existingError.message);
-    return false;
+    throw new ServiceError('체크인 처리에 실패했습니다.', 'createCheckin', existingError.message);
   }
 
   if (existing) return false;
@@ -379,8 +365,7 @@ export async function createCheckin(params: {
   });
 
   if (error) {
-    console.error('createCheckin error:', error.message);
-    return false;
+    throw new ServiceError('체크인 저장에 실패했습니다.', 'createCheckin', error.message);
   }
 
   return true;
@@ -395,8 +380,7 @@ export async function toggleUserGoal(userId: string, goalId: string): Promise<bo
     .single();
 
   if (selectError) {
-    console.error('toggleUserGoal user_goals select error:', selectError.message);
-    return false;
+    throw new ServiceError('목표 상태 변경에 실패했습니다.', 'toggleUserGoal', selectError.message);
   }
 
   const { error: updateError } = await supabase
@@ -406,8 +390,7 @@ export async function toggleUserGoal(userId: string, goalId: string): Promise<bo
     .eq('goal_id', goalId);
 
   if (updateError) {
-    console.error('toggleUserGoal user_goals update error:', updateError.message);
-    return false;
+    throw new ServiceError('목표 상태 변경에 실패했습니다.', 'toggleUserGoal', updateError.message);
   }
 
   return true;
@@ -478,8 +461,7 @@ export async function addGoal(params: {
       .maybeSingle();
 
     if (myGoalError) {
-      console.error('addGoal existing user_goal query error:', myGoalError.message);
-      return false;
+      throw new ServiceError('루틴 추가에 실패했습니다.', 'addGoal', myGoalError.message);
     }
 
     if (myGoal) {
@@ -498,8 +480,7 @@ export async function addGoal(params: {
         .eq('id', myGoal.id);
 
       if (error) {
-        console.error('addGoal reactivate user_goal error:', error.message);
-        return false;
+        throw new ServiceError('루틴 추가에 실패했습니다.', 'addGoal', error.message);
       }
 
       return true;
@@ -516,8 +497,7 @@ export async function addGoal(params: {
     });
 
     if (error) {
-      console.error('addGoal insert user_goal error:', error.message);
-      return false;
+      throw new ServiceError('루틴 추가에 실패했습니다.', 'addGoal', error.message);
     }
 
     return true;
@@ -531,8 +511,7 @@ export async function addGoal(params: {
 
   const { data: newGoal, error } = await supabase.from('goals').insert(payload).select().single();
   if (error || !newGoal) {
-    console.error('addGoal insert goal error:', error?.message);
-    return false;
+    throw new ServiceError('루틴 추가에 실패했습니다.', 'addGoal', error?.message);
   }
 
   const { error: userGoalError } = await supabase.from('user_goals').insert({
@@ -546,8 +525,7 @@ export async function addGoal(params: {
   });
 
   if (userGoalError) {
-    console.error('addGoal insert user_goal error:', userGoalError.message);
-    return false;
+    throw new ServiceError('루틴 추가에 실패했습니다.', 'addGoal', userGoalError.message);
   }
 
   return true;
@@ -571,8 +549,7 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
     .lte('date', activeEnd);
 
   if (checkinDeleteError) {
-    console.error('removeTeamGoal checkins delete error:', checkinDeleteError.message);
-    return false;
+    throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', checkinDeleteError.message);
   }
 
   const { error: userGoalDeleteError } = await supabase
@@ -581,8 +558,7 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
     .eq('id', currentGoalRow.id);
 
   if (userGoalDeleteError) {
-    console.error('removeTeamGoal user_goals delete error:', userGoalDeleteError.message);
-    return false;
+    throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', userGoalDeleteError.message);
   }
 
   const { count: totalCheckinsCount, error: totalCheckinsError } = await supabase
@@ -590,8 +566,7 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
     .select('*', { count: 'exact', head: true })
     .eq('goal_id', goalId);
   if (totalCheckinsError) {
-    console.error('removeTeamGoal total checkins count error:', totalCheckinsError.message);
-    return false;
+    throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', totalCheckinsError.message);
   }
 
   const { count: otherUsersCount, error: otherUsersError } = await supabase
@@ -600,15 +575,13 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
     .eq('goal_id', goalId)
     .is('deleted_at', null);
   if (otherUsersError) {
-    console.error('removeTeamGoal other users count error:', otherUsersError.message);
-    return false;
+    throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', otherUsersError.message);
   }
 
   if ((!totalCheckinsCount || totalCheckinsCount === 0) && (!otherUsersCount || otherUsersCount === 0)) {
     const { error: goalError } = await supabase.from('goals').delete().eq('id', goalId);
     if (goalError) {
-      console.error('removeTeamGoal goals delete error:', goalError.message);
-      return false;
+      throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', goalError.message);
     }
   }
 
@@ -618,8 +591,7 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
 export async function deleteCheckin(checkinId: string): Promise<boolean> {
   const { error } = await supabase.from('checkins').delete().eq('id', checkinId);
   if (error) {
-    console.error('deleteCheckin error:', error.message);
-    return false;
+    throw new ServiceError('체크인 삭제에 실패했습니다.', 'deleteCheckin', error.message);
   }
 
   return true;
