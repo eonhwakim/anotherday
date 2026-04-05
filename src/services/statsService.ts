@@ -395,56 +395,78 @@ export async function fetchMemberDateCheckins(
     if (data) members = [{ user_id: data.id, user: data }];
   }
 
-  const summaries: MemberCheckinSummary[] = [];
+  const memberIds = members
+    .map((m) => m.user_id || normalizeJoinedUser(m.user)?.id)
+    .filter((id): id is string => !!id);
 
-  for (const member of members) {
-    const currentUser = normalizeJoinedUser(member.user);
-    const uid = member.user_id || currentUser?.id;
-    if (!uid) continue;
+  if (memberIds.length === 0) return [];
 
-    const { data: userGoals } = await supabase
+  const [{ data: allUserGoals }, { data: allCheckins }] = await Promise.all([
+    supabase
       .from('user_goals')
-      .select('goal_id, frequency, target_count, start_date, end_date, is_active, goal:goals(name)')
-      .eq('user_id', uid);
-
-    const today = dayjs().format('YYYY-MM-DD');
-    const activeGoals = (userGoals ?? []).filter((goal: any) => {
-      if (goal.is_active === false && date >= today) return false;
-      return isGoalActiveOnDate(goal, date);
-    });
-    const activeGoalIds = activeGoals.map((goal: any) => goal.goal_id);
-
-    const { data: checkins } = await supabase
+      .select(
+        'user_id, goal_id, frequency, target_count, start_date, end_date, is_active, goal:goals(name)',
+      )
+      .in('user_id', memberIds),
+    supabase
       .from('checkins')
       .select(
         '*, goal:goals(id, name), reactions:checkin_reactions(id, checkin_id, user_id, created_at, user:users(id, nickname, profile_image_url))',
       )
-      .eq('user_id', uid)
+      .in('user_id', memberIds)
       .eq('date', date)
-      .order('created_at');
+      .order('created_at'),
+  ]);
 
-    const typedCheckins = (checkins ?? []) as CheckinWithGoal[];
-    const doneCount = typedCheckins.filter((checkin) => checkin.status === 'done').length;
-    const passCount = typedCheckins.filter((checkin) => checkin.status === 'pass').length;
+  const today = dayjs().format('YYYY-MM-DD');
 
-    summaries.push({
-      userId: uid,
-      nickname: currentUser?.nickname ?? '알 수 없음',
-      profileImageUrl: currentUser?.profile_image_url ?? null,
-      checkins: typedCheckins,
-      totalGoals: activeGoalIds.length,
-      doneCount,
-      passCount,
-      goals: activeGoals.map((goal: any) => ({
-        goalId: goal.goal_id,
-        name: goal.goal?.name ?? '알 수 없는 목표',
-        frequency: goal.frequency,
-        targetCount: goal.target_count,
-      })),
-    });
-  }
+  const goalsByUser = new Map<string, typeof allUserGoals>();
+  (allUserGoals ?? []).forEach((goal: any) => {
+    const list = goalsByUser.get(goal.user_id) ?? [];
+    list.push(goal);
+    goalsByUser.set(goal.user_id, list);
+  });
 
-  return summaries;
+  const checkinsByUser = new Map<string, CheckinWithGoal[]>();
+  (allCheckins ?? []).forEach((checkin: any) => {
+    const list = checkinsByUser.get(checkin.user_id) ?? [];
+    list.push(checkin as CheckinWithGoal);
+    checkinsByUser.set(checkin.user_id, list);
+  });
+
+  return members
+    .map((member) => {
+      const currentUser = normalizeJoinedUser(member.user);
+      const uid = member.user_id || currentUser?.id;
+      if (!uid) return null;
+
+      const userGoals = goalsByUser.get(uid) ?? [];
+      const activeGoals = userGoals.filter((goal: any) => {
+        if (goal.is_active === false && date >= today) return false;
+        return isGoalActiveOnDate(goal, date);
+      });
+
+      const typedCheckins = checkinsByUser.get(uid) ?? [];
+      const doneCount = typedCheckins.filter((c) => c.status === 'done').length;
+      const passCount = typedCheckins.filter((c) => c.status === 'pass').length;
+
+      return {
+        userId: uid,
+        nickname: currentUser?.nickname ?? '알 수 없음',
+        profileImageUrl: currentUser?.profile_image_url ?? null,
+        checkins: typedCheckins,
+        totalGoals: activeGoals.length,
+        doneCount,
+        passCount,
+        goals: activeGoals.map((goal: any) => ({
+          goalId: goal.goal_id,
+          name: goal.goal?.name ?? '알 수 없는 목표',
+          frequency: goal.frequency,
+          targetCount: goal.target_count,
+        })),
+      } satisfies MemberCheckinSummary;
+    })
+    .filter((s): s is MemberCheckinSummary => s !== null);
 }
 
 export async function toggleReaction(
