@@ -21,7 +21,7 @@ import DynamicBadge from './TodayGoalBadge';
 import { useStatsStore } from '../../stores/statsStore';
 import { useAuthStore } from '../../stores/authStore';
 
-const PHOTO_CARD_PEEK = 66;
+const PHOTO_CARD_PEEK = 56;
 const PHOTO_CARD_GAP = 16;
 const FEED_REACTION_AVATAR_MAX = 10;
 /** 피크/점선 슬롯·좌측 당김 한도 비율(뷰 너비 기준); 고무줄·스프링은 한 장·여러 장 동일 계수 사용 */
@@ -30,6 +30,11 @@ const SINGLE_PHOTO_PULL_RATIO = 0.13;
 const CAROUSEL_FLICK_VX = 0.22;
 /** 플릭이 약할 때, 슬롯 간격 대비 이 비율만 넘기면 다음/이전으로 스냅(반보다 훨씬 짧게) */
 const CAROUSEL_DRAG_COMMIT_FRAC = 0.22;
+
+/** 좋아요 카운터 필(디자인 참고: 밝은 회색 캡슐 + 주황 하트·숫자) */
+const LIKE_PILL_BG = '#F2F2F2';
+const LIKE_PILL_ACCENT = '#FF7A00';
+const LIKE_PILL_MUTED = '#9AA3AE';
 
 function PhotoPeekPlaceholder() {
   return <View style={[styles.photoSlideDashedCard, styles.photoPlaceholderCard]}></View>;
@@ -375,6 +380,7 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
   ) => {
     const reactions = checkin.reactions ?? [];
     const checkinReacted = !!user && reactions.some((r) => r.user_id === user.id);
+    const likePillAccent = checkinReacted || reactions.length > 0;
     return (
       <View
         style={[
@@ -395,19 +401,18 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
         <View style={styles.photoFooter}>
           <View style={styles.photoActions}>
             <TouchableOpacity
-              activeOpacity={0.85}
-              style={[
-                styles.actionPill,
-                styles.actionPillIconOnly,
-                checkinReacted && styles.actionPillActive,
-              ]}
+              activeOpacity={0.88}
+              style={styles.likePill}
               onPress={() => handleReactionPress(checkin)}
             >
               <Ionicons
-                name={checkinReacted ? 'heart' : 'heart-outline'}
-                size={24}
-                color={checkinReacted ? colors.primary : '#9299A6'}
+                name={likePillAccent ? 'heart' : 'heart-outline'}
+                size={20}
+                color={likePillAccent ? LIKE_PILL_ACCENT : LIKE_PILL_MUTED}
               />
+              <Text style={[styles.likePillCount, likePillAccent && styles.likePillCountAccent]}>
+                {reactions.length}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -924,7 +929,8 @@ const styles = StyleSheet.create({
   },
   photoSection: {
     marginTop: 12,
-    marginBottom: 12,
+    marginBottom: 22,
+    paddingLeft: 12,
     overflow: 'hidden',
   },
   photoCarouselClip: {
@@ -943,7 +949,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   photoSlideCard: {
-    borderRadius: 22,
+    borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.82)',
   },
@@ -985,9 +991,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(26,26,26,0.06)',
   },
@@ -1003,6 +1008,26 @@ const styles = StyleSheet.create({
     gap: 10,
     flex: 1,
     flexShrink: 1,
+  },
+  likePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(171, 169, 169, 0.25)',
+    borderRadius: 999,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    gap: 8,
+    alignSelf: 'flex-start',
+  },
+  likePillCount: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: LIKE_PILL_MUTED,
+    fontVariant: ['tabular-nums'],
+  },
+  likePillCountAccent: {
+    color: LIKE_PILL_ACCENT,
   },
   feedReactionRow: {
     flexDirection: 'row',
@@ -1047,21 +1072,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: colors.primary,
-  },
-  actionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 999,
-    backgroundColor: '#EDF1F6',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    marginLeft: 4,
-  },
-  actionPillIconOnly: {
-    paddingHorizontal: 11,
-  },
-  actionPillActive: {
-    backgroundColor: 'rgba(255, 107, 61, 0.14)',
   },
   photoIndexText: {
     fontSize: 12,

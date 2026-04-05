@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
   },
   goalSection: {
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 4,
     width: '100%',
     alignItems: 'stretch',
   },
