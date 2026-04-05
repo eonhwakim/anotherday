@@ -5,6 +5,7 @@ import type {
   MemberProgress,
   MemberCheckinSummary,
   CalendarDayMarking,
+  User,
 } from '../types/domain';
 import { handleServiceError } from '../lib/serviceError';
 import {
@@ -13,7 +14,7 @@ import {
   fetchMemberDateCheckins,
   fetchMemberProgress,
   fetchMonthlyCheckins,
-  toggleReaction,
+  toggleReaction as persistToggleReaction,
 } from '../services/statsService';
 
 // ─── Store Interface ──────────────────────────────────────────
@@ -96,49 +97,71 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     }
   },
 
-  toggleReaction: async (checkinId, user) => {
+  toggleReaction: async (checkinId, user: Pick<User, 'id' | 'nickname' | 'profile_image_url'>) => {
     const userId = user.id;
-
     const currentMemberCheckins = get().memberDateCheckins;
-    let isReacted = false;
+    const currentMemberProgress = get().memberProgress;
+
+    const resolveIsReacted = (): boolean => {
+      for (const summary of currentMemberCheckins) {
+        const c = summary.checkins.find((x) => x.id === checkinId);
+        if (c) return (c.reactions ?? []).some((r) => r.user_id === userId);
+      }
+      for (const m of currentMemberProgress) {
+        const c = m.todayCheckins?.find((x) => x.id === checkinId);
+        if (c) return (c.reactions ?? []).some((r) => r.user_id === userId);
+      }
+      return false;
+    };
+
+    const isReacted = resolveIsReacted();
+
+    const patchCheckin = (c: CheckinWithGoal): CheckinWithGoal => {
+      if (c.id !== checkinId) return c;
+      const reactions = c.reactions || [];
+      const existing = reactions.find((r) => r.user_id === userId);
+      const newReactions = existing
+        ? reactions.filter((r) => r.user_id !== userId)
+        : [
+            ...reactions,
+            {
+              id: 'temp-' + Date.now(),
+              checkin_id: checkinId,
+              user_id: userId,
+              created_at: new Date().toISOString(),
+              user: {
+                id: user.id,
+                nickname: user.nickname,
+                profile_image_url: user.profile_image_url,
+              },
+            },
+          ];
+      return { ...c, reactions: newReactions };
+    };
 
     const nextMemberCheckins = currentMemberCheckins.map((summary) => ({
       ...summary,
-      checkins: summary.checkins.map((c) => {
-        if (c.id !== checkinId) return c;
-
-        const reactions = c.reactions || [];
-        const existing = reactions.find((r) => r.user_id === userId);
-        isReacted = !!existing;
-
-        const newReactions = existing
-          ? reactions.filter((r) => r.user_id !== userId)
-          : [
-              ...reactions,
-              {
-                id: 'temp-' + Date.now(),
-                checkin_id: checkinId,
-                user_id: userId,
-                created_at: new Date().toISOString(),
-                user: {
-                  id: user.id,
-                  nickname: user.nickname,
-                  profile_image_url: user.profile_image_url,
-                },
-              },
-            ];
-
-        return { ...c, reactions: newReactions };
-      }),
+      checkins: summary.checkins.map(patchCheckin),
     }));
 
-    set({ memberDateCheckins: nextMemberCheckins });
+    const nextMemberProgress = currentMemberProgress.map((m) => ({
+      ...m,
+      todayCheckins: m.todayCheckins?.map(patchCheckin),
+    }));
+
+    set({
+      memberDateCheckins: nextMemberCheckins,
+      memberProgress: nextMemberProgress,
+    });
 
     try {
-      await toggleReaction(checkinId, userId, isReacted);
+      await persistToggleReaction(checkinId, userId, isReacted);
     } catch (e) {
       handleServiceError(e);
-      set({ memberDateCheckins: currentMemberCheckins });
+      set({
+        memberDateCheckins: currentMemberCheckins,
+        memberProgress: currentMemberProgress,
+      });
     }
   },
 

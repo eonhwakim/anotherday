@@ -143,6 +143,8 @@ export interface MemberGoalDetail {
   isDone: boolean;
   isPass?: boolean;
   isActive?: boolean;
+  frequency?: GoalFrequency;
+  targetCount?: number | null;
 }
 
 /** 멤버 진행 상황 (HomeScreen 산 UI 용) */
@@ -156,6 +158,7 @@ export interface MemberProgress {
   passGoals?: number;
   position: MountainPosition;
   goalDetails: MemberGoalDetail[];
+  todayCheckins?: CheckinWithGoal[];
 }
 
 /** 캘린더 날짜별 상태 마킹 */

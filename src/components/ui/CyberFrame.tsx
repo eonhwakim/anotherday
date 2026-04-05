@@ -5,10 +5,10 @@ import { radius, shadows } from '../../design/recipes';
 
 // 은빛 메탈릭 팔레트
 const METAL = {
-  silver:      '#B8BCC6',
+  silver: '#B8BCC6',
   silverLight: '#D8DAE2',
-  silverBright:'#ECEEF4',
-  silverDim:   '#7E8290',
+  silverBright: '#ECEEF4',
+  silverDim: '#7E8290',
   silverFrost: '#A0A4B0',
 } as const;
 
@@ -23,7 +23,12 @@ interface CyberFrameProps {
   glassOnly?: boolean;
 }
 
-export default function CyberFrame({ children, style, contentStyle, glassOnly = false }: CyberFrameProps) {
+export default function CyberFrame({
+  children,
+  style,
+  contentStyle,
+  glassOnly = false,
+}: CyberFrameProps) {
   const [size, setSize] = React.useState({ w: 0, h: 0 });
   const C = 20;
   const R = 8;
@@ -47,25 +52,28 @@ export default function CyberFrame({ children, style, contentStyle, glassOnly = 
           <Defs>
             {/* 글래스 배경 — 흰 배경용 반투명도 */}
             <LinearGradient id="metalBg" x1="0" y1="0" x2="0.8" y2="1">
-              <Stop offset="0%"   stopColor={METAL.silverBright} stopOpacity="0.15" />
-              <Stop offset="40%"  stopColor={METAL.silverLight}  stopOpacity="0.10" />
-              <Stop offset="70%"  stopColor={METAL.silverDim}    stopOpacity="0.08" />
+              <Stop offset="0%" stopColor={METAL.silverBright} stopOpacity="0.15" />
+              <Stop offset="40%" stopColor={METAL.silverLight} stopOpacity="0.10" />
+              <Stop offset="70%" stopColor={METAL.silverDim} stopOpacity="0.08" />
               <Stop offset="100%" stopColor={METAL.silverBright} stopOpacity="0.12" />
             </LinearGradient>
             {/* 보더 */}
             <LinearGradient id="metalBorder" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0%"   stopColor={METAL.silverBright} stopOpacity="0.90" />
-              <Stop offset="35%"  stopColor={METAL.silverDim}    stopOpacity="0.45" />
-              <Stop offset="65%"  stopColor={METAL.silverLight}  stopOpacity="0.60" />
+              <Stop offset="0%" stopColor={METAL.silverBright} stopOpacity="0.90" />
+              <Stop offset="35%" stopColor={METAL.silverDim} stopOpacity="0.45" />
+              <Stop offset="65%" stopColor={METAL.silverLight} stopOpacity="0.60" />
               <Stop offset="100%" stopColor={METAL.silverBright} stopOpacity="0.88" />
             </LinearGradient>
           </Defs>
 
           {/* 글래스 배경 */}
           <Rect
-            x={1} y={1}
-            width={size.w - 2} height={size.h - 2}
-            rx={R} ry={R}
+            x={1}
+            y={1}
+            width={size.w - 2}
+            height={size.h - 2}
+            rx={R}
+            ry={R}
             fill="url(#metalBg)"
             stroke="url(#metalBorder)"
             strokeWidth={1.2}
@@ -76,28 +84,81 @@ export default function CyberFrame({ children, style, contentStyle, glassOnly = 
           <Path d={`M 1 ${R} Q 1 1 ${R} 1`} stroke="url(#cTL)" strokeWidth={SW} fill="none" />
           <Line x1={R} y1={1} x2={R + C} y2={1} stroke="url(#cTL)" strokeWidth={SW} />
           {/* ── 코너 브라켓 (우상) ── */}
-          <Line x1={size.w - R - C} y1={1} x2={size.w - R} y2={1} stroke="url(#cTR)" strokeWidth={SW} />
-          <Path d={`M ${size.w - R} 1 Q ${size.w - 1} 1 ${size.w - 1} ${R}`} stroke="url(#cTR)" strokeWidth={SW} fill="none" />
-          <Line x1={size.w - 1} y1={R} x2={size.w - 1} y2={R + C} stroke="url(#cTR)" strokeWidth={SW} />
+          <Line
+            x1={size.w - R - C}
+            y1={1}
+            x2={size.w - R}
+            y2={1}
+            stroke="url(#cTR)"
+            strokeWidth={SW}
+          />
+          <Path
+            d={`M ${size.w - R} 1 Q ${size.w - 1} 1 ${size.w - 1} ${R}`}
+            stroke="url(#cTR)"
+            strokeWidth={SW}
+            fill="none"
+          />
+          <Line
+            x1={size.w - 1}
+            y1={R}
+            x2={size.w - 1}
+            y2={R + C}
+            stroke="url(#cTR)"
+            strokeWidth={SW}
+          />
           {/* ── 코너 브라켓 (좌하) ── */}
-          <Line x1={1} y1={size.h - R - C} x2={1} y2={size.h - R} stroke="url(#cBL)" strokeWidth={SW} />
-          <Path d={`M 1 ${size.h - R} Q 1 ${size.h - 1} ${R} ${size.h - 1}`} stroke="url(#cBL)" strokeWidth={SW} fill="none" />
-          <Line x1={R} y1={size.h - 1} x2={R + C} y2={size.h - 1} stroke="url(#cBL)" strokeWidth={SW} />
+          <Line
+            x1={1}
+            y1={size.h - R - C}
+            x2={1}
+            y2={size.h - R}
+            stroke="url(#cBL)"
+            strokeWidth={SW}
+          />
+          <Path
+            d={`M 1 ${size.h - R} Q 1 ${size.h - 1} ${R} ${size.h - 1}`}
+            stroke="url(#cBL)"
+            strokeWidth={SW}
+            fill="none"
+          />
+          <Line
+            x1={R}
+            y1={size.h - 1}
+            x2={R + C}
+            y2={size.h - 1}
+            stroke="url(#cBL)"
+            strokeWidth={SW}
+          />
           {/* ── 코너 브라켓 (우하) ── */}
-          <Line x1={size.w - R - C} y1={size.h - 1} x2={size.w - R} y2={size.h - 1} stroke="url(#cBR)" strokeWidth={SW} />
-          <Path d={`M ${size.w - R} ${size.h - 1} Q ${size.w - 1} ${size.h - 1} ${size.w - 1} ${size.h - R}`} stroke="url(#cBR)" strokeWidth={SW} fill="none" />
-          <Line x1={size.w - 1} y1={size.h - R - C} x2={size.w - 1} y2={size.h - R} stroke="url(#cBR)" strokeWidth={SW} />
-
+          <Line
+            x1={size.w - R - C}
+            y1={size.h - 1}
+            x2={size.w - R}
+            y2={size.h - 1}
+            stroke="url(#cBR)"
+            strokeWidth={SW}
+          />
+          <Path
+            d={`M ${size.w - R} ${size.h - 1} Q ${size.w - 1} ${size.h - 1} ${size.w - 1} ${size.h - R}`}
+            stroke="url(#cBR)"
+            strokeWidth={SW}
+            fill="none"
+          />
+          <Line
+            x1={size.w - 1}
+            y1={size.h - R - C}
+            x2={size.w - 1}
+            y2={size.h - R}
+            stroke="url(#cBR)"
+            strokeWidth={SW}
+          />
         </Svg>
       )}
 
-      <View style={[!glassOnly ? cyberStyles.content : null, contentStyle]}>
-        {children}
-      </View>
+      <View style={[!glassOnly ? cyberStyles.content : null, contentStyle]}>{children}</View>
     </View>
   );
 }
-
 
 const cyberStyles = StyleSheet.create({
   wrapper: {
@@ -114,7 +175,7 @@ const cyberStyles = StyleSheet.create({
   },
   glassWrapper: {
     backgroundColor: 'rgba(255, 255, 255, 0.72)',
-    borderRadius: radius.pill,
+    borderRadius: radius.sm,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.9)',
     ...shadows.glass,

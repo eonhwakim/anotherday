@@ -261,23 +261,38 @@ export async function fetchMemberProgress(
 
   const { data: todayCheckins } = await supabase
     .from('checkins')
-    .select('user_id, goal_id, status')
+    .select(
+      '*, goal:goals(id, name), reactions:checkin_reactions(id, checkin_id, user_id, created_at, user:users(id, nickname, profile_image_url))',
+    )
     .in('user_id', memberIds)
-    .eq('date', today);
+    .eq('date', today)
+    .order('created_at');
 
   const doneByUser = new Map<string, Set<string>>();
   const passByUser = new Map<string, Set<string>>();
 
-  ((todayCheckins ?? []) as { user_id: string; goal_id: string; status: string }[]).forEach((checkin) => {
+  const typedTodayCheckins = (todayCheckins ?? []) as CheckinWithGoal[];
+
+  typedTodayCheckins.forEach((checkin) => {
     const targetMap = checkin.status === 'pass' ? passByUser : doneByUser;
     const setForUser = targetMap.get(checkin.user_id) ?? new Set<string>();
     setForUser.add(checkin.goal_id);
     targetMap.set(checkin.user_id, setForUser);
   });
 
+  const checkinsByUser = new Map<string, CheckinWithGoal[]>();
+  typedTodayCheckins.forEach((checkin) => {
+    const list = checkinsByUser.get(checkin.user_id) ?? [];
+    list.push(checkin);
+    checkinsByUser.set(checkin.user_id, list);
+  });
+
   return memberBases.map((member) => {
     const doneSet = doneByUser.get(member.uid) ?? new Set<string>();
     const passSet = passByUser.get(member.uid) ?? new Set<string>();
+    const memberGoals = (userGoalsByUserId.get(member.uid) ?? []).filter((goal) =>
+      member.todayGoalIds.includes(goal.goal_id),
+    );
 
     let doneCount = 0;
     let passCount = 0;
@@ -292,6 +307,8 @@ export async function fetchMemberProgress(
       isDone: doneSet.has(goalId),
       isPass: passSet.has(goalId),
       isActive: true,
+      frequency: memberGoals.find((goal) => goal.goal_id === goalId)?.frequency ?? 'daily',
+      targetCount: memberGoals.find((goal) => goal.goal_id === goalId)?.target_count ?? null,
     }));
 
     const total = member.todayGoalIds.length;
@@ -305,6 +322,7 @@ export async function fetchMemberProgress(
       passGoals: passCount,
       position: getPosition(doneCount, total, passCount),
       goalDetails,
+      todayCheckins: checkinsByUser.get(member.uid) ?? [],
     };
   });
 }

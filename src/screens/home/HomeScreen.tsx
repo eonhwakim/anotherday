@@ -25,10 +25,15 @@ import { colors } from '../../design/tokens';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
-import { fetchExtendableGoalsForMonth, fetchWeeklyDoneCountsForGoals } from '../../services/goalService';
+import {
+  fetchExtendableGoalsForMonth,
+  fetchWeeklyDoneCountsForGoals,
+} from '../../services/goalService';
 
 import MountainProgress from '../../components/home/MountainProgress';
-import TodayGoalList from '../../components/home/TodayGoalList';
+// import TodayGoalList from '../../components/home/TodayGoalList';
+import TodayGoalList from '../../components/home/TodayGoalListFeed';
+
 import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
 // import DevGuideModal from '../../components/home/DevGuideModal';
@@ -61,6 +66,7 @@ export default function HomeScreen() {
   const [extendableGoals, setExtendableGoals] = React.useState<typeof myGoals>([]);
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
   const [weeklyDoneCounts, setWeeklyDoneCounts] = React.useState<Record<string, number>>({});
+  const [photoCarouselDragging, setPhotoCarouselDragging] = React.useState(false);
 
   const getMonthlyPromptStorageKey = useCallback(
     (monthStr: string) => `monthly_goal_prompt_v1_${monthStr}`,
@@ -328,6 +334,8 @@ export default function HomeScreen() {
           ref={scrollRef}
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
+          scrollEnabled={!photoCarouselDragging}
+          nestedScrollEnabled
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -388,6 +396,7 @@ export default function HomeScreen() {
               currentUserId={user?.id}
               onAnimationFinish={() => setIsStampFinished(true)}
               isNight={isNight}
+              onPhotoCarouselDragChange={setPhotoCarouselDragging}
             />
             <View style={{ height: 120 }} />
           </View>
@@ -466,7 +475,7 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 22,
     paddingBottom: 12,
   },
   frameRow: {
@@ -474,7 +483,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   greeting: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#FFFFFF',
     fontWeight: '600',
     marginBottom: 2,
@@ -487,7 +496,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   dateText: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.textSecondary,
     fontWeight: '700',
     letterSpacing: 2.5,
