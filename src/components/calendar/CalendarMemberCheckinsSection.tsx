@@ -47,7 +47,6 @@ export default function CalendarMemberCheckinsSection({
                 doneCount={member.doneCount}
                 passCount={member.passCount}
                 totalGoals={member.totalGoals}
-                compact={true}
               />
             </View>
           </View>
@@ -203,7 +202,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 16,
   },
   checkinThumb: {
     width: 40,

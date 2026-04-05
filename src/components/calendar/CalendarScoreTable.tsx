@@ -46,7 +46,7 @@ export default function CalendarScoreTable({
     },
     {
       key: 'total',
-      label: '총루틴',
+      label: '총 루틴',
       value: totalGoals,
       labelStyle: styles.scoreLabelTotal,
       valueStyle: styles.scoreValueTotal,
@@ -65,11 +65,7 @@ export default function CalendarScoreTable({
         {scoreItems.map((item, index) => (
           <View
             key={item.key}
-            style={[
-              styles.cell,
-              compact && styles.cellCompact,
-              index > 0 && styles.cellDivider,
-            ]}
+            style={[styles.cell, compact && styles.cellCompact, index > 0 && styles.cellDivider]}
           >
             <Text style={[styles.labelText, item.labelStyle]}>{item.label}</Text>
             <Text style={[styles.valueText, compact && styles.valueTextCompact, item.valueStyle]}>
@@ -101,7 +97,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   cellCompact: {
-    minWidth: 48,
+    minWidth: 32,
+    paddingHorizontal: 4,
   },
   cellDivider: {
     borderLeftWidth: 1,
