@@ -61,15 +61,20 @@ export default function CalendarScreen() {
   useFocusEffect(
     useCallback(() => {
       if (user) {
-        fetchCalendarMarkings(user.id, currentMonth);
+        const todayDate = dayjs().format('YYYY-MM-DD');
+        const todayMonth = dayjs().format('YYYY-MM');
+
+        setSelectedDate(todayDate);
+        setCurrentMonth(todayMonth);
+
+        fetchCalendarMarkings(user.id, todayMonth);
         fetchMyGoals(user.id);
         fetchTeamGoals(currentTeam?.id ?? '', user.id);
-        fetchMonthlyCheckins(user.id, currentMonth);
-        fetchMemberDateCheckins(currentTeam?.id, user.id, selectedDateRef.current);
+        fetchMonthlyCheckins(user.id, todayMonth);
+        fetchMemberDateCheckins(currentTeam?.id, user.id, todayDate);
       }
     }, [
       user,
-      currentMonth,
       currentTeam,
       fetchCalendarMarkings,
       fetchMyGoals,
