@@ -648,7 +648,7 @@ export default function TodayGoalListFeed({
       );
       staggerAnimRef.current = stag;
       stag.start();
-    }, 300);
+    }, 72);
 
     return () => clearTimeout(timeoutId);
   }, [

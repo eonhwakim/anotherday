@@ -475,8 +475,8 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 12,
+    paddingTop: 12,
+    // paddingBottom: 12,
   },
   frameRow: {
     flexDirection: 'row',
@@ -519,7 +519,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 0,
     zIndex: 10,
-    marginTop: 12,
+    position: 'relative',
+    top: -32,
+    // marginTop: 12,
   },
   goalSection: {
     paddingHorizontal: 20,

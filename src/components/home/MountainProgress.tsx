@@ -8,17 +8,18 @@ const DEFAULT_CONTAINER_WIDTH = Dimensions.get('window').width;
 const SVG_W = 310;
 const SVG_H = 400;
 /** 산 영역 세로 높이(이미지·SVG·캐릭터 Y 스케일 공통). 너비는 100% 유지, 산 PNG만 세로로 늘리려면 `mountainImage.resizeMode: 'stretch'` 유지 */
-const CONTAINER_HEIGHT = 420;
+const CONTAINER_HEIGHT = 540;
 
 const TRAIL_POINTS = [
-  { x: 200, y: 280 },
-  { x: 220, y: 290 },
-  { x: 120, y: 240 },
-  { x: 90, y: 190 },
-  { x: 190, y: 150 },
-  { x: 180, y: 120 },
-  { x: 135, y: 90 },
-  { x: 175, y: 55 },
+  { x: 128, y: 350 },
+  { x: 200, y: 320 },
+  { x: 250, y: 280 },
+  { x: 120, y: 250 },
+  { x: 50, y: 220 },
+  { x: 180, y: 165 },
+  { x: 170, y: 135 },
+  { x: 125, y: 100 },
+  { x: 165, y: 65 },
 ] as const;
 
 const TRAIL_INPUT_RANGE = TRAIL_POINTS.map((_, i) => i / (TRAIL_POINTS.length - 1));
@@ -110,7 +111,7 @@ function MountainScene() {
 
   return (
     <View style={styles.mountainScene}>
-      <Image source={require('../../../assets/mountain.png')} style={styles.mountainImage} />
+      <Image source={require('../../../assets/kingdom.png')} style={styles.mountainImage} />
       <Svg width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="none">
         {/* 빛나는 흰색 경로 라인 */}
         <Path
@@ -326,7 +327,7 @@ const styles = StyleSheet.create({
   mountainImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'stretch',
+    resizeMode: 'contain', // 'stretch',
     position: 'absolute',
   },
   characterWrapper: {
