@@ -10,12 +10,10 @@ import {
   useWindowDimensions,
   ScrollView,
   TouchableOpacity,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
-import type { MemberProgress, ReactionWithUser } from '../../types/domain';
+import type { CheckinWithGoal, MemberProgress, ReactionWithUser } from '../../types/domain';
 import { colors } from '../../design/tokens';
 import CyberFrame from '../ui/CyberFrame';
 import Pill from '../ui/Pill';
@@ -117,9 +115,6 @@ function MemberCard({ member, isMe, animVal }: MemberCardProps) {
     () => (member.todayCheckins ?? []).filter((checkin) => !!checkin.photo_url),
     [member.todayCheckins],
   );
-  const currentPhoto = photoCheckins[0] ?? null;
-
-  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [photoSectionWidth, setPhotoSectionWidth] = useState(Math.max(screenWidth - 96, 220));
   const photoScrollRef = useRef<ScrollView>(null);
 
@@ -131,36 +126,31 @@ function MemberCard({ member, isMe, animVal }: MemberCardProps) {
 
   const snapInterval = cardWidth > 0 ? cardWidth + PHOTO_CARD_GAP : 0;
 
+  /** 리액션 등으로 todayCheckins 참조만 바뀌면 스크롤 유지; 사진 슬라이드 구성(id)이 바뀔 때만 맨 앞으로 */
+  const photoCarouselResetKey = useMemo(
+    () =>
+      (member.todayCheckins ?? [])
+        .filter((c) => !!c.photo_url)
+        .map((c) => c.id)
+        .join('|'),
+    [member.todayCheckins],
+  );
+
   useEffect(() => {
-    setActivePhotoIndex(0);
     photoScrollRef.current?.scrollTo({ x: 0, animated: false });
-  }, [photoCheckins]);
+  }, [photoCarouselResetKey]);
 
-  const visiblePhoto = photoCheckins[activePhotoIndex] ?? currentPhoto;
-
-  const isReacted = useMemo(() => {
-    if (!visiblePhoto || !user) return false;
-    return visiblePhoto.reactions?.some((r) => r.user_id === user.id) ?? false;
-  }, [visiblePhoto, user]);
-
-  const displayReactions: ReactionWithUser[] = visiblePhoto?.reactions ?? [];
-
-  const handlePhotoScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!snapInterval || photoCheckins.length <= 1) return;
-    const x = event.nativeEvent.contentOffset.x;
-    const nextIndex = Math.round(x / snapInterval);
-    setActivePhotoIndex(Math.max(0, Math.min(photoCheckins.length - 1, nextIndex)));
-  };
-
-  const handleReactionPress = useCallback(async () => {
-    if (!visiblePhoto || !user) return;
-
-    await toggleReaction(visiblePhoto.id, {
-      id: user.id,
-      nickname: user.nickname,
-      profile_image_url: user.profile_image_url,
-    });
-  }, [visiblePhoto, user, toggleReaction]);
+  const handleReactionPress = useCallback(
+    async (checkin: CheckinWithGoal) => {
+      if (!user) return;
+      await toggleReaction(checkin.id, {
+        id: user.id,
+        nickname: user.nickname,
+        profile_image_url: user.profile_image_url,
+      });
+    },
+    [user, toggleReaction],
+  );
 
   return (
     <Animated.View
@@ -231,53 +221,65 @@ function MemberCard({ member, isMe, animVal }: MemberCardProps) {
               snapToInterval={photoCheckins.length > 1 ? snapInterval : undefined}
               snapToAlignment="start"
               disableIntervalMomentum
-              onMomentumScrollEnd={handlePhotoScrollEnd}
               contentContainerStyle={
                 photoCheckins.length > 1 ? styles.photoCarouselContent : undefined
               }
             >
-              {photoCheckins.map((checkin) => (
-                <View
-                  key={checkin.id}
-                  style={[
-                    styles.photoSlideCard,
-                    {
-                      width: cardWidth > 0 ? cardWidth : '100%',
-                      marginRight: photoCheckins.length > 1 ? PHOTO_CARD_GAP : 0,
-                    },
-                  ]}
-                >
-                  <View style={styles.photoSlideInner}>
-                    <View style={styles.photoTag}>
-                      <Text style={styles.photoTagText}>{checkin.goal?.name ?? '오늘의 인증'}</Text>
+              {photoCheckins.map((checkin, idx) => {
+                const reactions = checkin.reactions ?? [];
+                const checkinReacted = !!user && reactions.some((r) => r.user_id === user.id);
+                return (
+                  <View
+                    key={checkin.id}
+                    style={[
+                      styles.photoSlideCard,
+                      {
+                        width: cardWidth > 0 ? cardWidth : '100%',
+                        marginRight: photoCheckins.length > 1 ? PHOTO_CARD_GAP : 0,
+                      },
+                    ]}
+                  >
+                    <View style={styles.photoSlideInner}>
+                      <View style={styles.photoTag}>
+                        <Text style={styles.photoTagText}>
+                          {checkin.goal?.name ?? '오늘의 인증'}
+                        </Text>
+                      </View>
+                      <Image source={{ uri: checkin.photo_url! }} style={styles.photoImage} />
                     </View>
-                    <Image source={{ uri: checkin.photo_url! }} style={styles.photoImage} />
+
+                    <View style={styles.photoFooter}>
+                      <View style={styles.photoActions}>
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          style={[
+                            styles.actionPill,
+                            styles.actionPillIconOnly,
+                            checkinReacted && styles.actionPillActive,
+                          ]}
+                          onPress={() => handleReactionPress(checkin)}
+                        >
+                          <Ionicons
+                            name={checkinReacted ? 'heart' : 'heart-outline'}
+                            size={24}
+                            color={checkinReacted ? colors.primary : '#9299A6'}
+                          />
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={styles.photoFooterRight}>
+                        <FeedReactionAvatars reactions={reactions} />
+                        {photoCheckins.length > 1 ? (
+                          <Text style={styles.photoIndexText}>
+                            {idx + 1}/{photoCheckins.length}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </ScrollView>
-
-            <View style={styles.photoFooter}>
-              <View style={styles.photoActions}>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={[
-                    styles.actionPill,
-                    styles.actionPillIconOnly,
-                    isReacted && styles.actionPillActive,
-                  ]}
-                  onPress={handleReactionPress}
-                >
-                  <Ionicons
-                    name={isReacted ? 'heart' : 'heart-outline'}
-                    size={22}
-                    color={isReacted ? colors.primary : '#9299A6'}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <FeedReactionAvatars reactions={displayReactions} />
-            </View>
           </View>
         ) : null}
       </CyberFrame>
@@ -723,10 +725,10 @@ const styles = StyleSheet.create({
   photoTag: {
     position: 'absolute',
     top: 12,
-    left: 12,
+    right: 12,
     zIndex: 2,
     backgroundColor: '#fff',
-    borderRadius: 999,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
@@ -745,7 +747,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(26,26,26,0.06)',
+  },
+  photoFooterRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,
   },
   photoActions: {
     flexDirection: 'row',
@@ -765,8 +776,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   reactionSticker: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
     borderRadius: 11,
     borderWidth: 1.5,
     borderColor: '#FFFAF7',
