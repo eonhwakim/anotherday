@@ -532,9 +532,9 @@ const styles = StyleSheet.create({
   floatingButtonWrapper: {
     position: 'absolute',
     right: 16,
-    bottom: 24,
-    width: 80,
-    height: 80,
+    bottom: 36,
+    width: 94,
+    height: 94,
     alignItems: 'center',
     justifyContent: 'center',
   },

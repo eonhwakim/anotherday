@@ -7,7 +7,8 @@ import { colors } from '../../design/tokens';
 const DEFAULT_CONTAINER_WIDTH = Dimensions.get('window').width;
 const SVG_W = 310;
 const SVG_H = 400;
-const CONTAINER_HEIGHT = 380;
+/** 산 영역 세로 높이(이미지·SVG·캐릭터 Y 스케일 공통). 너비는 100% 유지, 산 PNG만 세로로 늘리려면 `mountainImage.resizeMode: 'stretch'` 유지 */
+const CONTAINER_HEIGHT = 420;
 
 const TRAIL_POINTS = [
   { x: 200, y: 280 },
@@ -17,7 +18,7 @@ const TRAIL_POINTS = [
   { x: 190, y: 150 },
   { x: 180, y: 120 },
   { x: 135, y: 90 },
-  { x: 175, y: 65 },
+  { x: 175, y: 55 },
 ] as const;
 
 const TRAIL_INPUT_RANGE = TRAIL_POINTS.map((_, i) => i / (TRAIL_POINTS.length - 1));
@@ -325,7 +326,7 @@ const styles = StyleSheet.create({
   mountainImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'contain',
+    resizeMode: 'stretch',
     position: 'absolute',
   },
   characterWrapper: {
@@ -336,7 +337,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   bubble: {
-    backgroundColor: 'rgba(5,5,16,0.75)',
+    backgroundColor: 'rgba(5, 5, 16, 0.62)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   bubbleText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.text,
     flexShrink: 0,
@@ -368,8 +369,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   avatar: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
@@ -377,13 +378,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   avatarImage: {
-    width: 32,
-    height: 32,
+    width: 38,
+    height: 38,
     borderRadius: 16,
   },
   avatarText: {
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 16,
   },
   shadow: {
     width: 28,
@@ -395,13 +396,13 @@ const styles = StyleSheet.create({
   nicknameBadge: {
     backgroundColor: 'rgba(5,5,16,0.70)',
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
     borderRadius: 4,
     marginTop: 1,
-    maxWidth: 60,
+    maxWidth: 70,
   },
   nicknameText: {
-    fontSize: 8,
+    fontSize: 12,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.80)',
     textAlign: 'center',
