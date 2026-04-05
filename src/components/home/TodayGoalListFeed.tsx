@@ -17,7 +17,13 @@ import type { CheckinWithGoal, MemberProgress, ReactionWithUser } from '../../ty
 import { colors } from '../../design/tokens';
 import CyberFrame from '../ui/CyberFrame';
 import Pill from '../ui/Pill';
-import DynamicBadge from './TodayGoalBadge';
+import DynamicBadge, {
+  HOME_BADGE_POP_TRANSLATE_X_OFFSET_PX,
+  HOME_BADGE_POP_TRANSLATE_Y_END_ADJUST_PX,
+  HOME_BADGE_POP_TRANSLATE_Y_END_RATIO,
+  HOME_BADGE_POP_TRANSLATE_Y_PEAK_ADJUST_PX,
+  HOME_BADGE_POP_TRANSLATE_Y_PEAK_RATIO,
+} from './TodayGoalBadge';
 import { useStatsStore } from '../../stores/statsStore';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -32,7 +38,6 @@ const CAROUSEL_FLICK_VX = 0.22;
 const CAROUSEL_DRAG_COMMIT_FRAC = 0.22;
 
 /** 좋아요 카운터 필(디자인 참고: 밝은 회색 캡슐 + 주황 하트·숫자) */
-const LIKE_PILL_BG = '#F2F2F2';
 const LIKE_PILL_ACCENT = '#FF7A00';
 const LIKE_PILL_MUTED = '#9AA3AE';
 
@@ -40,11 +45,22 @@ function PhotoPeekPlaceholder() {
   return <View style={[styles.photoSlideDashedCard, styles.photoPlaceholderCard]}></View>;
 }
 
-function FeedReactionAvatars({ reactions }: { reactions: ReactionWithUser[] }) {
+export function FeedReactionAvatars({
+  reactions,
+  size = 'md',
+}: {
+  reactions: ReactionWithUser[];
+  size?: 'md' | 'lg';
+}) {
   if (reactions.length === 0) return null;
 
   const shown = reactions.slice(0, FEED_REACTION_AVATAR_MAX);
   const extra = reactions.length - shown.length;
+  const avatarSize = size === 'lg' ? 32 : 24;
+  const overlap = size === 'lg' ? -10 : -8;
+  const borderRadius = avatarSize / 2;
+  const iconSize = size === 'lg' ? 18 : 14;
+  const moreSize = size === 'lg' ? 34 : 28;
 
   return (
     <View style={styles.feedReactionRow}>
@@ -54,7 +70,13 @@ function FeedReactionAvatars({ reactions }: { reactions: ReactionWithUser[] }) {
             key={r.id}
             style={[
               styles.reactionSticker,
-              { zIndex: shown.length - idx, marginLeft: idx > 0 ? -8 : 0 },
+              {
+                zIndex: shown.length - idx,
+                marginLeft: idx > 0 ? overlap : 0,
+                width: avatarSize,
+                height: avatarSize,
+                borderRadius,
+              },
             ]}
           >
             {r.user.profile_image_url ? (
@@ -65,14 +87,23 @@ function FeedReactionAvatars({ reactions }: { reactions: ReactionWithUser[] }) {
               />
             ) : (
               <View style={[styles.reactionAvatar, styles.reactionAvatarFallback]}>
-                <Ionicons name="person" size={14} color="#fff" />
+                <Ionicons name="person" size={iconSize} color="#fff" />
               </View>
             )}
           </View>
         ))}
       </View>
       {extra > 0 ? (
-        <View style={styles.reactionMore}>
+        <View
+          style={[
+            styles.reactionMore,
+            {
+              minWidth: moreSize,
+              height: moreSize,
+              borderRadius: moreSize / 2,
+            },
+          ]}
+        >
           <Text style={styles.reactionMoreText}>+{extra}</Text>
         </View>
       ) : null}
@@ -699,13 +730,19 @@ export default function TodayGoalListFeed({
     startMemberCardStagger();
   }, [isFocused, members, members.length, memberAnims.length, startMemberCardStagger]);
 
-  const { width: screenWidth } = useWindowDimensions();
-  const centerTranslateX = -(screenWidth / 2);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const centerTranslateX = -(screenWidth / 2) + HOME_BADGE_POP_TRANSLATE_X_OFFSET_PX;
+  const peakTranslateY =
+    -Math.round(screenHeight * HOME_BADGE_POP_TRANSLATE_Y_PEAK_RATIO) +
+    HOME_BADGE_POP_TRANSLATE_Y_PEAK_ADJUST_PX;
+  const endTranslateY =
+    -Math.round(screenHeight * HOME_BADGE_POP_TRANSLATE_Y_END_RATIO) +
+    HOME_BADGE_POP_TRANSLATE_Y_END_ADJUST_PX;
 
   const scale = scaleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.9] });
   const translateY = translateYAnim.interpolate({
     inputRange: [0, 1, 2],
-    outputRange: [0, -250, -420],
+    outputRange: [0, peakTranslateY, endTranslateY],
   });
   const translateX = translateYAnim.interpolate({
     inputRange: [0, 1, 2],
@@ -873,8 +910,8 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   memberAvatarWrap: {
-    width: 44,
-    height: 44,
+    width: 38,
+    height: 38,
     borderRadius: 50,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderWidth: 2,
@@ -883,7 +920,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     marginRight: 12,
-    marginLeft: 4,
     shadowColor: '#4A558F',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -908,12 +944,12 @@ const styles = StyleSheet.create({
   },
   memberName: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     flex: 1,
   },
   memberCount: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: 'rgba(26,26,26,0.35)',
   },
@@ -928,7 +964,6 @@ const styles = StyleSheet.create({
     // borderColor: 'rgba(255, 255, 255, 0.8)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    marginLeft: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.54)',
   },
   goalChipDone: {
@@ -1045,7 +1080,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: LIKE_PILL_BG,
+    backgroundColor: 'rgba(182, 180, 180, 0.2)',
     borderRadius: 999,
     paddingVertical: 5,
     paddingHorizontal: 12,

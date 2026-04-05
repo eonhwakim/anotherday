@@ -3,6 +3,17 @@ import { View, Text, StyleSheet, Image, Platform } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Circle as SvgCircle, Rect } from 'react-native-svg';
 import type { MemberProgress } from '../../types/domain';
 
+/**
+ * 홈 피드 배지 팝 애니메이션 — 화면 정중앙보다 살짝 위에 오도록 `TodayGoalListFeed`에서 사용.
+ * (세로: 화면 높이 × ratio 만큼 위로 이동 후 adjustPx로 미세 보정)
+ */
+export const HOME_BADGE_POP_TRANSLATE_Y_PEAK_RATIO = 0.5;
+export const HOME_BADGE_POP_TRANSLATE_Y_PEAK_ADJUST_PX = 108;
+export const HOME_BADGE_POP_TRANSLATE_Y_END_RATIO = 0.54;
+export const HOME_BADGE_POP_TRANSLATE_Y_END_ADJUST_PX = 72;
+/** 헤더 오른쪽 기준 → 화면 중앙 쪽으로 당기는 보정 */
+export const HOME_BADGE_POP_TRANSLATE_X_OFFSET_PX = 50;
+
 const THUMB_UP =
   'M50 8C50 2 64 2 64 10L66 42 92 42C98 42 102 48 102 54C102 58 100 61 97 62C100 64 102 68 102 72C102 76 100 79 97 80C100 82 102 86 102 90C102 94 99 98 94 98L48 98C42 98 36 94 34 88L26 70C24 66 20 64 16 64L12 64C8 64 6 60 6 56L6 46C6 42 8 40 12 40L34 40C40 40 44 34 46 26Z';
 

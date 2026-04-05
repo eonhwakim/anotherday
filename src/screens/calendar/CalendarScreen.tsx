@@ -5,7 +5,6 @@ import { Calendar, DateData } from 'react-native-calendars';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { AppTabParamList } from '../../types/navigation';
-import CyberFrame from '../../components/ui/CyberFrame';
 import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
@@ -19,8 +18,8 @@ import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import CalendarDateSummaryCard from '../../components/calendar/CalendarDateSummaryCard';
 import CalendarMemberCheckinsSection from '../../components/calendar/CalendarMemberCheckinsSection';
 import CalendarPhotoModal from '../../components/calendar/CalendarPhotoModal';
-import CalendarFloatingRecordsButton from '../../components/calendar/CalendarFloatingRecordsButton';
-import DailyRecordsModal from '../../components/mypage/DailyRecordsModal';
+// import CalendarFloatingRecordsButton from '../../components/calendar/CalendarFloatingRecordsButton';
+// import DailyRecordsModal from '../../components/mypage/DailyRecordsModal';
 
 export default function CalendarScreen() {
   const user = useAuthStore((s) => s.user);
@@ -32,7 +31,6 @@ export default function CalendarScreen() {
     fetchCalendarMarkings,
     fetchMemberDateCheckins,
     fetchMonthlyCheckins,
-    toggleReaction,
   } = useStatsStore();
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
@@ -41,26 +39,24 @@ export default function CalendarScreen() {
 
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
-  const [dailyRecordsModalVisible, setDailyRecordsModalVisible] = useState(false);
+  // const [dailyRecordsModalVisible, setDailyRecordsModalVisible] = useState(false);
   const [photoModal, setPhotoModal] = useState<{ url: string; checkinId: string } | null>(null);
-  const [lastTap, setLastTap] = useState<number | null>(null);
 
   const selectedDateRef = useRef(selectedDate);
   selectedDateRef.current = selectedDate;
 
-  const currentCheckin = React.useMemo(() => {
-    if (!photoModal) return null;
-    for (const member of memberDateCheckins) {
-      const found = member.checkins.find((c) => c.id === photoModal.checkinId);
-      if (found) return found;
+  const photoModalContext = React.useMemo(() => {
+    if (!photoModal)
+      return {
+        checkin: null as (typeof memberDateCheckins)[0]['checkins'][0] | null,
+        member: null as (typeof memberDateCheckins)[0] | null,
+      };
+    for (const m of memberDateCheckins) {
+      const c = m.checkins.find((x) => x.id === photoModal.checkinId);
+      if (c) return { checkin: c, member: m };
     }
-    return null;
+    return { checkin: null, member: null };
   }, [photoModal, memberDateCheckins]);
-
-  const isReacted = React.useMemo(() => {
-    if (!currentCheckin || !user) return false;
-    return currentCheckin.reactions?.some((r) => r.user_id === user.id) ?? false;
-  }, [currentCheckin, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -105,35 +101,29 @@ export default function CalendarScreen() {
     [user, fetchCalendarMarkings, fetchMonthlyCheckins],
   );
 
-  const handleReactionPress = useCallback(async () => {
-    if (!photoModal || !user) return;
-
-    toggleReaction(photoModal.checkinId, {
-      id: user.id,
-      nickname: user.nickname,
-      profile_image_url: user.profile_image_url,
-    });
-  }, [photoModal, user, toggleReaction]);
-
-  const handlePhotoPress = useCallback(async () => {
-    if (!photoModal || !user) return;
-
-    const now = Date.now();
-    if (lastTap && now - lastTap < 300) {
-      await handleReactionPress();
-      setLastTap(null);
-    } else {
-      setLastTap(now);
-    }
-  }, [photoModal, user, lastTap, handleReactionPress]);
-
   const { dataStart, dataEnd } = React.useMemo(
     () => getCalendarWeekRanges(currentMonth),
     [currentMonth],
   );
 
   const renderDay = useCallback(
-    ({ date, state, marking }: { date: DateData; state?: string; marking?: Record<string, unknown> }) => {
+    ({
+      date,
+      state,
+      marking,
+    }: {
+      date?: DateData;
+      state?: string;
+      marking?: {
+        selected?: boolean;
+        selectedTextColor?: string;
+        marked?: boolean;
+        dotColor?: string;
+        textColor?: string;
+      };
+    }) => {
+      if (!date) return null;
+
       const diffDays = dayjs(date.dateString).diff(dayjs(dataStart), 'day');
       const weekNum = Math.floor(diffDays / 7) + 1;
 
@@ -184,7 +174,18 @@ export default function CalendarScreen() {
   );
 
   const calendarMarkedDates = React.useMemo(() => {
-    const marks: Record<string, { marked?: boolean; dotColor?: string; selected?: boolean; selectedColor?: string; selectedTextColor?: string; textColor?: string }> = {};
+    const marks: Record<
+      string,
+      {
+        marked?: boolean;
+        dotColor?: string;
+        selected?: boolean;
+        selectedColor?: string;
+        selectedTextColor?: string;
+        textColor?: string;
+        disabled?: boolean;
+      }
+    > = {};
 
     Object.entries(calendarMarkings).forEach(([date, m]) => {
       marks[date] = {
@@ -240,6 +241,10 @@ export default function CalendarScreen() {
   const selectedMarking = calendarMarkings[selectedDate];
   const formattedDate = dayjs(selectedDate).format('M월 D일 (ddd)');
   const isFuture = dayjs(selectedDate).isAfter(dayjs(), 'day');
+  const myMember = React.useMemo(
+    () => memberDateCheckins.find((member) => member.userId === user?.id) ?? null,
+    [memberDateCheckins, user?.id],
+  );
 
   const isExcludedFromStats = React.useMemo(
     () => selectedDate < dataStart || selectedDate > dataEnd,
@@ -271,41 +276,49 @@ export default function CalendarScreen() {
     <View style={styles.container}>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView ref={scrollRef} style={styles.scroll}>
-          <CyberFrame style={styles.calendarContainer} contentStyle={styles.calendarContent}>
-            <Calendar
-              firstDay={1}
-              dayComponent={renderDay}
-              theme={{
-                calendarBackground: 'transparent',
-                todayTextColor: colors.primary,
-                selectedDayBackgroundColor: colors.primaryStrong,
-                selectedDayTextColor: colors.primary,
-                arrowColor: colors.primary,
-                monthTextColor: colors.text,
-                dayTextColor: 'rgba(26, 26, 26, 0.80)',
-                textDisabledColor: 'rgba(26, 26, 26, 0.20)',
-                textDayFontWeight: '500',
-                textMonthFontWeight: '700',
-                textDayHeaderFontWeight: '500',
-                textSectionTitleColor: 'rgba(26, 26, 26, 0.40)',
-              }}
-              style={styles.calendar}
-              markedDates={calendarMarkedDates}
-              onDayPress={handleDayPress}
-              onMonthChange={handleMonthChange}
-            />
-          </CyberFrame>
+          <View style={styles.calendarShadowWrap}>
+            <View style={styles.calendarContainer}>
+              <Calendar
+                firstDay={1}
+                dayComponent={renderDay}
+                theme={{
+                  calendarBackground: 'transparent',
+                  todayTextColor: colors.primary,
+                  selectedDayBackgroundColor: colors.primaryStrong,
+                  selectedDayTextColor: colors.primary,
+                  arrowColor: colors.primary,
+                  monthTextColor: colors.text,
+                  dayTextColor: 'rgba(26, 26, 26, 0.80)',
+                  textDisabledColor: 'rgba(26, 26, 26, 0.20)',
+                  textDayFontWeight: '500',
+                  textMonthFontWeight: '700',
+                  textDayHeaderFontWeight: '500',
+                  textSectionTitleColor: 'rgba(26, 26, 26, 0.40)',
+                }}
+                style={styles.calendar}
+                markedDates={calendarMarkedDates}
+                onDayPress={handleDayPress}
+                onMonthChange={handleMonthChange}
+              />
+            </View>
+          </View>
 
           <CalendarDateSummaryCard
             formattedDate={formattedDate}
             selectedMarking={selectedMarking}
             statsGuideMessage={statsGuideMessage}
             isFuture={isFuture}
+            myMember={myMember}
+            allMembers={memberDateCheckins}
+            selectedDate={selectedDate}
+            onOpenPhoto={setPhotoModal}
           />
 
           <CalendarMemberCheckinsSection
             members={memberDateCheckins}
             teamName={currentTeam?.name}
+            currentUserId={user?.id}
+            selectedDate={selectedDate}
             isFuture={isFuture}
             onOpenPhoto={setPhotoModal}
           />
@@ -313,22 +326,20 @@ export default function CalendarScreen() {
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        <CalendarFloatingRecordsButton onPress={() => setDailyRecordsModalVisible(true)} />
+        {/* <CalendarFloatingRecordsButton onPress={() => setDailyRecordsModalVisible(true)} /> */}
 
         <CalendarPhotoModal
           photoModal={photoModal}
-          isReacted={isReacted}
+          reactions={photoModalContext.checkin?.reactions ?? []}
           onClose={() => setPhotoModal(null)}
-          onPhotoPress={handlePhotoPress}
-          onReactionPress={handleReactionPress}
         />
 
-        <DailyRecordsModal
+        {/* <DailyRecordsModal
           visible={dailyRecordsModalVisible}
           date={selectedDate}
           memberRecords={memberDateCheckins}
           onClose={() => setDailyRecordsModalVisible(false)}
-        />
+        /> */}
       </SafeAreaView>
     </View>
   );
@@ -346,22 +357,32 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-  calendarContainer: {
+  calendarShadowWrap: {
     marginTop: 12,
-    marginHorizontal: 12,
-    marginBottom: 8,
+    marginHorizontal: 14,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
+    elevation: 8,
   },
-  calendarContent: {
-    paddingHorizontal: 0,
-    paddingVertical: 0,
+  calendarContainer: {
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.96)',
   },
   calendar: {
     backgroundColor: 'transparent',
+    borderRadius: 22,
   },
   dayCellWrapper: {
-    width: 51,
-    height: 42,
-    marginHorizontal: -4,
+    width: 62,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
