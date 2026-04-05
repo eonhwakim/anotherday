@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Dimensions, Image } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import type { MemberProgress } from '../../types/domain';
 import { colors } from '../../design/tokens';
+
+/** 등산로 네온 그라데이션 ID (Svg 내 유일) */
+const GRAD_MAIN = 'mountainTrailNeonMain';
+const GRAD_GLOW = 'mountainTrailNeonGlow';
 
 const DEFAULT_CONTAINER_WIDTH = Dimensions.get('window').width;
 const SVG_W = 310;
@@ -113,31 +117,103 @@ function MountainScene() {
     <View style={styles.mountainScene}>
       <Image source={require('../../../assets/kingdom.png')} style={styles.mountainImage} />
       <Svg width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="none">
-        {/* 빛나는 흰색 경로 라인 */}
+        <Defs>
+          {/* 등산로 대각선(시작점→정상) 방향, viewBox 좌표 */}
+          <LinearGradient
+            id={GRAD_MAIN}
+            x1={24}
+            y1={SVG_H - 20}
+            x2={SVG_W - 24}
+            y2={32}
+            gradientUnits="userSpaceOnUse"
+          >
+            {/* 양끝: 시안(기존 중간) / 중앙: 핑크·코랄·퍼플·밝은 톤(기존 위·아래) */}
+            <Stop offset="10%" stopColor="#05D9E8" stopOpacity={0.7} />
+            <Stop offset="33%" stopColor="#FFF0F8" stopOpacity={0.7} />
+            <Stop offset="40%" stopColor="#ef8e38" stopOpacity={0.7} />
+            <Stop offset="74%" stopColor="#ffafbd" stopOpacity={0.8} />
+            <Stop offset="100%" stopColor="#05D9E8" stopOpacity={0.7} />
+          </LinearGradient>
+          <LinearGradient
+            id={GRAD_GLOW}
+            x1={0}
+            y1={SVG_H}
+            x2={SVG_W}
+            y2={0}
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop offset="0%" stopColor="#FF2A6D" stopOpacity={0.5} />
+            <Stop offset="42%" stopColor="#05D9E8" stopOpacity={0.45} />
+            <Stop offset="100%" stopColor="#FF2A6D" stopOpacity={0.4} />
+          </LinearGradient>
+        </Defs>
+
+        {/* 바깥 블룸 — 그라데이션 글로우 */}
         <Path
           d={trailPath}
-          stroke="#FFFFFF"
-          strokeWidth={16}
+          stroke={`url(#${GRAD_GLOW})`}
+          strokeWidth={22}
           strokeLinecap="round"
+          strokeLinejoin="round"
           fill="none"
-          opacity={0.3}
+          opacity={0.55}
         />
         <Path
           d={trailPath}
-          stroke="#FFFFFF"
+          stroke={`url(#${GRAD_MAIN})`}
+          strokeWidth={14}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          opacity={0.28}
+        />
+        {/* 중간 튜브 */}
+        <Path
+          d={trailPath}
+          stroke={`url(#${GRAD_MAIN})`}
           strokeWidth={8}
           strokeLinecap="round"
+          strokeLinejoin="round"
           fill="none"
-          opacity={0.6}
+          opacity={0.62}
+        />
+        <Path
+          d={trailPath}
+          stroke={`url(#${GRAD_MAIN})`}
+          strokeWidth={4.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          opacity={0.88}
+        />
+        {/* 밝은 코어 + 하이라이트 */}
+        <Path
+          d={trailPath}
+          stroke={`url(#${GRAD_MAIN})`}
+          strokeWidth={2.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          opacity={1}
         />
         <Path
           d={trailPath}
           stroke="#FFFFFF"
-          strokeWidth={3}
-          strokeDasharray="6 6"
+          strokeWidth={1}
           strokeLinecap="round"
+          strokeLinejoin="round"
           fill="none"
-          opacity={1}
+          opacity={0.95}
+        />
+        <Path
+          d={trailPath}
+          stroke={`url(#${GRAD_MAIN})`}
+          strokeWidth={1.1}
+          strokeDasharray="4 8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          opacity={0.85}
         />
       </Svg>
     </View>

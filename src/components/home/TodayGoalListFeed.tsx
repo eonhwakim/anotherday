@@ -555,8 +555,33 @@ export default function TodayGoalListFeed({
   const memberAnims = useRef(members.map(() => new Animated.Value(0))).current;
 
   const hasBadgeAnimatedRef = useRef(false);
+  /** 마지막으로 멤버 카드 스태거를 돌린 `members.length` (빈 배열로 먼저 돌면 0에 고정되어 카드가 안 보이는 버그 방지) */
+  const staggeredMemberCountRef = useRef(-1);
   const sequenceAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const staggerAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const startMemberCardStagger = useCallback(() => {
+    if (memberAnims.length === 0) {
+      staggeredMemberCountRef.current = 0;
+      return;
+    }
+    staggerAnimRef.current?.stop();
+    memberAnims.forEach((a) => a.setValue(0));
+    const stag = Animated.stagger(
+      150,
+      memberAnims.map((anim) =>
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 350,
+          easing: Easing.out(Easing.back(1.1)),
+          useNativeDriver: true,
+        }),
+      ),
+    );
+    staggerAnimRef.current = stag;
+    stag.start();
+    staggeredMemberCountRef.current = memberAnims.length;
+  }, [memberAnims]);
 
   useEffect(() => {
     if (members.length !== memberAnims.length) {
@@ -569,6 +594,7 @@ export default function TodayGoalListFeed({
   useEffect(() => {
     if (!isFocused) {
       hasBadgeAnimatedRef.current = false;
+      staggeredMemberCountRef.current = -1;
       sequenceAnimRef.current?.stop();
       staggerAnimRef.current?.stop();
       return;
@@ -640,19 +666,7 @@ export default function TodayGoalListFeed({
         if (finished && onAnimationFinish) onAnimationFinish();
       });
 
-      const stag = Animated.stagger(
-        150,
-        memberAnims.map((anim) =>
-          Animated.timing(anim, {
-            toValue: 1,
-            duration: 350,
-            easing: Easing.out(Easing.back(1.1)),
-            useNativeDriver: true,
-          }),
-        ),
-      );
-      staggerAnimRef.current = stag;
-      stag.start();
+      startMemberCardStagger();
     }, 72);
 
     return () => clearTimeout(timeoutId);
@@ -666,7 +680,24 @@ export default function TodayGoalListFeed({
     rotateAnim,
     badgeOpacityAnim,
     onAnimationFinish,
+    startMemberCardStagger,
   ]);
+
+  /** `memberProgress`가 늦게 도착해 인트로가 빈 멤버로 끝난 뒤에도 카드 스태거가 한 번 돌도록 보정 */
+  useEffect(() => {
+    if (!isFocused || members.length === 0) return;
+    if (!hasBadgeAnimatedRef.current) return;
+    if (memberAnims.length !== members.length) return;
+
+    if (staggeredMemberCountRef.current === members.length) return;
+
+    if (staggeredMemberCountRef.current > members.length) {
+      staggeredMemberCountRef.current = members.length;
+      return;
+    }
+
+    startMemberCardStagger();
+  }, [isFocused, members, members.length, memberAnims.length, startMemberCardStagger]);
 
   const { width: screenWidth } = useWindowDimensions();
   const centerTranslateX = -(screenWidth / 2);
@@ -730,7 +761,6 @@ export default function TodayGoalListFeed({
             <Text style={styles.emptyText}>목표를 추가해보세요.</Text>
           </View>
         ) : (
-          // || (currentUserId && progress < 1)
           <View>
             {sortedMembers.map((member, idx) => (
               <MemberCard
@@ -767,7 +797,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 18,
-    height: 30,
+    height: 20,
     width: '100%',
   },
   title: {
@@ -835,7 +865,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
   },
   memberIdentity: {
     flexDirection: 'row',
@@ -853,7 +882,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginRight: 10,
+    marginRight: 12,
+    marginLeft: 4,
     shadowColor: '#4A558F',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -878,12 +908,12 @@ const styles = StyleSheet.create({
   },
   memberName: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     flex: 1,
   },
   memberCount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: 'rgba(26,26,26,0.35)',
   },
@@ -891,12 +921,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+    marginTop: 10,
   },
   goalChip: {
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-    paddingHorizontal: 8,
+    borderWidth: 0,
+    // borderColor: 'rgba(255, 255, 255, 0.8)',
+    paddingHorizontal: 10,
     paddingVertical: 5,
+    marginLeft: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.54)',
   },
   goalChipDone: {
@@ -911,7 +943,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   goalChipText: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     maxWidth: 120,
   },
@@ -1013,7 +1045,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(171, 169, 169, 0.25)',
+    backgroundColor: LIKE_PILL_BG,
     borderRadius: 999,
     paddingVertical: 5,
     paddingHorizontal: 12,
