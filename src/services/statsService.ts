@@ -12,6 +12,7 @@ import type {
   MemberGoalDetail,
   MemberProgress,
   MountainPosition,
+  TeamMemberWithUser,
 } from '../types/domain';
 
 interface ActiveUserGoalRow {
@@ -24,10 +25,57 @@ interface ActiveUserGoalRow {
   is_active?: boolean;
 }
 
+interface JoinedUser {
+  id: string;
+  nickname: string;
+  profile_image_url: string | null;
+}
+
 interface MemberRow {
   user_id: string;
-  user?: any;
-  users?: any;
+  user?: JoinedUser | JoinedUser[];
+  users?: JoinedUser | JoinedUser[];
+}
+
+interface UserGoalOwnerRow {
+  user_id: string;
+  goal_id: string;
+  frequency: 'daily' | 'weekly_count';
+  target_count: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  goal: { owner_id: string } | null;
+}
+
+interface CalendarGoalRow {
+  goal_id: string;
+  frequency: string;
+  target_count: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+}
+
+interface UserGoalJoinedRow extends ActiveUserGoalRow {
+  goal?: { name: string } | null;
+  goals?: { name: string } | null;
+}
+
+interface MemberNicknameRow {
+  user_id: string;
+  users?: { nickname: string; profile_image_url?: string | null } | null;
+}
+
+interface CheckinDateRow {
+  user_id: string;
+  goal_id: string;
+  status: string;
+  date: string;
+}
+
+interface ContentRow {
+  user_id: string;
+  content: string;
 }
 
 interface GoalItem {
@@ -35,6 +83,7 @@ interface GoalItem {
   name: string;
   frequency: string;
   targetCount: number | null;
+  isEnded?: boolean;
 }
 
 export interface MyGoalDetail extends GoalItem {
@@ -60,6 +109,8 @@ export interface WeeklyTeamGoal {
   doneCount: number;
   isAchieved: boolean;
   isDaily: boolean;
+  isEnded?: boolean;
+  endDate?: string | null;
 }
 
 export interface WeeklyTeamMember {
@@ -98,7 +149,7 @@ export interface TeamDetailMemberGoalStatus {
 }
 
 export interface TeamDetailMonthlyData {
-  members: any[];
+  members: TeamMemberWithUser[];
   resolutions: Record<string, string>;
   retrospectives: Record<string, string>;
   memberStats: Record<string, TeamDetailMemberStats>;
@@ -127,7 +178,7 @@ function isGoalActiveOnDate(
   return true;
 }
 
-function normalizeJoinedUser(user: any) {
+function normalizeJoinedUser(user: JoinedUser | JoinedUser[] | undefined | null): JoinedUser | null {
   if (Array.isArray(user)) return user[0] ?? null;
   return user ?? null;
 }
@@ -159,7 +210,7 @@ export async function fetchMemberProgress(
   if (members.length === 0) return [];
 
   const memberIds = members
-    .map((member) => member.user_id || member.user?.id)
+    .map((member) => member.user_id || normalizeJoinedUser(member.user)?.id)
     .filter((id): id is string => !!id);
 
   if (memberIds.length === 0) return [];
@@ -171,7 +222,7 @@ export async function fetchMemberProgress(
     .eq('is_active', true);
 
   const userGoalsByUserId = new Map<string, ActiveUserGoalRow[]>();
-  (userGoalsRaw ?? []).forEach((row: any) => {
+  ((userGoalsRaw ?? []) as unknown as UserGoalOwnerRow[]).forEach((row) => {
     if (row.goal?.owner_id !== row.user_id) return;
     const list = userGoalsByUserId.get(row.user_id) ?? [];
     list.push({
@@ -206,7 +257,7 @@ export async function fetchMemberProgress(
     allTodayGoalIds.length > 0
       ? await supabase.from('goals').select('id, name').in('id', allTodayGoalIds)
       : { data: [] as { id: string; name: string }[] };
-  const goalNameMap = new Map((goalRows ?? []).map((goal: any) => [goal.id, goal.name as string]));
+  const goalNameMap = new Map(((goalRows ?? []) as { id: string; name: string }[]).map((goal) => [goal.id, goal.name]));
 
   const { data: todayCheckins } = await supabase
     .from('checkins')
@@ -217,7 +268,7 @@ export async function fetchMemberProgress(
   const doneByUser = new Map<string, Set<string>>();
   const passByUser = new Map<string, Set<string>>();
 
-  (todayCheckins ?? []).forEach((checkin: any) => {
+  ((todayCheckins ?? []) as { user_id: string; goal_id: string; status: string }[]).forEach((checkin) => {
     const targetMap = checkin.status === 'pass' ? passByUser : doneByUser;
     const setForUser = targetMap.get(checkin.user_id) ?? new Set<string>();
     setForUser.add(checkin.goal_id);
@@ -285,7 +336,7 @@ export async function fetchCalendarMarkings(
     const dateStr = dayjs(startDate).date(day).format('YYYY-MM-DD');
     if (dateStr > today) break;
 
-    const activeGoals = (userGoals ?? []).filter((goal: any) => {
+    const activeGoals = ((userGoals ?? []) as CalendarGoalRow[]).filter((goal) => {
       if (goal.is_active === false && dateStr >= today) return false;
       return isGoalActiveOnDate(goal, dateStr);
     });
@@ -419,17 +470,17 @@ export async function fetchMemberDateCheckins(
 
   const today = dayjs().format('YYYY-MM-DD');
 
-  const goalsByUser = new Map<string, typeof allUserGoals>();
-  (allUserGoals ?? []).forEach((goal: any) => {
+  const goalsByUser = new Map<string, UserGoalJoinedRow[]>();
+  ((allUserGoals ?? []) as unknown as UserGoalJoinedRow[]).forEach((goal) => {
     const list = goalsByUser.get(goal.user_id) ?? [];
     list.push(goal);
     goalsByUser.set(goal.user_id, list);
   });
 
   const checkinsByUser = new Map<string, CheckinWithGoal[]>();
-  (allCheckins ?? []).forEach((checkin: any) => {
+  ((allCheckins ?? []) as CheckinWithGoal[]).forEach((checkin) => {
     const list = checkinsByUser.get(checkin.user_id) ?? [];
-    list.push(checkin as CheckinWithGoal);
+    list.push(checkin);
     checkinsByUser.set(checkin.user_id, list);
   });
 
@@ -440,7 +491,7 @@ export async function fetchMemberDateCheckins(
       if (!uid) return null;
 
       const userGoals = goalsByUser.get(uid) ?? [];
-      const activeGoals = userGoals.filter((goal: any) => {
+      const activeGoals = userGoals.filter((goal) => {
         if (goal.is_active === false && date >= today) return false;
         return isGoalActiveOnDate(goal, date);
       });
@@ -457,7 +508,7 @@ export async function fetchMemberDateCheckins(
         totalGoals: activeGoals.length,
         doneCount,
         passCount,
-        goals: activeGoals.map((goal: any) => ({
+        goals: activeGoals.map((goal) => ({
           goalId: goal.goal_id,
           name: goal.goal?.name ?? '알 수 없는 목표',
           frequency: goal.frequency,
@@ -509,7 +560,8 @@ export async function fetchWeeklyStats(params: {
     .select('user_id, users(nickname, profile_image_url)')
     .eq('team_id', teamId);
 
-  const memberIds = (members ?? []).map((member: any) => member.user_id as string);
+  const typedMembers = (members ?? []) as unknown as MemberNicknameRow[];
+  const memberIds = typedMembers.map((member) => member.user_id);
   if (memberIds.length === 0) {
     return { weeklyTeamData: [], weeklyCheckins: [] };
   }
@@ -526,15 +578,18 @@ export async function fetchWeeklyStats(params: {
     .select('user_id, goal_id, frequency, target_count, start_date, end_date')
     .in('user_id', memberIds);
 
-  const weeklyTeamData = (members ?? [])
-    .map((member: any) => {
-      const uid = member.user_id;
-      const userCheckins = (teamCheckins ?? []).filter(
-        (checkin: any) => checkin.user_id === uid && checkin.status === 'done',
-      );
-      const userGoals = (teamUserGoals ?? []).filter((goal: any) => goal.user_id === uid);
+  const typedCheckins = (teamCheckins ?? []) as CheckinDateRow[];
+  const typedUserGoals = (teamUserGoals ?? []) as ActiveUserGoalRow[];
 
-      const activeGoals = userGoals.filter((goal: any) => {
+  const weeklyTeamData = typedMembers
+    .map((member) => {
+      const uid = member.user_id;
+      const userCheckins = typedCheckins.filter(
+        (checkin) => checkin.user_id === uid && checkin.status === 'done',
+      );
+      const userGoals = typedUserGoals.filter((goal) => goal.user_id === uid);
+
+      const activeGoals = userGoals.filter((goal) => {
         if (goal.start_date && goal.start_date > weekEnd) return false;
         if (goal.end_date && goal.end_date < weekStart) return false;
         return true;
@@ -544,7 +599,7 @@ export async function fetchWeeklyStats(params: {
       let failedGoals = 0;
       const goals: WeeklyTeamGoal[] = [];
 
-      activeGoals.forEach((goal: any) => {
+      activeGoals.forEach((goal) => {
         const isDaily = goal.frequency === 'daily';
         let target = isDaily ? 7 : goal.target_count || 1;
 
@@ -559,7 +614,7 @@ export async function fetchWeeklyStats(params: {
 
         totalGoals += 1;
         const doneCount = userCheckins.filter(
-          (checkin: any) => checkin.goal_id === goal.goal_id,
+          (checkin) => checkin.goal_id === goal.goal_id,
         ).length;
         if (doneCount < target) failedGoals += 1;
 
@@ -636,7 +691,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
       .eq('user_id', userId),
   ]);
 
-  const myGoalsFiltered = (myUserGoalsRaw ?? []).filter((goal: any) => {
+  const myGoalsFiltered = ((myUserGoalsRaw ?? []) as unknown as UserGoalJoinedRow[]).filter((goal) => {
     if (goal.start_date && goal.start_date > dataEnd) return false;
     if (goal.end_date && goal.end_date < dataStart) return false;
     return true;
@@ -656,7 +711,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
 
   const myRate = myTotal > 0 ? Math.round(((myTotal - myFailed) / myTotal) * 100) : null;
 
-  const myGoalDetails: MyGoalDetail[] = myGoalsFiltered.map((goal: any) => {
+  const myGoalDetails: MyGoalDetail[] = myGoalsFiltered.map((goal) => {
     const singleGoal = [
       {
         goal_id: goal.goal_id,
@@ -686,7 +741,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
       name: goal.goals?.name ?? '목표',
       frequency: goal.frequency,
       targetCount: goal.target_count,
-      isEnded: !!goal.end_date && goal.end_date <= today,
+          isEnded: !!goal.end_date && goal.end_date <= today,
       achievedWeeks,
       totalActiveWeeks,
       rate: totalActiveWeeks > 0 ? Math.round((achievedWeeks / totalActiveWeeks) * 100) : null,
@@ -702,7 +757,8 @@ export async function fetchMonthlyStatisticsSummary(params: {
     .select('user_id, users(nickname)')
     .eq('team_id', teamId);
 
-  const memberIds = (members ?? []).map((member: any) => member.user_id as string);
+  const typedStatMembers = (members ?? []) as unknown as MemberNicknameRow[];
+  const memberIds = typedStatMembers.map((member) => member.user_id);
   if (memberIds.length === 0) {
     return { myRate, myGoalDetails, memberDetails: [] };
   }
@@ -737,25 +793,30 @@ export async function fetchMonthlyStatisticsSummary(params: {
       .eq('year_month', yearMonth),
   ]);
 
-  const memberDetails = (members ?? [])
-    .map((member: any) => {
+  const typedTeamCheckins = (teamCheckins ?? []) as CheckinDateRow[];
+  const typedTeamGoals = (teamUserGoalsRaw ?? []) as unknown as UserGoalJoinedRow[];
+  const typedResolutions = (allResolutions ?? []) as ContentRow[];
+  const typedRetrospectives = (allRetrospectives ?? []) as ContentRow[];
+
+  const memberDetails = typedStatMembers
+    .map((member) => {
       const uid = member.user_id;
-      const userCheckins = (teamCheckins ?? [])
-        .filter((checkin: any) => checkin.user_id === uid)
-        .map((checkin: any) => ({
+      const userCheckins = typedTeamCheckins
+        .filter((checkin) => checkin.user_id === uid)
+        .map((checkin) => ({
           goal_id: checkin.goal_id,
           status: checkin.status,
           date: checkin.date,
         }));
 
-      const userGoalsRaw = (teamUserGoalsRaw ?? []).filter((goal: any) => goal.user_id === uid);
+      const userGoalsRaw = typedTeamGoals.filter((goal) => goal.user_id === uid);
       const userGoals = userGoalsRaw
-        .filter((goal: any) => {
+        .filter((goal) => {
           if (goal.start_date && goal.start_date > dataEnd) return false;
           if (goal.end_date && goal.end_date < dataStart) return false;
           return true;
         })
-        .map((goal: any) => ({
+        .map((goal) => ({
           goal_id: goal.goal_id,
           frequency: goal.frequency,
           target_count: goal.target_count,
@@ -772,12 +833,12 @@ export async function fetchMonthlyStatisticsSummary(params: {
       });
 
       const goals: GoalItem[] = userGoalsRaw
-        .filter((goal: any) => {
+        .filter((goal) => {
           if (goal.start_date && goal.start_date > dataEnd) return false;
           if (goal.end_date && goal.end_date < dataStart) return false;
           return true;
         })
-        .map((goal: any) => ({
+        .map((goal) => ({
           goalId: goal.goal_id,
           name: goal.goals?.name ?? '목표',
           frequency: goal.frequency,
@@ -791,8 +852,8 @@ export async function fetchMonthlyStatisticsSummary(params: {
         isMe: uid === userId,
         rate: total > 0 ? Math.round(((total - failed) / total) * 100) : null,
         goals,
-        hanmadi: (allResolutions ?? []).find((row: any) => row.user_id === uid)?.content || '',
-        hoego: (allRetrospectives ?? []).find((row: any) => row.user_id === uid)?.content || '',
+        hanmadi: typedResolutions.find((row) => row.user_id === uid)?.content || '',
+        hoego: typedRetrospectives.find((row) => row.user_id === uid)?.content || '',
       };
     })
     .sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
@@ -813,7 +874,7 @@ export async function fetchTeamDetailMonthlyData(
     throw membersError;
   }
 
-  const members = [...((membersData ?? []) as any[])].sort((a, b) => {
+  const members = [...((membersData ?? []) as TeamMemberWithUser[])].sort((a, b) => {
     if (a.role === 'leader' && b.role !== 'leader') return -1;
     if (a.role !== 'leader' && b.role === 'leader') return 1;
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -837,18 +898,18 @@ export async function fetchTeamDetailMonthlyData(
   if (retroError) throw retroError;
 
   const resolutions: Record<string, string> = {};
-  (resData ?? []).forEach((row: any) => {
+  (resData ?? []).forEach((row: ContentRow) => {
     resolutions[row.user_id] = row.content;
   });
 
   const retrospectives: Record<string, string> = {};
-  (retroData ?? []).forEach((row: any) => {
+  (retroData ?? []).forEach((row: ContentRow) => {
     retrospectives[row.user_id] = row.content;
   });
 
   const memberIds = members.map((member) => member.user_id);
   const { data: teamGoalsData } = await supabase.from('goals').select('*').eq('team_id', teamId);
-  const teamGoalsMap = new Map((teamGoalsData ?? []).map((goal: any) => [goal.id, goal.name]));
+  const teamGoalsMap = new Map(((teamGoalsData ?? []) as { id: string; name: string }[]).map((goal) => [goal.id, goal.name]));
 
   const startOfMonth = `${yearMonth}-01`;
   const endOfMonth = dayjs(startOfMonth).endOf('month').format('YYYY-MM-DD');
@@ -858,7 +919,7 @@ export async function fetchTeamDetailMonthlyData(
     .select('*')
     .in('user_id', memberIds);
 
-  const teamUserGoals = ((userGoalsData ?? []) as any[]).filter((goal) => {
+  const teamUserGoals = ((userGoalsData ?? []) as ActiveUserGoalRow[]).filter((goal) => {
     if (!teamGoalsMap.has(goal.goal_id)) return false;
     if (goal.start_date && goal.start_date > endOfMonth) return false;
     if (goal.end_date && goal.end_date < startOfMonth) return false;

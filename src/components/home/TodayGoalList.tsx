@@ -324,10 +324,10 @@ export default function TodayGoalList({
         {sortedMembers.length === 0 ? (
           <View style={styles.emptyTrail}>
             <Ionicons name="flag-outline" size={24} color="rgba(26,26,26,0.18)" />
-            <Text style={styles.emptyText}>목표를 추가해보세요</Text>
+            <Text style={styles.emptyText}>목표를 추가해보세요.</Text>
           </View>
         ) : (
-          <>
+          <View style={styles.trailContent}>
             {sortedMembers.map((member, idx) => (
               <MemberCard
                 key={member.userId}
@@ -345,7 +345,7 @@ export default function TodayGoalList({
                 <Text style={styles.summitText}>모두 완료!</Text>
               </View>
             )}
-          </>
+          </View>
         )}
       </View>
     </View>
@@ -390,8 +390,10 @@ const styles = StyleSheet.create({
 
   trailContainer: {
     position: 'relative',
-    paddingLeft: 26,
     width: '100%',
+  },
+  trailContent: {
+    paddingLeft: 26,
   },
   emptyTrail: {
     alignItems: 'center',

@@ -9,7 +9,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
 import type { UserGoal } from '../../types/domain';
-import { fetchWeeklyStats } from '../../services/statsService';
+import { fetchWeeklyStats, type WeeklyTeamMember, type WeeklyStatsResult } from '../../services/statsService';
 import { fetchMyGoalsForRange } from '../../services/goalService';
 
 function endedDateLabel(startDate?: string | null, endDate?: string | null) {
@@ -23,8 +23,8 @@ export default function WeeklyStatsTab() {
   const { teamGoals } = useGoalStore();
 
   const [weekStart, setWeekStart] = useState(dayjs().startOf('isoWeek').format('YYYY-MM-DD'));
-  const [weeklyTeamData, setWeeklyTeamData] = useState<any[]>([]);
-  const [weeklyCheckins, setWeeklyCheckins] = useState<any[]>([]);
+  const [weeklyTeamData, setWeeklyTeamData] = useState<WeeklyTeamMember[]>([]);
+  const [weeklyCheckins, setWeeklyCheckins] = useState<WeeklyStatsResult['weeklyCheckins']>([]);
   const [myWeeklyGoalPeriods, setMyWeeklyGoalPeriods] = useState<UserGoal[]>([]);
 
   const allGoalMap = useMemo(() => {
@@ -316,7 +316,7 @@ export default function WeeklyStatsTab() {
                     {/* 하단: 팀원의 상세 목표 리스트 */}
                     {m.goals && m.goals.length > 0 && (
                       <View style={s.teamMemberGoalList}>
-                        {m.goals.map((g: any) => (
+                        {m.goals.map((g) => (
                           <View key={g.goalId} style={s.teamMemberGoalRow}>
                             <View style={s.teamMemberGoalInfo}>
                               <Text style={s.teamMemberGoalName} numberOfLines={1}>

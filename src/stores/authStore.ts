@@ -104,8 +104,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       set({ isLoading: false });
       return false;
-    } catch (e: any) {
-      set({ error: e.message, isLoading: false });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
       return false;
     }
   },
@@ -149,8 +149,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       set({ isLoading: false });
       return false;
-    } catch (e: any) {
-      set({ error: e.message, isLoading: false });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
       return false;
     }
   },
@@ -193,9 +193,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       await signOutAuth();
       set({ user: null, error: null, isLoading: false });
       return true;
-    } catch (e: any) {
+    } catch (e) {
       console.error('[Auth] deleteAccount error:', e);
-      set({ error: e.message, isLoading: false });
+      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
       return false;
     }
   },

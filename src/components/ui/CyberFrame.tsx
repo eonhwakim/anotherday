@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, type ViewStyle, type StyleProp } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect, Line, Path } from 'react-native-svg';
 import { radius, shadows } from '../../design/recipes';
 
@@ -14,8 +14,8 @@ const METAL = {
 
 interface CyberFrameProps {
   children: React.ReactNode;
-  style?: any;
-  contentStyle?: any;
+  style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
   /**
    * If true, renders without SVG background and borders,
    * relying only on the wrapper's styles.

@@ -114,7 +114,7 @@ export default function CheckinModal({
     let imageUri: string | null = null;
     try {
       imageUri = await takePhoto();
-    } catch (cameraErr: any) {
+    } catch (cameraErr) {
       console.error('[Checkin] 카메라 오류:', cameraErr);
       Alert.alert(
         '카메라 오류',
@@ -155,9 +155,9 @@ export default function CheckinModal({
           Alert.alert('알림', '이미 인증이 완료된 목표입니다.');
         }
       });
-    } catch (e: any) {
+    } catch (e) {
       console.error('[Checkin] handleSuccess error:', e);
-      Alert.alert('오류', `인증 처리 중 문제가 발생했어요.\n${e?.message ?? ''}`);
+      Alert.alert('오류', `인증 처리 중 문제가 발생했어요.\n${e instanceof Error ? e.message : ''}`);
     }
   };
 

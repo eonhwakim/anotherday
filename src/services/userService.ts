@@ -29,9 +29,9 @@ export async function updateProfile(
     }
 
     return { success: true, data: data as User };
-  } catch (e: any) {
+  } catch (e) {
     console.error('updateProfile failed:', e);
-    return { success: false, error: e.message };
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
 

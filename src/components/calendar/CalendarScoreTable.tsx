@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
 import { colors } from '../../design/tokens';
 
 interface CalendarScoreTableProps {
@@ -55,8 +55,8 @@ export default function CalendarScoreTable({
     key: string;
     label: string;
     value: number;
-    labelStyle: StyleProp<any>;
-    valueStyle: StyleProp<any>;
+    labelStyle: StyleProp<TextStyle>;
+    valueStyle: StyleProp<TextStyle>;
   }[];
 
   return (

@@ -88,14 +88,6 @@ export default function StatisticsScreen() {
     await Promise.all([fetchTeamGoals(team.id, user.id), fetchMyGoals(user.id)]);
   }, [user, fetchTeams, fetchTeamGoals, fetchMyGoals]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadStoreData();
-      fetchMonthlyStats();
-    }, [loadStoreData, fetchMonthlyStats]),
-  );
-
-  // ── Fetch monthly stats ──
   const fetchMonthlyStats = useCallback(async () => {
     if (!user) return;
 
@@ -112,6 +104,13 @@ export default function StatisticsScreen() {
       console.error(e);
     }
   }, [user, currentTeam, yearMonth]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadStoreData();
+      fetchMonthlyStats();
+    }, [loadStoreData, fetchMonthlyStats]),
+  );
 
   const saveReview = async () => {
     if (!user || !currentTeam) return;

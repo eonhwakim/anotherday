@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
+import type { UserGoal } from '../../types/domain';
 import dayjs from '../../lib/dayjs';
 import { colors } from '../../design/tokens';
 import { AreaChart, MountainBg, ProgressBar } from '../../components/stats/StatsShared';
@@ -53,7 +54,7 @@ export default function MemberStatsScreen() {
       setResolution(resolutionContent);
       setRetrospective(retrospectiveContent);
     }
-  }, [userId, teamId, yearMonth]);
+  }, [userId, teamId, yearMonth, fetchTeamGoals, fetchMyGoals, fetchMonthlyCheckins]);
 
   useFocusEffect(
     useCallback(() => {
@@ -86,7 +87,7 @@ export default function MemberStatsScreen() {
     if (!myGoals) return [];
     const monthStart = `${yearMonth}-01`;
     const monthLast = dayjs(monthStart).endOf('month').format('YYYY-MM-DD');
-    const filterByMonth = (ug: any) => {
+    const filterByMonth = (ug: UserGoal) => {
       if (ug.start_date && ug.start_date > monthLast) return false;
       if (ug.end_date && ug.end_date < monthStart) return false;
       return true;

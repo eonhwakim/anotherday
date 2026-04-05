@@ -133,7 +133,7 @@ export default function CalendarScreen() {
   );
 
   const renderDay = useCallback(
-    ({ date, state, marking }: any) => {
+    ({ date, state, marking }: { date: DateData; state?: string; marking?: Record<string, unknown> }) => {
       const diffDays = dayjs(date.dateString).diff(dayjs(dataStart), 'day');
       const weekNum = Math.floor(diffDays / 7) + 1;
 
@@ -184,7 +184,7 @@ export default function CalendarScreen() {
   );
 
   const calendarMarkedDates = React.useMemo(() => {
-    const marks: Record<string, any> = {};
+    const marks: Record<string, { marked?: boolean; dotColor?: string; selected?: boolean; selectedColor?: string; selectedTextColor?: string; textColor?: string }> = {};
 
     Object.entries(calendarMarkings).forEach(([date, m]) => {
       marks[date] = {

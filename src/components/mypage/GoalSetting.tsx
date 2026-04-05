@@ -124,7 +124,7 @@ export default function GoalSetting({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>등록된 루틴 (길게 누름: 종료/삭제)</Text>
             <Text style={styles.hintLabel}>
-              종료는 기록을 남기고, 완전 삭제는 기록도 모두 삭제됩니다.
+              * 종료는 기록을 남기고, 완전 삭제는 기록도 모두 삭제됩니다.
             </Text>
           </View>
           <View style={styles.goalList}>
@@ -270,10 +270,10 @@ const styles = StyleSheet.create({
   },
   hintLabel: {
     ...typography.caption,
-    color: colors.textFaint,
+    color: colors.textSecondary,
+    lineHeight: 20,
     marginTop: spacing[1] + 2,
     marginBottom: spacing[3],
-    lineHeight: 16,
   },
   goalList: {
     gap: spacing[2] + 2,

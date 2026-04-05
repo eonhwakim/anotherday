@@ -129,9 +129,9 @@ export async function updateTeamProfile(
       return { success: false, error: error.message };
     }
     return { success: true };
-  } catch (e: any) {
+  } catch (e) {
     console.error('updateTeamProfile failed:', e);
-    return { success: false, error: e?.message };
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
 

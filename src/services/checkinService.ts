@@ -43,9 +43,8 @@ export async function takePhoto(): Promise<string | null> {
       }
       return result.assets[0].uri;
     }
-  } catch (e: any) {
-    // 시뮬레이터 등 카메라 하드웨어가 없는 경우 → 갤러리로 전환
-    console.warn('[takePhoto] 카메라 사용 불가, 갤러리로 전환:', e?.message);
+  } catch (e) {
+    console.warn('[takePhoto] 카메라 사용 불가, 갤러리로 전환:', e instanceof Error ? e.message : e);
   }
 
   // 2) 카메라 사용 불가 → 갤러리에서 사진 선택
