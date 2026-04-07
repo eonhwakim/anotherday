@@ -22,7 +22,7 @@ import BaseCard from '../ui/BaseCard';
 import Input from '../common/Input';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import dayjs from '../../lib/dayjs';
-
+import { typography, spacing } from '../../design/recipes';
 interface RoutineComposerProps {
   visible?: boolean;
   onDone?: () => void | Promise<void>;
@@ -183,13 +183,13 @@ export default function RoutineComposer({
         bounces={false}
       >
         <View style={styles.sectionFrame}>
-          <Text style={styles.label}>어떤 루틴을 추가할까요?</Text>
+          <Text style={styles.firstLabel}>어떤 루틴을 추가할까요?</Text>
+          <Text style={styles.helperText}>* 루틴을 추가하면 오늘부터 적용됩니다</Text>
           <Input
             placeholder="루틴 (예: 운동 30분)"
             value={newGoal}
             onChangeText={setNewGoal}
             returnKeyType="done"
-            blurOnSubmit
             onSubmitEditing={handleAdd}
             maxLength={30}
             autoFocus={autoFocus}
@@ -236,7 +236,7 @@ export default function RoutineComposer({
                 </View>
               </BaseCard>
               <Text style={styles.helperText}>
-                오늘 계획이 없는 주 N회 루틴은 패스 인증으로 관리할 수 있어요.
+                * 오늘 계획이 없는 주 N회 루틴은 패스 인증으로 관리할 수 있어요.
               </Text>
             </>
           ) : null}
@@ -258,7 +258,7 @@ export default function RoutineComposer({
           </View>
           {duration === 'this_month' ? (
             <Text style={styles.helperText}>
-              월초와 월말의 부분주가 4일 미만이면 인접 월에 편입되는 규칙에 따라 마지막 주차를
+              * 월초와 월말의 부분주가 4일 미만이면 인접 월에 편입되는 규칙에 따라 마지막 주차를
               계산해 적용합니다.
             </Text>
           ) : null}
@@ -329,6 +329,12 @@ const styles = StyleSheet.create({
   sectionContent: {
     padding: 20,
   },
+  firstLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
   label: {
     fontSize: 16,
     fontWeight: '700',
@@ -373,10 +379,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   helperText: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textSecondary,
-    lineHeight: 18,
-    marginTop: 8,
+    lineHeight: 20,
+    marginBottom: spacing[3],
+    paddingHorizontal: spacing[1],
   },
   targetCountFrame: {
     borderRadius: 12,

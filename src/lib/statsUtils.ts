@@ -1,4 +1,5 @@
 import dayjs from './dayjs';
+import type { CalendarDayMarking } from '../types/domain';
 
 export interface GoalStat {
   goalId: string;
@@ -221,4 +222,18 @@ export function getTrendInsight(trendData: WeekData[]): string {
   if (diff > 5) return `첫 주보다 달성률이 ${diff}% 올랐어요! 페이스가 좋습니다.`;
   if (diff < -5) return '살짝 쉬어가는 주가 있었네요. 다시 힘내봐요!';
   return '꾸준한 페이스를 유지하고 있어요!';
+}
+
+/** 오늘부터 역순으로, 그날 목표를 모두 처리(done+pass)한 날을 연속 카운트. 마킹 없음 = 그날 활성 목표 없음(스킵). */
+export function computeConsecutiveAchievementDays(markings: CalendarDayMarking): number {
+  let streak = 0;
+  for (let i = 0; i < 400; i++) {
+    const ds = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
+    const m = markings[ds];
+    if (!m || !m.totalGoals || m.totalGoals < 1) continue;
+    const ok = (m.doneCount ?? 0) + (m.passCount ?? 0) >= m.totalGoals;
+    if (ok) streak += 1;
+    else break;
+  }
+  return streak;
 }

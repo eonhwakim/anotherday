@@ -14,6 +14,8 @@ interface GoalSettingProps {
   onEnd: (goalId: string) => void;
   onRemove: (goalId: string) => void;
   monthlyResolution?: string;
+  /** 오른쪽 편집 아이콘 탭 시 (예: 한마디 GlassModal) */
+  onEditResolution?: () => void;
   title?: string;
   subtitle?: string;
   yearMonth?: string;
@@ -64,8 +66,7 @@ export default function GoalSetting({
   onEnd,
   onRemove,
   monthlyResolution = '',
-  title = '목표 설정',
-  subtitle = '* 목표를 추가하면 오늘부터 적용됩니다',
+  onEditResolution,
   yearMonth,
 }: GoalSettingProps) {
   const todayStr = dayjs().format('YYYY-MM-DD');
@@ -124,17 +125,6 @@ export default function GoalSetting({
 
   return (
     <>
-      {title || subtitle ? (
-        <View style={styles.titleBlock}>
-          {title ? (
-            <View style={styles.titleRow}>
-              <Text style={styles.title}>{title}</Text>
-            </View>
-          ) : null}
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-        </View>
-      ) : null}
-
       <View style={styles.resolutionSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>이번 달 한마디</Text>
@@ -146,9 +136,24 @@ export default function GoalSetting({
           style={styles.innerCard}
           contentStyle={styles.resolutionBox}
         >
-          <Text style={[styles.resolutionText, !monthlyResolution && styles.placeholderText]}>
-            {monthlyResolution ? monthlyResolution : '이번 달의 다짐이나 목표를 적어보세요.'}
-          </Text>
+          <View style={styles.resolutionRow}>
+            <Text
+              style={[styles.resolutionText, !monthlyResolution && styles.placeholderText]}
+              numberOfLines={4}
+            >
+              {monthlyResolution ? monthlyResolution : '이번 달의 다짐이나 목표를 적어보세요.'}
+            </Text>
+            {onEditResolution ? (
+              <TouchableOpacity
+                onPress={onEditResolution}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel="이번 달 한마디 편집"
+              >
+                <Ionicons name="create-outline" size={22} color={colors.primary} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </BaseCard>
       </View>
 
@@ -255,7 +260,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[2],
   },
   sectionTitle: {
-    ...typography.titleSm,
+    ...typography.titleMd,
     color: colors.text,
   },
   goalsSection: {
@@ -284,9 +289,16 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   resolutionBox: {
-    padding: spacing[3] + 2,
+    paddingVertical: spacing[3],
+    paddingLeft: spacing[3] + 2,
+    paddingRight: spacing[2],
+  },
+  resolutionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   resolutionText: {
+    flex: 1,
     ...typography.body,
     color: colors.text,
     lineHeight: 20,
@@ -319,6 +331,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: spacing[1] + 2,
     marginBottom: spacing[3],
+    paddingHorizontal: spacing[1],
   },
   goalList: {
     gap: spacing[2] + 2,
