@@ -15,18 +15,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import type { CheckinWithGoal, MemberProgress, ReactionWithUser } from '../../types/domain';
 import { colors } from '../../design/tokens';
-// import CyberFrame from '../ui/CyberFrame';
 import BaseCard from '../ui/BaseCard';
-import Pill from '../ui/Pill';
+import GoalStatusChip from '../ui/GoalStatusChip';
 import DynamicBadge, {
   HOME_BADGE_POP_TRANSLATE_X_OFFSET_PX,
   HOME_BADGE_POP_TRANSLATE_Y_END_ADJUST_PX,
   HOME_BADGE_POP_TRANSLATE_Y_END_RATIO,
   HOME_BADGE_POP_TRANSLATE_Y_PEAK_ADJUST_PX,
   HOME_BADGE_POP_TRANSLATE_Y_PEAK_RATIO,
-} from './TodayGoalBadge';
+} from '../ui/MissionBadge';
 import { useStatsStore } from '../../stores/statsStore';
 import { useAuthStore } from '../../stores/authStore';
+
+type BadgeState = 'START' | 'ALL_CLEAR' | 'FINISHER' | 'LEADER';
 
 const PHOTO_CARD_PEEK = 56;
 const PHOTO_CARD_GAP = 16;
@@ -129,28 +130,184 @@ interface TodayGoalListFeedProps {
   onPhotoCarouselDragChange?: (dragging: boolean) => void;
 }
 
-interface GoalChipProps {
-  goalName: string;
-  isDone: boolean;
-  isPass: boolean;
+interface FeedHeaderProps {
+  badgeMembers: MemberProgress[];
+  badgeOpacityAnim: Animated.Value;
+  badgeState: BadgeState;
+  glowOpacity: Animated.AnimatedInterpolation<number>;
+  isNight: boolean;
+  rotate: Animated.AnimatedInterpolation<string>;
+  scale: Animated.AnimatedInterpolation<number>;
+  translateX: Animated.AnimatedInterpolation<number>;
+  translateY: Animated.AnimatedInterpolation<number>;
 }
 
-function GoalChip({ goalName, isDone, isPass }: GoalChipProps) {
-  const chipStyle = [styles.goalChip, isPass && styles.goalChipPass, isDone && styles.goalChipDone];
-  const textStyle = [
-    styles.goalChipText,
-    isPass && styles.goalChipTextPass,
-    isDone && styles.goalChipTextDone,
-  ];
+interface PhotoSlideCardProps {
+  checkin: CheckinWithGoal;
+  index: number;
+  totalCount: number;
+  userId?: string;
+  width: number;
+  marginRight: number;
+  onReactionPress: (checkin: CheckinWithGoal) => void;
+}
+
+function getMissionProgress(members: MemberProgress[]) {
+  const totalGoals = members.reduce((sum, member) => sum + member.totalGoals, 0);
+  const completedGoals = members.reduce((sum, member) => sum + member.completedGoals, 0);
+
+  return {
+    progress: totalGoals > 0 ? completedGoals / totalGoals : 0,
+    totalGoals,
+    completedGoals,
+  };
+}
+
+function getBadgeMeta(members: MemberProgress[]): {
+  badgeMembers: MemberProgress[];
+  badgeState: BadgeState;
+} {
+  if (members.length === 0) {
+    return { badgeState: 'START', badgeMembers: [] };
+  }
+
+  const membersWithPct = members.map((member) => ({
+    ...member,
+    pct: member.totalGoals > 0 ? member.completedGoals / member.totalGoals : 0,
+  }));
+
+  if (membersWithPct.every((member) => member.pct >= 1)) {
+    return { badgeState: 'ALL_CLEAR', badgeMembers: members };
+  }
+
+  const finishers = membersWithPct.filter((member) => member.pct >= 1);
+  if (finishers.length > 0) {
+    return { badgeState: 'FINISHER', badgeMembers: finishers };
+  }
+
+  const activeMembers = membersWithPct.filter((member) => member.completedGoals > 0);
+  if (activeMembers.length === 0) {
+    return { badgeState: 'START', badgeMembers: [] };
+  }
+
+  const bestPct = Math.max(...activeMembers.map((member) => member.pct));
+  return {
+    badgeState: 'LEADER',
+    badgeMembers: activeMembers.filter((member) => member.pct === bestPct),
+  };
+}
+
+function sortMembersForDisplay(members: MemberProgress[], currentUserId?: string) {
+  return [...members].sort((a, b) => {
+    if (a.userId === currentUserId) return -1;
+    if (b.userId === currentUserId) return 1;
+    return 0;
+  });
+}
+
+function FeedHeader({
+  badgeMembers,
+  badgeOpacityAnim,
+  badgeState,
+  glowOpacity,
+  isNight,
+  rotate,
+  scale,
+  translateX,
+  translateY,
+}: FeedHeaderProps) {
+  return (
+    <View style={styles.headerRow}>
+      <View>
+        <Text style={[styles.title, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
+        <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
+          오늘 계획이 없는 주 N회 루틴은 "패스" 인증 해주세요!
+        </Text>
+      </View>
+      <Animated.View
+        style={[
+          styles.badgeWrapper,
+          {
+            opacity: badgeOpacityAnim,
+            transform: [{ translateX }, { translateY }, { scale }, { rotate }],
+            zIndex: 100,
+          },
+        ]}
+      >
+        <DynamicBadge state={badgeState} members={badgeMembers} isActive={false} />
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: glowOpacity }]}>
+          <DynamicBadge state={badgeState} members={badgeMembers} isActive={true} />
+        </Animated.View>
+      </Animated.View>
+    </View>
+  );
+}
+
+function EmptyFeedState() {
+  return (
+    <View style={styles.emptyTrail}>
+      <Ionicons name="flag-outline" size={24} color="rgba(26,26,26,0.18)" />
+      <Text style={styles.emptyText}>목표를 추가해보세요.</Text>
+    </View>
+  );
+}
+
+function PhotoSlideCard({
+  checkin,
+  index,
+  totalCount,
+  userId,
+  width,
+  marginRight,
+  onReactionPress,
+}: PhotoSlideCardProps) {
+  const reactions = checkin.reactions ?? [];
+  const reacted = !!userId && reactions.some((reaction) => reaction.user_id === userId);
+  const likePillAccent = reacted || reactions.length > 0;
 
   return (
-    <Pill
-      label={`${isPass ? '(패스) ' : ''}${goalName}`}
-      icon={isDone ? <Text style={styles.goalChipIcon}>✓</Text> : undefined}
-      numberOfLines={1}
-      style={chipStyle}
-      textStyle={textStyle}
-    />
+    <View
+      style={[
+        styles.photoSlideCard,
+        {
+          width: width > 0 ? width : '100%',
+          marginRight,
+        },
+      ]}
+    >
+      <View style={styles.photoSlideInner}>
+        <View style={styles.photoTag}>
+          <Text style={styles.photoTagText}>{checkin.goal?.name ?? '오늘의 인증'}</Text>
+        </View>
+        <Image source={{ uri: checkin.photo_url! }} style={styles.photoImage} />
+      </View>
+
+      <View style={styles.photoFooter}>
+        <View style={styles.photoActions}>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            style={styles.likePill}
+            onPress={() => onReactionPress(checkin)}
+          >
+            <Ionicons
+              name={likePillAccent ? 'heart' : 'heart-outline'}
+              size={20}
+              color={likePillAccent ? LIKE_PILL_ACCENT : LIKE_PILL_MUTED}
+            />
+            <Text style={[styles.likePillCount, likePillAccent && styles.likePillCountAccent]}>
+              {reactions.length}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.photoFooterRight}>
+          <FeedReactionAvatars reactions={reactions} />
+          <Text style={styles.photoIndexText}>
+            {index + 1}/{totalCount}
+          </Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -185,17 +342,14 @@ function carouselSnapIndexFromGesture(
   return Math.max(0, Math.min(photoCount - 1, idx));
 }
 
-function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardProps) {
-  const allDone = member.totalGoals > 0 && member.completedGoals >= member.totalGoals;
-  const animOpacity = animVal.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
-  const animSlide = animVal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
-  const { width: screenWidth } = useWindowDimensions();
-  const { toggleReaction } = useStatsStore();
-  const user = useAuthStore((s) => s.user);
-
-  const photoCheckins = React.useMemo(
-    () => (member.todayCheckins ?? []).filter((checkin) => !!checkin.photo_url),
-    [member.todayCheckins],
+function usePhotoCarousel(
+  todayCheckins: CheckinWithGoal[] | undefined,
+  screenWidth: number,
+  onCarouselDragChange?: (dragging: boolean) => void,
+) {
+  const photoCheckins = useMemo(
+    () => (todayCheckins ?? []).filter((checkin) => !!checkin.photo_url),
+    [todayCheckins],
   );
   const [photoSectionWidth, setPhotoSectionWidth] = useState(Math.max(screenWidth - 96, 220));
   const carouselX = useRef(new Animated.Value(0)).current;
@@ -205,6 +359,7 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
   const carouselSnapPointsRef = useRef<number[]>([0]);
   const photoCountRef = useRef(0);
   const snapIntervalRef = useRef(0);
+  const carouselAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const maxPullPx = useMemo(
     () => (photoSectionWidth > 0 ? Math.round(photoSectionWidth * SINGLE_PHOTO_PULL_RATIO) : 0),
@@ -216,7 +371,6 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
     return Math.max(photoSectionWidth - PHOTO_CARD_PEEK, 160);
   }, [photoSectionWidth]);
 
-  /** 점선 빈 슬롯: 장수와 관계없이 한 장일 때와 동일한 너비(피크 + 당김 여유) */
   const peekTailWidth = useMemo(() => {
     if (photoSectionWidth <= 0 || photoCheckins.length === 0) return 0;
     return Math.max(100, Math.round(photoSectionWidth * SINGLE_PHOTO_PULL_RATIO) + PHOTO_CARD_PEEK);
@@ -225,9 +379,9 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
   const snapInterval = cardWidth > 0 ? cardWidth + PHOTO_CARD_GAP : 0;
 
   const carouselContentWidth = useMemo(() => {
-    const n = photoCheckins.length;
-    if (n < 1 || cardWidth <= 0) return 0;
-    return n * cardWidth + n * PHOTO_CARD_GAP + peekTailWidth;
+    const count = photoCheckins.length;
+    if (count < 1 || cardWidth <= 0) return 0;
+    return count * cardWidth + count * PHOTO_CARD_GAP + peekTailWidth;
   }, [photoCheckins.length, cardWidth, peekTailWidth]);
 
   const rawMaxOffset = useMemo(() => {
@@ -235,22 +389,22 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
     return Math.max(0, carouselContentWidth - photoSectionWidth);
   }, [photoSectionWidth, carouselContentWidth]);
 
-  /** 한 장은 과도하게 안 밀리게 maxPull 캡; 여러 장은 콘텐츠 끝까지 */
   const carouselMaxOffset = useMemo(() => {
     if (photoCheckins.length <= 1) return Math.min(maxPullPx, rawMaxOffset);
     return rawMaxOffset;
   }, [photoCheckins.length, maxPullPx, rawMaxOffset]);
 
-  const carouselSnapPoints = useMemo((): number[] => {
-    const n = photoCheckins.length;
-    const pts = new Set<number>();
-    pts.add(0);
-    if (n >= 2 && snapInterval > 0) {
-      for (let k = 0; k < n; k++) {
-        pts.add(-k * snapInterval);
+  const carouselSnapPoints = useMemo(() => {
+    const count = photoCheckins.length;
+    const points = new Set<number>([0]);
+
+    if (count >= 2 && snapInterval > 0) {
+      for (let index = 0; index < count; index += 1) {
+        points.add(-index * snapInterval);
       }
     }
-    return [...pts].sort((a, b) => a - b);
+
+    return [...points].sort((a, b) => a - b);
   }, [photoCheckins.length, snapInterval]);
 
   carouselMaxOffsetRef.current = carouselMaxOffset;
@@ -258,85 +412,77 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
   photoCountRef.current = photoCheckins.length;
   snapIntervalRef.current = snapInterval;
 
-  /** 리액션 등으로 todayCheckins 참조만 바뀌면 스크롤 유지; 사진 슬라이드 구성(id)이 바뀔 때만 맨 앞으로 */
   const photoCarouselResetKey = useMemo(
     () =>
-      (member.todayCheckins ?? [])
-        .filter((c) => !!c.photo_url)
-        .map((c) => c.id)
+      (todayCheckins ?? [])
+        .filter((checkin) => !!checkin.photo_url)
+        .map((checkin) => checkin.id)
         .join('|'),
-    [member.todayCheckins],
+    [todayCheckins],
   );
-
-  const carouselAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const snapCarouselToNearest = useCallback(
     (gesture?: PanResponderGestureState | null) => {
       carouselAnimRef.current?.stop();
       carouselPullStartRef.current = 0;
-      const pts = carouselSnapPointsRef.current;
-      const cur = lastCarouselSyncRef.current;
-      const vx = gesture?.vx ?? 0;
 
-      const n = photoCountRef.current;
-      const si = snapIntervalRef.current;
-      /** 점선 슬롯은 스냅 타겟이 아니라 오버스크롤 영역이라 마지막 사진 위치로만 복귀 */
-      const lastPhotoSnap = n >= 2 && si > 0 ? -((n - 1) * si) : 0;
-      const beyondLastPhoto = cur < lastPhotoSnap - 2;
-      const useTailSpring = beyondLastPhoto || cur > 2;
+      const current = lastCarouselSyncRef.current;
+      const velocityX = gesture?.vx ?? 0;
+      const count = photoCountRef.current;
+      const currentSnapInterval = snapIntervalRef.current;
+      const firstPoint = carouselSnapPointsRef.current[0] ?? 0;
+      const lastPhotoSnap =
+        count >= 2 && currentSnapInterval > 0 ? -((count - 1) * currentSnapInterval) : 0;
+      const beyondLastPhoto = current < lastPhotoSnap - 2;
+      const useTailSpring = beyondLastPhoto || current > 2;
 
-      let best: number;
-      if (cur > 2) {
-        best = 0;
+      let nextTarget = firstPoint;
+
+      if (current > 2) {
+        nextTarget = 0;
       } else if (beyondLastPhoto) {
-        best = lastPhotoSnap;
-      } else if (n >= 2 && si > 0) {
-        const idx = carouselSnapIndexFromGesture(cur, vx, si, n);
-        best = -idx * si;
+        nextTarget = lastPhotoSnap;
+      } else if (count >= 2 && currentSnapInterval > 0) {
+        const nextIndex = carouselSnapIndexFromGesture(
+          current,
+          velocityX,
+          currentSnapInterval,
+          count,
+        );
+        nextTarget = -nextIndex * currentSnapInterval;
       } else {
-        best = pts[0] ?? 0;
-        let bestD = Math.abs(cur - best);
-        for (const p of pts) {
-          const d = Math.abs(cur - p);
-          if (d < bestD) {
-            bestD = d;
-            best = p;
+        let bestDistance = Math.abs(current - firstPoint);
+        for (const point of carouselSnapPointsRef.current) {
+          const distance = Math.abs(current - point);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            nextTarget = point;
           }
         }
       }
 
-      lastCarouselSyncRef.current = best;
+      lastCarouselSyncRef.current = nextTarget;
 
-      if (useTailSpring) {
-        const spring = Animated.spring(carouselX, {
-          toValue: best,
-          friction: 7,
-          tension: 100,
-          useNativeDriver: false,
-        });
-        carouselAnimRef.current = spring;
-        spring.start(({ finished }) => {
-          carouselAnimRef.current = null;
-          if (finished) {
-            carouselX.setValue(best);
-            lastCarouselSyncRef.current = best;
-          }
-        });
-        return;
-      }
+      const animation = useTailSpring
+        ? Animated.spring(carouselX, {
+            toValue: nextTarget,
+            friction: 7,
+            tension: 100,
+            useNativeDriver: false,
+          })
+        : Animated.timing(carouselX, {
+            toValue: nextTarget,
+            duration: 260,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          });
 
-      const timing = Animated.timing(carouselX, {
-        toValue: best,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      });
-      carouselAnimRef.current = timing;
-      timing.start(({ finished }) => {
+      carouselAnimRef.current = animation;
+      animation.start(({ finished }) => {
         carouselAnimRef.current = null;
         if (finished) {
-          carouselX.setValue(best);
-          lastCarouselSyncRef.current = best;
+          carouselX.setValue(nextTarget);
+          lastCarouselSyncRef.current = nextTarget;
         }
       });
     },
@@ -354,34 +500,38 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
         onPanResponderGrant: () => {
           onCarouselDragChange?.(true);
           carouselAnimRef.current?.stop();
-          carouselX.stopAnimation((v) => {
+          carouselX.stopAnimation((value) => {
             const base =
-              typeof v === 'number' && !Number.isNaN(v) ? v : lastCarouselSyncRef.current;
+              typeof value === 'number' && !Number.isNaN(value)
+                ? value
+                : lastCarouselSyncRef.current;
             carouselPullStartRef.current = base;
             lastCarouselSyncRef.current = base;
           });
         },
-        onPanResponderMove: (_, g) => {
-          const maxO = carouselMaxOffsetRef.current;
-          let next = carouselPullStartRef.current + g.dx;
-          if (next > 0) {
-            next *= 0.22;
-          } else if (next < -maxO) {
-            next = -maxO + (next + maxO) * 0.28;
+        onPanResponderMove: (_event, gesture) => {
+          const maxOffset = carouselMaxOffsetRef.current;
+          let nextValue = carouselPullStartRef.current + gesture.dx;
+
+          if (nextValue > 0) {
+            nextValue *= 0.22;
+          } else if (nextValue < -maxOffset) {
+            nextValue = -maxOffset + (nextValue + maxOffset) * 0.28;
           }
-          lastCarouselSyncRef.current = next;
-          carouselX.setValue(next);
+
+          lastCarouselSyncRef.current = nextValue;
+          carouselX.setValue(nextValue);
         },
-        onPanResponderRelease: (_e, g) => {
+        onPanResponderRelease: (_event, gesture) => {
           onCarouselDragChange?.(false);
-          snapCarouselToNearest(g);
+          snapCarouselToNearest(gesture);
         },
-        onPanResponderTerminate: (_e, g) => {
+        onPanResponderTerminate: (_event, gesture) => {
           onCarouselDragChange?.(false);
-          snapCarouselToNearest(g);
+          snapCarouselToNearest(gesture);
         },
       }),
-    [carouselX, snapCarouselToNearest, onCarouselDragChange],
+    [carouselX, onCarouselDragChange, snapCarouselToNearest],
   );
 
   useEffect(() => {
@@ -391,6 +541,34 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
     lastCarouselSyncRef.current = 0;
     carouselPullStartRef.current = 0;
   }, [photoCarouselResetKey, carouselX]);
+
+  return {
+    cardWidth,
+    carouselPanResponder,
+    carouselX,
+    peekTailWidth,
+    photoCheckins,
+    photoSectionWidth,
+    setPhotoSectionWidth,
+  };
+}
+
+function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardProps) {
+  const allDone = member.totalGoals > 0 && member.completedGoals >= member.totalGoals;
+  const animOpacity = animVal.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const animSlide = animVal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
+  const { width: screenWidth } = useWindowDimensions();
+  const { toggleReaction } = useStatsStore();
+  const user = useAuthStore((s) => s.user);
+  const {
+    cardWidth,
+    carouselPanResponder,
+    carouselX,
+    peekTailWidth,
+    photoCheckins,
+    photoSectionWidth,
+    setPhotoSectionWidth,
+  } = usePhotoCarousel(member.todayCheckins, screenWidth, onCarouselDragChange);
 
   const handleReactionPress = useCallback(
     async (checkin: CheckinWithGoal) => {
@@ -403,61 +581,6 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
     },
     [user, toggleReaction],
   );
-
-  const renderCheckinSlide = (
-    checkin: CheckinWithGoal,
-    idx: number,
-    slideWidth: number,
-    marginRight: number,
-  ) => {
-    const reactions = checkin.reactions ?? [];
-    const checkinReacted = !!user && reactions.some((r) => r.user_id === user.id);
-    const likePillAccent = checkinReacted || reactions.length > 0;
-    return (
-      <View
-        style={[
-          styles.photoSlideCard,
-          {
-            width: slideWidth > 0 ? slideWidth : '100%',
-            marginRight,
-          },
-        ]}
-      >
-        <View style={styles.photoSlideInner}>
-          <View style={styles.photoTag}>
-            <Text style={styles.photoTagText}>{checkin.goal?.name ?? '오늘의 인증'}</Text>
-          </View>
-          <Image source={{ uri: checkin.photo_url! }} style={styles.photoImage} />
-        </View>
-
-        <View style={styles.photoFooter}>
-          <View style={styles.photoActions}>
-            <TouchableOpacity
-              activeOpacity={0.88}
-              style={styles.likePill}
-              onPress={() => handleReactionPress(checkin)}
-            >
-              <Ionicons
-                name={likePillAccent ? 'heart' : 'heart-outline'}
-                size={20}
-                color={likePillAccent ? LIKE_PILL_ACCENT : LIKE_PILL_MUTED}
-              />
-              <Text style={[styles.likePillCount, likePillAccent && styles.likePillCountAccent]}>
-                {reactions.length}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.photoFooterRight}>
-            <FeedReactionAvatars reactions={reactions} />
-            <Text style={styles.photoIndexText}>
-              {idx + 1}/{photoCheckins.length}
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
 
   return (
     <Animated.View
@@ -497,11 +620,10 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
         {member.goalDetails.length > 0 ? (
           <View style={styles.goalChips}>
             {member.goalDetails.map((g) => (
-              <GoalChip
+              <GoalStatusChip
                 key={g.goalId}
                 goalName={g.goalName}
-                isDone={g.isDone}
-                isPass={g.isPass ?? false}
+                status={g.isDone ? 'done' : g.isPass ? 'pass' : 'todo'}
               />
             ))}
           </View>
@@ -525,9 +647,16 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
                 {...carouselPanResponder.panHandlers}
               >
                 {photoCheckins.map((checkin, idx) => (
-                  <React.Fragment key={checkin.id}>
-                    {renderCheckinSlide(checkin, idx, cardWidth, PHOTO_CARD_GAP)}
-                  </React.Fragment>
+                  <PhotoSlideCard
+                    key={checkin.id}
+                    checkin={checkin}
+                    index={idx}
+                    totalCount={photoCheckins.length}
+                    userId={user?.id}
+                    width={cardWidth}
+                    marginRight={PHOTO_CARD_GAP}
+                    onReactionPress={handleReactionPress}
+                  />
                 ))}
                 {peekTailWidth > 0 ? <PhotoPeekPlaceholder /> : null}
               </Animated.View>
@@ -547,38 +676,8 @@ export default function TodayGoalListFeed({
   onPhotoCarouselDragChange,
 }: TodayGoalListFeedProps) {
   const isFocused = useIsFocused();
-  const totalAll = members.reduce((s, m) => s + m.totalGoals, 0);
-  const completedAll = members.reduce((s, m) => s + m.completedGoals, 0);
-  const progress = totalAll > 0 ? completedAll / totalAll : 0;
-
-  const { badgeState, badgeMembers } = React.useMemo(() => {
-    if (!members || members.length === 0) return { badgeState: 'START', badgeMembers: [] };
-
-    const membersWithPct = members.map((m) => ({
-      ...m,
-      pct: m.totalGoals > 0 ? m.completedGoals / m.totalGoals : 0,
-    }));
-
-    if (membersWithPct.every((m) => m.pct >= 1)) {
-      return { badgeState: 'ALL_CLEAR', badgeMembers: members };
-    }
-
-    const finishers = membersWithPct.filter((m) => m.pct >= 1);
-    if (finishers.length > 0) {
-      return { badgeState: 'FINISHER', badgeMembers: finishers };
-    }
-
-    const activeMembers = membersWithPct.filter((m) => m.completedGoals > 0);
-    if (activeMembers.length === 0) {
-      return { badgeState: 'START', badgeMembers: [] };
-    }
-
-    const sorted = [...activeMembers].sort((a, b) => b.pct - a.pct);
-    const bestPct = sorted[0].pct;
-    const top = sorted.filter((m) => m.pct === bestPct);
-
-    return { badgeState: 'LEADER', badgeMembers: top };
-  }, [members]);
+  const { progress } = React.useMemo(() => getMissionProgress(members), [members]);
+  const { badgeState, badgeMembers } = React.useMemo(() => getBadgeMeta(members), [members]);
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;
@@ -752,13 +851,10 @@ export default function TodayGoalListFeed({
   const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-12deg'] });
   const glowOpacity = scaleAnim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 1] });
 
-  const sortedMembers = React.useMemo(() => {
-    return [...members].sort((a, b) => {
-      if (a.userId === currentUserId) return -1;
-      if (b.userId === currentUserId) return 1;
-      return 0;
-    });
-  }, [members, currentUserId]);
+  const sortedMembers = React.useMemo(
+    () => sortMembersForDisplay(members, currentUserId),
+    [members, currentUserId],
+  );
 
   const carouselDragParentRef = useRef(onPhotoCarouselDragChange);
   carouselDragParentRef.current = onPhotoCarouselDragChange;
@@ -767,37 +863,22 @@ export default function TodayGoalListFeed({
   }, []);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={[styles.title, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
-          <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
-            오늘 계획이 없는 주 N회 루틴은 "패스" 인증 해주세요!
-          </Text>
-        </View>
-        <Animated.View
-          style={[
-            styles.badgeWrapper,
-            {
-              opacity: badgeOpacityAnim,
-              transform: [{ translateX }, { translateY }, { scale }, { rotate }],
-              zIndex: 100,
-            },
-          ]}
-        >
-          <DynamicBadge state={badgeState} members={badgeMembers} isActive={false} />
-          <Animated.View style={[StyleSheet.absoluteFill, { opacity: glowOpacity }]}>
-            <DynamicBadge state={badgeState} members={badgeMembers} isActive={true} />
-          </Animated.View>
-        </Animated.View>
-      </View>
+    <View>
+      <FeedHeader
+        badgeMembers={badgeMembers}
+        badgeOpacityAnim={badgeOpacityAnim}
+        badgeState={badgeState}
+        glowOpacity={glowOpacity}
+        isNight={isNight}
+        rotate={rotate}
+        scale={scale}
+        translateX={translateX}
+        translateY={translateY}
+      />
 
       <View style={styles.trailContainer}>
         {sortedMembers.length === 0 ? (
-          <View style={styles.emptyTrail}>
-            <Ionicons name="flag-outline" size={24} color="rgba(26,26,26,0.18)" />
-            <Text style={styles.emptyText}>목표를 추가해보세요.</Text>
-          </View>
+          <EmptyFeedState />
         ) : (
           <View>
             {sortedMembers.map((member, idx) => (
@@ -826,10 +907,6 @@ export default function TodayGoalListFeed({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 0,
-    width: '100%',
-  },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -959,36 +1036,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     marginTop: 10,
-  },
-  goalChip: {
-    borderWidth: 0,
-    // borderColor: 'rgba(255, 255, 255, 0.8)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.54)',
-  },
-  goalChipDone: {
-    backgroundColor: colors.brandWarm,
-  },
-  goalChipPass: {
-    backgroundColor: colors.brandPale,
-  },
-  goalChipIcon: {
-    marginRight: 3,
-    color: '#fff',
-    fontWeight: '700',
-  },
-  goalChipText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    maxWidth: 120,
-  },
-  goalChipTextDone: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  goalChipTextPass: {
-    color: colors.textMuted,
   },
   noGoalText: {
     fontSize: 12,
