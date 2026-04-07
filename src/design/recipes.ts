@@ -26,7 +26,7 @@ export const ds = StyleSheet.create({
     borderBottomColor: colors.borderMuted,
   },
   headerTitle: {
-    ...typography.titleMd,
+    ...typography.titleLg,
     color: colors.text,
   },
   iconButton: {

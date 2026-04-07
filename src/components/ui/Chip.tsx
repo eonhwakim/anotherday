@@ -1,15 +1,9 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type {
-  GestureResponderEvent,
-  ReactNode,
-  StyleProp,
-  TextStyle,
-  ViewStyle,
-} from 'react-native';
+import type { GestureResponderEvent, StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { ds, radius, spacing, typography } from '../../design/recipes';
 
-interface PillProps {
+interface ChipProps {
   label: string;
   icon?: ReactNode;
   onPress?: (event: GestureResponderEvent) => void;
@@ -19,7 +13,7 @@ interface PillProps {
   activeOpacity?: number;
 }
 
-export default function Pill({
+export default function Chip({
   label,
   icon,
   onPress,
@@ -27,7 +21,7 @@ export default function Pill({
   textStyle,
   numberOfLines = 1,
   activeOpacity = 0.8,
-}: PillProps) {
+}: ChipProps) {
   const content = (
     <>
       {icon ? <View style={styles.icon}>{icon}</View> : null}

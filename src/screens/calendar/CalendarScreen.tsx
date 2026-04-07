@@ -12,18 +12,18 @@ import { useTeamStore } from '../../stores/teamStore';
 
 import dayjs from '../../lib/dayjs';
 import { colors } from '../../design/tokens';
+import { ds } from '../../design/recipes';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 
 import CalendarDateSummaryCard from '../../components/calendar/CalendarDateSummaryCard';
 import CalendarMemberCheckinsSection from '../../components/calendar/CalendarMemberCheckinsSection';
 import CalendarPhotoModal from '../../components/calendar/CalendarPhotoModal';
-// import CalendarFloatingRecordsButton from '../../components/calendar/CalendarFloatingRecordsButton';
-// import DailyRecordsModal from '../../components/mypage/DailyRecordsModal';
+import ScreenBackground from '../../components/ui/ScreenBackground';
 
 export default function CalendarScreen() {
   const user = useAuthStore((s) => s.user);
-  const { currentTeam } = useTeamStore();
+  const { currentTeam, members, fetchMembers } = useTeamStore();
   const { fetchTeamGoals, fetchMyGoals } = useGoalStore();
   const {
     calendarMarkings,
@@ -39,7 +39,6 @@ export default function CalendarScreen() {
 
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
-  // const [dailyRecordsModalVisible, setDailyRecordsModalVisible] = useState(false);
   const [photoModal, setPhotoModal] = useState<{ url: string; checkinId: string } | null>(null);
 
   const selectedDateRef = useRef(selectedDate);
@@ -72,6 +71,9 @@ export default function CalendarScreen() {
         fetchTeamGoals(currentTeam?.id ?? '', user.id);
         fetchMonthlyCheckins(user.id, todayMonth);
         fetchMemberDateCheckins(currentTeam?.id, user.id, todayDate);
+        if (currentTeam?.id) {
+          void fetchMembers(currentTeam.id);
+        }
       }
     }, [
       user,
@@ -81,6 +83,7 @@ export default function CalendarScreen() {
       fetchTeamGoals,
       fetchMonthlyCheckins,
       fetchMemberDateCheckins,
+      fetchMembers,
     ]),
   );
 
@@ -261,6 +264,11 @@ export default function CalendarScreen() {
     [selectedDate, currentMonth],
   );
 
+  const teamWithCaption = React.useMemo(() => {
+    if (!currentTeam || members.length === 0) return null;
+    return `${members.length}명의 팀원과 함께`;
+  }, [currentTeam, members.length]);
+
   const statsGuideMessage = React.useMemo(() => {
     if (isExcludedFromStats) {
       if (selectedDate < dataStart) {
@@ -278,10 +286,17 @@ export default function CalendarScreen() {
   }, [isExcludedFromStats, isOtherMonth, selectedDate, dataStart, dataEnd, currentMonth]);
 
   return (
-    <View style={styles.container}>
+    <ScreenBackground>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView ref={scrollRef} style={styles.scroll}>
-          <View style={styles.calendarShadowWrap}>
+          <View style={ds.pagePadding}>
+            {teamWithCaption ? (
+              <View style={styles.header}>
+                <Text style={ds.headerTitle}>캘린더</Text>
+                <Text style={styles.teamWithCaption}>{teamWithCaption}</Text>
+              </View>
+            ) : null}
+
             <View style={styles.calendarContainer}>
               <Calendar
                 firstDay={1}
@@ -306,55 +321,39 @@ export default function CalendarScreen() {
                 onMonthChange={handleMonthChange}
               />
             </View>
+
+            <CalendarDateSummaryCard
+              formattedDate={formattedDate}
+              selectedMarking={selectedMarking}
+              statsGuideMessage={statsGuideMessage}
+              isFuture={isFuture}
+              myMember={myMember}
+              allMembers={memberDateCheckins}
+              selectedDate={selectedDate}
+              onOpenPhoto={setPhotoModal}
+            />
+
+            <CalendarMemberCheckinsSection
+              members={memberDateCheckins}
+              teamName={currentTeam?.name}
+              currentUserId={user?.id}
+              selectedDate={selectedDate}
+              isFuture={isFuture}
+              onOpenPhoto={setPhotoModal}
+            />
           </View>
-
-          <CalendarDateSummaryCard
-            formattedDate={formattedDate}
-            selectedMarking={selectedMarking}
-            statsGuideMessage={statsGuideMessage}
-            isFuture={isFuture}
-            myMember={myMember}
-            allMembers={memberDateCheckins}
-            selectedDate={selectedDate}
-            onOpenPhoto={setPhotoModal}
-          />
-
-          <CalendarMemberCheckinsSection
-            members={memberDateCheckins}
-            teamName={currentTeam?.name}
-            currentUserId={user?.id}
-            selectedDate={selectedDate}
-            isFuture={isFuture}
-            onOpenPhoto={setPhotoModal}
-          />
-
-          <View style={{ height: 100 }} />
         </ScrollView>
-
-        {/* <CalendarFloatingRecordsButton onPress={() => setDailyRecordsModalVisible(true)} /> */}
-
         <CalendarPhotoModal
           photoModal={photoModal}
           reactions={photoModalContext.checkin?.reactions ?? []}
           onClose={() => setPhotoModal(null)}
         />
-
-        {/* <DailyRecordsModal
-          visible={dailyRecordsModalVisible}
-          date={selectedDate}
-          memberRecords={memberDateCheckins}
-          onClose={() => setDailyRecordsModalVisible(false)}
-        /> */}
       </SafeAreaView>
-    </View>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.screen,
-  },
   safe: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -362,28 +361,23 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-  calendarShadowWrap: {
-    marginTop: 12,
-    marginHorizontal: 14,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 22,
-    elevation: 8,
+  header: {
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  teamWithCaption: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 10,
   },
   calendarContainer: {
-    borderRadius: 22,
+    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.96)',
   },
   calendar: {
     backgroundColor: 'transparent',
-    borderRadius: 22,
+    borderRadius: 20,
   },
   dayCellWrapper: {
     width: 62,

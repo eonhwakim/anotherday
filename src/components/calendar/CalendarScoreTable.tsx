@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+  type TextStyle,
+} from 'react-native';
 import { colors } from '../../design/tokens';
 
 interface CalendarScoreTableProps {
@@ -102,7 +109,7 @@ const styles = StyleSheet.create({
   },
   cellDivider: {
     borderLeftWidth: 1,
-    borderLeftColor: 'rgba(26, 26, 26, 0.10)',
+    borderLeftColor: colors.border,
   },
   labelText: {
     fontSize: 10,

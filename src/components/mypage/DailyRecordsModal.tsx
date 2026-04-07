@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
 import CyberFrame from '../ui/CyberFrame';
-import Pill from '../ui/Pill';
+import Chip from '../ui/Chip';
 import { MemberCheckinSummary } from '../../types/domain';
 
 const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
@@ -133,7 +133,7 @@ export default function DailyRecordsModal({
                                 </Text>
                               </View>
                               {statusText ? (
-                                <Pill
+                                <Chip
                                   label={statusText}
                                   style={[styles.statusBadge, badgeStyle]}
                                   textStyle={styles.statusText}

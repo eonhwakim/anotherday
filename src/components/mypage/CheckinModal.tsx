@@ -21,7 +21,7 @@ import { takePhoto, uploadCheckinPhoto } from '../../services/checkinService';
 import { colors } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
 import CyberFrame from '../ui/CyberFrame';
-import Pill from '../ui/Pill';
+import Chip from '../ui/Chip';
 
 // Android에서 BlurView의 렌더링 문제를 방지하기 위한 임시 방편 (기본 뷰로 대체)
 const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
@@ -157,7 +157,10 @@ export default function CheckinModal({
       });
     } catch (e) {
       console.error('[Checkin] handleSuccess error:', e);
-      Alert.alert('오류', `인증 처리 중 문제가 발생했어요.\n${e instanceof Error ? e.message : ''}`);
+      Alert.alert(
+        '오류',
+        `인증 처리 중 문제가 발생했어요.\n${e instanceof Error ? e.message : ''}`,
+      );
     }
   };
 
@@ -249,7 +252,7 @@ export default function CheckinModal({
                             <Text style={[styles.statusBadge, styles.badgeSuccess]}>성공</Text>
                           )}
                           {isWeekly && isPass && (
-                            <Pill
+                            <Chip
                               label="취소"
                               icon={<Ionicons name="refresh" size={15} color={colors.warning} />}
                               onPress={() => handleCancelPass(checkin!.id)}
@@ -260,7 +263,7 @@ export default function CheckinModal({
                         </View>
                       ) : (
                         <View style={styles.actionRow}>
-                          <Pill
+                          <Chip
                             label="성공"
                             icon={<Ionicons name="camera" size={16} color={colors.primary} />}
                             onPress={() => handleSuccess(goal.id)}
@@ -268,7 +271,7 @@ export default function CheckinModal({
                             textStyle={styles.successBtnText}
                           />
                           {isWeekly && (
-                            <Pill
+                            <Chip
                               label="패스"
                               icon={
                                 <Ionicons

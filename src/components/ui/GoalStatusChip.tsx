@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { colors } from '../../design/tokens';
-import Pill from './Pill';
+import Chip from './Chip';
 
 export type GoalChipStatus = 'todo' | 'done' | 'pass';
 
@@ -34,7 +34,7 @@ export default function GoalStatusChip({ goalName, status }: GoalStatusChipProps
   ];
 
   return (
-    <Pill
+    <Chip
       label={isPass ? `(패스) ${goalName}` : goalName}
       icon={isDone ? <Text style={styles.chipIcon}>✓</Text> : undefined}
       numberOfLines={1}
