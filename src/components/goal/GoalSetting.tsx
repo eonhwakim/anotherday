@@ -2,10 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, UserGoal } from '../../types/domain';
-import FrameCard from '../ui/FrameCard';
-import CyberFrame from '../ui/CyberFrame';
+import BaseCard from '../ui/BaseCard';
+import Badge from '../ui/Badge';
 import dayjs from '../../lib/dayjs';
 import { colors, radius, spacing, typography } from '../../design/recipes';
+import { getCalendarWeekRanges } from '../../lib/statsUtils';
 
 interface GoalSettingProps {
   teamGoals: Goal[];
@@ -13,6 +14,9 @@ interface GoalSettingProps {
   onEnd: (goalId: string) => void;
   onRemove: (goalId: string) => void;
   monthlyResolution?: string;
+  title?: string;
+  subtitle?: string;
+  yearMonth?: string;
 }
 
 function freqLabel(ug: UserGoal): string {
@@ -31,17 +35,46 @@ function startLabel(ug: UserGoal): string | null {
   return `시작일:  ${dayjs(ug.start_date).format('MM/DD')}`;
 }
 
+function isMergedWeekGoalForMonth(ug: UserGoal, yearMonth?: string): boolean {
+  if (!yearMonth) return false;
+
+  const monthStart = dayjs(`${yearMonth}-01`).startOf('month');
+  const monthEnd = monthStart.endOf('month');
+  const { dataStart, dataEnd } = getCalendarWeekRanges(yearMonth);
+
+  const windowStart = dayjs(dataStart);
+  const windowEnd = dayjs(dataEnd);
+  const goalStart = ug.start_date ? dayjs(ug.start_date) : null;
+  const goalEnd = ug.end_date ? dayjs(ug.end_date) : null;
+
+  const overlapsWindow =
+    (!goalStart || !goalStart.isAfter(windowEnd, 'day')) &&
+    (!goalEnd || !goalEnd.isBefore(windowStart, 'day'));
+
+  const overlapsCalendarMonth =
+    (!goalStart || !goalStart.isAfter(monthEnd, 'day')) &&
+    (!goalEnd || !goalEnd.isBefore(monthStart, 'day'));
+
+  return overlapsWindow && !overlapsCalendarMonth;
+}
+
 export default function GoalSetting({
   teamGoals = [],
   myGoals = [],
   onEnd,
   onRemove,
   monthlyResolution = '',
+  title = '목표 설정',
+  subtitle = '* 목표를 추가하면 오늘부터 적용됩니다',
+  yearMonth,
 }: GoalSettingProps) {
   const todayStr = dayjs().format('YYYY-MM-DD');
-  const getMyGoal = (goalId: string) =>
-    myGoals.find((ug) => ug.goal_id === goalId && (!ug.end_date || ug.end_date >= todayStr)) ??
-    myGoals.find((ug) => ug.goal_id === goalId);
+  const getMyGoal = React.useCallback(
+    (goalId: string) =>
+      myGoals.find((ug) => ug.goal_id === goalId && (!ug.end_date || ug.end_date >= todayStr)) ??
+      myGoals.find((ug) => ug.goal_id === goalId),
+    [myGoals, todayStr],
+  );
   const sortedGoals = React.useMemo(() => {
     return [...teamGoals].sort((a, b) => {
       const aGoal = getMyGoal(a.id);
@@ -54,7 +87,7 @@ export default function GoalSetting({
       if (aEnded === bEnded) return 0;
       return aEnded ? 1 : -1;
     });
-  }, [teamGoals, myGoals, todayStr]);
+  }, [getMyGoal, teamGoals, todayStr]);
 
   const handleLongPress = (goal: Goal) => {
     Alert.alert('루틴 관리', `"${goal.name}" 루틴을 어떻게 처리할까요?`, [
@@ -90,115 +123,145 @@ export default function GoalSetting({
   };
 
   return (
-    <FrameCard style={styles.cardFrame} contentStyle={styles.cardContent} padded={false}>
-      <View style={styles.titleRow}>
-        <Text style={styles.title}>목표 설정</Text>
-      </View>
-      <Text style={styles.subtitle}>* 목표를 추가하면 오늘부터 적용됩니다</Text>
+    <>
+      {title || subtitle ? (
+        <View style={styles.titleBlock}>
+          {title ? (
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>{title}</Text>
+            </View>
+          ) : null}
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        </View>
+      ) : null}
 
       <View style={styles.resolutionSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>이번 달 한마디</Text>
         </View>
 
-        <CyberFrame
-          style={[styles.innerCard, styles.brightGlass]}
-          contentStyle={styles.resolutionBox}
+        <BaseCard
           glassOnly
+          padded={false}
+          style={styles.innerCard}
+          contentStyle={styles.resolutionBox}
         >
           <Text style={[styles.resolutionText, !monthlyResolution && styles.placeholderText]}>
             {monthlyResolution ? monthlyResolution : '이번 달의 다짐이나 목표를 적어보세요.'}
           </Text>
-        </CyberFrame>
+        </BaseCard>
       </View>
 
-      {teamGoals.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Ionicons name="bulb-outline" size={24} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>
-            아직 등록된 목표가 없어요{'\n'}아래 플러스 버튼으로 루틴을 추가해보세요!
-          </Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>등록된 루틴 (길게 누름: 종료/삭제)</Text>
-            <Text style={styles.hintLabel}>
-              * 종료는 기록을 남기고, 완전 삭제는 기록도 모두 삭제됩니다.
+      <View style={styles.goalsSection}>
+        {teamGoals.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Ionicons name="bulb-outline" size={24} color={colors.textSecondary} />
+            <Text style={styles.emptyText}>
+              아직 등록된 목표가 없어요{'\n'}아래 플러스 버튼으로 루틴을 추가해보세요!
             </Text>
           </View>
-          <View style={styles.goalList}>
-            {sortedGoals.map((goal, index) => {
-              const userGoal = getMyGoal(goal.id);
-              const isEnded =
-                !!userGoal &&
-                (userGoal.is_active === false ||
-                  (!!userGoal.end_date && userGoal.end_date < todayStr));
+        ) : (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>등록된 루틴 (길게 누름: 종료/삭제)</Text>
+              <Text style={styles.hintLabel}>
+                * 종료는 기록을 남기고, 완전 삭제는 기록도 모두 삭제됩니다.
+              </Text>
+            </View>
+            <View style={styles.goalList}>
+              {sortedGoals.map((goal, index) => {
+                const userGoal = getMyGoal(goal.id);
+                const isEnded =
+                  !!userGoal &&
+                  (userGoal.is_active === false ||
+                    (!!userGoal.end_date && userGoal.end_date < todayStr));
+                const isMergedWeekGoal =
+                  !!userGoal && isMergedWeekGoalForMonth(userGoal, yearMonth);
 
-              return (
-                <TouchableOpacity
-                  key={goal.id}
-                  onLongPress={isEnded ? undefined : () => handleLongPress(goal)}
-                  activeOpacity={0.7}
-                  delayLongPress={500}
-                  disabled={isEnded}
-                >
-                  <CyberFrame
-                    style={[styles.goalRowFrame, styles.brightGlass]}
-                    contentStyle={styles.goalRowContentBox}
-                    glassOnly
+                return (
+                  <TouchableOpacity
+                    key={goal.id}
+                    onLongPress={isEnded ? undefined : () => handleLongPress(goal)}
+                    activeOpacity={0.7}
+                    delayLongPress={500}
+                    disabled={isEnded}
                   >
-                    <View style={styles.goalNumIcon}>
-                      <Text style={styles.goalNumText}>{index + 1}</Text>
-                    </View>
-                    <View style={styles.goalRowContent}>
-                      <View style={styles.goalTextWrap}>
-                        <Text
-                          style={[styles.goalRowName, isEnded && styles.goalRowNameEnded]}
-                          numberOfLines={1}
-                        >
-                          {goal.name}
-                        </Text>
+                    <BaseCard
+                      glassOnly
+                      padded={false}
+                      style={styles.goalRowFrame}
+                      contentStyle={styles.goalRowContentBox}
+                    >
+                      <View style={styles.goalNumIcon}>
+                        <Text style={styles.goalNumText}>{index + 1}</Text>
+                      </View>
+                      <View style={styles.goalRowContent}>
+                        <View style={styles.goalTextWrap}>
+                          <Text
+                            style={[styles.goalRowName, isEnded && styles.goalRowNameEnded]}
+                            numberOfLines={1}
+                          >
+                            {goal.name}
+                          </Text>
+                          {userGoal ? (
+                            <View style={styles.goalPeriodRow}>
+                              <Text style={styles.goalPeriod}>
+                                {isEnded ? periodLabel(userGoal) : startLabel(userGoal)}
+                              </Text>
+                              {isMergedWeekGoal ? (
+                                <Badge
+                                  label="편입주"
+                                  tone="warning"
+                                  style={styles.mergedBadge}
+                                  textStyle={styles.mergedBadgeText}
+                                />
+                              ) : null}
+                              {isEnded ? (
+                                <View style={styles.endedBadge}>
+                                  <Text style={styles.endedBadgeText}>종료됨</Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          ) : null}
+                        </View>
                         {userGoal ? (
-                          <View style={styles.goalPeriodRow}>
-                            <Text style={styles.goalPeriod}>
-                              {isEnded ? periodLabel(userGoal) : startLabel(userGoal)}
+                          <View style={styles.goalMetaRight}>
+                            <Text style={[styles.goalRowFreq, isEnded && styles.goalRowFreqEnded]}>
+                              {freqLabel(userGoal)}
                             </Text>
-                            {isEnded ? (
-                              <View style={styles.endedBadge}>
-                                <Text style={styles.endedBadgeText}>종료됨</Text>
-                              </View>
-                            ) : null}
                           </View>
                         ) : null}
                       </View>
-                      {userGoal ? (
-                        <View style={styles.goalMetaRight}>
-                          <Text style={[styles.goalRowFreq, isEnded && styles.goalRowFreqEnded]}>
-                            {freqLabel(userGoal)}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  </CyberFrame>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </>
-      )}
-    </FrameCard>
+                    </BaseCard>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  cardFrame: {
-    marginHorizontal: spacing[4],
+  titleBlock: {
     marginBottom: spacing[4],
   },
-  cardContent: {
-    padding: spacing[6],
+  resolutionSection: {
+    marginBottom: spacing[4],
   },
+  sectionHeader: {
+    marginBottom: spacing[2],
+  },
+  sectionTitle: {
+    ...typography.titleSm,
+    color: colors.text,
+  },
+  goalsSection: {
+    marginTop: spacing[1],
+  },
+  //----------
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -215,28 +278,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing[6] + 2,
     lineHeight: 20,
   },
-  brightGlass: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderColor: 'rgba(255, 255, 255, 1)',
-    borderWidth: 1.5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  resolutionSection: {
-    marginBottom: spacing[5] - 2,
-  },
-  sectionHeader: {
-    marginBottom: spacing[2],
-  },
-  sectionTitle: {
-    ...typography.bodyStrong,
-    color: colors.text,
-  },
+
   innerCard: {
     borderRadius: radius.md,
+    marginTop: 0,
   },
   resolutionBox: {
     padding: spacing[3] + 2,
@@ -291,10 +336,11 @@ const styles = StyleSheet.create({
   goalNumText: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.screen,
+    color: colors.white,
   },
   goalRowFrame: {
     borderRadius: radius.md,
+    marginTop: 0,
   },
   goalRowContentBox: {
     flexDirection: 'row',
@@ -356,5 +402,14 @@ const styles = StyleSheet.create({
   endedBadgeText: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  mergedBadge: {
+    paddingHorizontal: spacing[2],
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+  },
+  mergedBadgeText: {
+    fontSize: 11,
+    letterSpacing: 0,
   },
 });

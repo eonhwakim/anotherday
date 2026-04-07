@@ -1,18 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import { BlurView } from 'expo-blur';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, Checkin } from '../../types/domain';
 import { useGoalStore } from '../../stores/goalStore';
@@ -20,11 +7,9 @@ import { useAuthStore } from '../../stores/authStore';
 import { takePhoto, uploadCheckinPhoto } from '../../services/checkinService';
 import { colors } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
-import CyberFrame from '../ui/CyberFrame';
 import Chip from '../ui/Chip';
-
-// Android에서 BlurView의 렌더링 문제를 방지하기 위한 임시 방편 (기본 뷰로 대체)
-const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
+import BaseCard from '../ui/BaseCard';
+import BottomSheetModal from '../ui/BottomSheetModal';
 
 interface GoalWithFrequency {
   goal: Goal;
@@ -165,191 +150,120 @@ export default function CheckinModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.overlayBg} />
-        </TouchableWithoutFeedback>
-        <SafeBlurView intensity={30} tint="light" style={styles.sheet}>
-          {/* 핸들 바 */}
-          <View style={styles.handleBar} />
-
-          {/* 헤더 */}
-          <View style={styles.header}>
-            <View style={styles.headerSpacer} />
-            <Text style={styles.headerTitle}>{formattedDate}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          {isLoading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator size="large" color={colors.primaryLight} />
-              <Text style={styles.loadingText}>처리 중...</Text>
-            </View>
+    <BottomSheetModal visible={visible} onClose={onClose} title={formattedDate}>
+      {isLoading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={colors.primaryLight} />
+          <Text style={styles.loadingText}>처리 중...</Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.body} bounces={false}>
+          {goalsWithFrequency.length === 0 ? (
+            <Text style={styles.emptyText}>오늘 인증할 목표가 없어요</Text>
           ) : (
-            <ScrollView style={styles.body} bounces={false}>
-              {goalsWithFrequency.length === 0 ? (
-                <Text style={styles.emptyText}>오늘 인증할 목표가 없어요</Text>
-              ) : (
-                goalsWithFrequency.map(({ goal, frequency, targetCount, weeklyDoneCount = 0 }) => {
-                  const done = isGoalDone(goal.id);
-                  const checkin = checkins.find((c) => c.goal_id === goal.id);
-                  const isPass = checkin?.status === 'pass';
-                  const isWeekly = frequency === 'weekly_count';
-                  const freqLabel = isWeekly ? `주 ${targetCount ?? 0}회` : '매일';
-                  const weeklyProgress =
-                    isWeekly && targetCount != null ? ` (${weeklyDoneCount} / ${targetCount})` : '';
+            goalsWithFrequency.map(({ goal, frequency, targetCount, weeklyDoneCount = 0 }) => {
+              const done = isGoalDone(goal.id);
+              const checkin = checkins.find((c) => c.goal_id === goal.id);
+              const isPass = checkin?.status === 'pass';
+              const isWeekly = frequency === 'weekly_count';
+              const freqLabel = isWeekly ? `주 ${targetCount ?? 0}회` : '매일';
+              const weeklyProgress =
+                isWeekly && targetCount != null ? ` (${weeklyDoneCount} / ${targetCount})` : '';
 
-                  return (
-                    <CyberFrame
-                      key={goal.id}
-                      style={[
-                        styles.goalFrame,
-                        done && !isPass && styles.goalRowDone,
-                        isPass && styles.goalRowPass,
-                      ]}
-                      contentStyle={styles.goalFrameContent}
-                    >
-                      <View style={styles.goalInfo}>
-                        <Ionicons
-                          name={
-                            done
-                              ? isPass
-                                ? 'remove-circle'
-                                : 'checkmark-circle'
-                              : 'ellipse-outline'
-                          }
-                          size={22}
-                          color={
-                            done ? (isPass ? colors.warning : colors.success) : colors.textSecondary
-                          }
-                        />
-                        <View style={styles.goalNameRow}>
-                          <Text
-                            style={[styles.goalName, done && styles.goalNameDone]}
-                            numberOfLines={2}
-                            ellipsizeMode="tail"
-                          >
-                            {goal.name}
-                          </Text>
-                          <Text style={styles.freqLabel}>
-                            {freqLabel}
-                            {weeklyProgress}
-                          </Text>
-                        </View>
-                      </View>
+              return (
+                <BaseCard
+                  glassOnly
+                  key={goal.id}
+                  style={[
+                    styles.goalFrame,
+                    done && !isPass && styles.goalRowDone,
+                    isPass && styles.goalRowPass,
+                  ]}
+                  contentStyle={styles.goalFrameContent}
+                >
+                  <View style={styles.goalInfo}>
+                    <Ionicons
+                      name={
+                        done
+                          ? isPass
+                            ? 'remove-circle'
+                            : 'checkmark-circle'
+                          : 'ellipse-outline'
+                      }
+                      size={22}
+                      color={
+                        done ? (isPass ? colors.warning : colors.success) : colors.textSecondary
+                      }
+                    />
+                    <View style={styles.goalNameRow}>
+                      <Text
+                        style={[styles.goalName, done && styles.goalNameDone]}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
+                        {goal.name}
+                      </Text>
+                      <Text style={styles.freqLabel}>
+                        {freqLabel}
+                        {weeklyProgress}
+                      </Text>
+                    </View>
+                  </View>
 
-                      {done || isPass ? (
-                        <View style={styles.actionRow}>
-                          {isPass ? (
-                            <Text style={[styles.statusBadge, styles.badgePass]}>패스</Text>
-                          ) : (
-                            <Text style={[styles.statusBadge, styles.badgeSuccess]}>성공</Text>
-                          )}
-                          {isWeekly && isPass && (
-                            <Chip
-                              label="취소"
-                              icon={<Ionicons name="refresh" size={15} color={colors.warning} />}
-                              onPress={() => handleCancelPass(checkin!.id)}
-                              style={styles.passBtn}
-                              textStyle={[styles.passBtnText, { color: colors.warning }]}
-                            />
-                          )}
-                        </View>
+                  {done || isPass ? (
+                    <View style={styles.actionRow}>
+                      {isPass ? (
+                        <Text style={[styles.statusBadge, styles.badgePass]}>패스</Text>
                       ) : (
-                        <View style={styles.actionRow}>
-                          <Chip
-                            label="성공"
-                            icon={<Ionicons name="camera" size={16} color={colors.primary} />}
-                            onPress={() => handleSuccess(goal.id)}
-                            style={styles.successBtn}
-                            textStyle={styles.successBtnText}
-                          />
-                          {isWeekly && (
-                            <Chip
-                              label="패스"
-                              icon={
-                                <Ionicons
-                                  name="close-circle-outline"
-                                  size={16}
-                                  color={colors.warning}
-                                />
-                              }
-                              onPress={() => handlePassToggle(goal.id)}
-                              style={styles.passBtn}
-                              textStyle={styles.passBtnText}
-                            />
-                          )}
-                        </View>
+                        <Text style={[styles.statusBadge, styles.badgeSuccess]}>성공</Text>
                       )}
-                    </CyberFrame>
-                  );
-                })
-              )}
-            </ScrollView>
+                      {isWeekly && isPass && (
+                        <Chip
+                          label="취소"
+                          icon={<Ionicons name="refresh" size={15} color={colors.warning} />}
+                          onPress={() => handleCancelPass(checkin!.id)}
+                          style={styles.passBtn}
+                          textStyle={[styles.passBtnText, { color: colors.warning }]}
+                        />
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.actionRow}>
+                      <Chip
+                        label="성공"
+                        icon={<Ionicons name="camera" size={16} color={colors.primary} />}
+                        onPress={() => handleSuccess(goal.id)}
+                        style={styles.successBtn}
+                        textStyle={styles.successBtnText}
+                      />
+                      {isWeekly && (
+                        <Chip
+                          label="패스"
+                          icon={
+                            <Ionicons
+                              name="close-circle-outline"
+                              size={16}
+                              color={colors.warning}
+                            />
+                          }
+                          onPress={() => handlePassToggle(goal.id)}
+                          style={styles.passBtn}
+                          textStyle={styles.passBtnText}
+                        />
+                      )}
+                    </View>
+                  )}
+                </BaseCard>
+              );
+            })
           )}
-        </SafeBlurView>
-      </KeyboardAvoidingView>
-    </Modal>
+        </ScrollView>
+      )}
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  overlayBg: {
-    flex: 1,
-  },
-  sheet: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 34,
-    maxHeight: '75%',
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#FF6B3D',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  handleBar: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 90, 61, 0.2)',
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  headerSpacer: {
-    width: 28,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  backBtn: { padding: 4 },
-  closeBtn: { padding: 4 },
   body: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -430,10 +344,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     alignSelf: 'center',
     borderWidth: 0,
-  },
-  statusBadgeText: {
-    fontSize: 14,
-    fontWeight: '700',
   },
   badgeSuccess: {
     color: '#FF6B3D',
