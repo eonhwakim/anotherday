@@ -15,7 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import type { CheckinWithGoal, MemberProgress, ReactionWithUser } from '../../types/domain';
 import { colors } from '../../design/tokens';
-import CyberFrame from '../ui/CyberFrame';
+// import CyberFrame from '../ui/CyberFrame';
+import BaseCard from '../ui/BaseCard';
 import Pill from '../ui/Pill';
 import DynamicBadge, {
   HOME_BADGE_POP_TRANSLATE_X_OFFSET_PX,
@@ -462,7 +463,7 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
     <Animated.View
       style={[styles.memberRow, { opacity: animOpacity, transform: [{ translateY: animSlide }] }]}
     >
-      <CyberFrame style={styles.memberCard} contentStyle={styles.memberCardContent}>
+      <BaseCard glassOnly style={styles.memberCard} contentStyle={styles.memberCardContent}>
         <View style={styles.memberHeader}>
           <View style={styles.memberIdentity}>
             <View style={[styles.memberAvatarWrap, allDone && styles.memberAvatarWrapDone]}>
@@ -533,7 +534,7 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
             </View>
           </View>
         ) : null}
-      </CyberFrame>
+      </BaseCard>
     </Animated.View>
   );
 }

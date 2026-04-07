@@ -18,8 +18,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useStatsStore } from '../../stores/statsStore';
-import CyberFrame from '../../components/ui/CyberFrame';
-
+import BaseCard from '../../components/ui/BaseCard';
 import dayjs from '../../lib/dayjs';
 import { colors } from '../../design/tokens';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
@@ -31,12 +30,10 @@ import {
 } from '../../services/goalService';
 
 import MountainProgress from '../../components/home/MountainProgress';
-// import TodayGoalList from '../../components/home/TodayGoalList';
 import TodayGoalList from '../../components/home/TodayGoalListFeed';
 
 import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
-// import DevGuideModal from '../../components/home/DevGuideModal';
 
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
@@ -371,12 +368,12 @@ export default function HomeScreen() {
               반가워요, {user?.nickname ?? ''}님
             </Text>
             <View style={styles.frameRow}>
-              <CyberFrame style={{ alignSelf: 'flex-start' }}>
+              <BaseCard style={{ alignSelf: 'flex-start' }}>
                 <Text style={[styles.dateText, isNight && styles.dateTextLight]}>{today}</Text>
                 <Text style={[styles.teamName, isNight && styles.teamNameLight]}>
                   {currentTeam?.name ? `${currentTeam?.name}` : '오늘의 목표'}
                 </Text>
-              </CyberFrame>
+              </BaseCard>
             </View>
           </View>
 
@@ -431,7 +428,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.screen,
   },
   bgLayer: {
     ...StyleSheet.absoluteFillObject,
