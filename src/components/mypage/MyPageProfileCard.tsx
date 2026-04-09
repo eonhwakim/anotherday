@@ -2,9 +2,9 @@ import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { User } from '../../types/domain';
-import FrameCard from '../ui/FrameCard';
+import BaseCard from '../ui/BaseCard';
 import Avatar from '../ui/Avatar';
-import { colors, radius, spacing, typography } from '../../design/recipes';
+import { colors, spacing, typography } from '../../design/recipes';
 
 interface MyPageProfileCardProps {
   user: User | null;
@@ -14,7 +14,12 @@ interface MyPageProfileCardProps {
 export default function MyPageProfileCard({ user, onPress }: MyPageProfileCardProps) {
   return (
     <TouchableOpacity onPress={onPress}>
-      <FrameCard style={styles.profileFrame} contentStyle={styles.profileCard} padded={false}>
+      <BaseCard
+        glassOnly
+        style={[styles.profileSection]}
+        contentStyle={styles.profileCard}
+        padded={false}
+      >
         <View style={styles.avatarLarge}>
           <Avatar uri={user?.profile_image_url ?? null} size={56} />
         </View>
@@ -30,16 +35,15 @@ export default function MyPageProfileCard({ user, onPress }: MyPageProfileCardPr
           <Text style={styles.email}>{user?.email ?? '-'}</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-      </FrameCard>
+      </BaseCard>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  profileFrame: {
-    marginHorizontal: spacing[4],
-    marginBottom: spacing[4],
-    borderRadius: radius.lg,
+  profileSection: {
+    marginTop: spacing[2],
+    marginBottom: spacing[5],
   },
   profileCard: {
     flexDirection: 'row',

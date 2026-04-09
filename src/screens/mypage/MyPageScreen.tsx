@@ -1,14 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-  Platform,
-  Image,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -18,39 +9,56 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
-import { useGoalStore } from '../../stores/goalStore';
 import { joinTeamByCode } from '../../services/teamService';
-import { getMonthlyResolution, saveMonthlyResolution } from '../../services/monthlyService';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
-import dayjs from '../../lib/dayjs';
 import { colors, ds, spacing, typography } from '../../design/recipes';
 
-import FrameCard from '../../components/ui/FrameCard';
 import Input from '../../components/common/Input';
-import ScreenHeader from '../../components/ui/ScreenHeader';
-import SectionHeader from '../../components/ui/SectionHeader';
-
 import GlassModal from '../../components/ui/GlassModal';
-import GoalSetting from '../../components/mypage/GoalSetting';
 import MyPageProfileCard from '../../components/mypage/MyPageProfileCard';
-import MyPageTeamSection from '../../components/mypage/MyPageTeamSection';
-import MyPageFabMenu from '../../components/mypage/MyPageFabMenu';
+import ScreenBackground from '../../components/ui/ScreenBackground';
+import BaseCard from '../../components/ui/BaseCard';
+
+const ROW_ICON = '#4A4A4A';
+const CHEVRON = '#BDBDBD';
+const DIVIDER = 'rgba(0,0,0,0.06)';
+
+type Ion = React.ComponentProps<typeof Ionicons>['name'];
+
+function SettingsRow({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  showDivider,
+}: {
+  icon: Ion;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  showDivider: boolean;
+}) {
+  return (
+    <>
+      <TouchableOpacity style={styles.settingsRow} onPress={onPress} activeOpacity={0.65}>
+        <View style={styles.iconCol}>
+          <Ionicons name={icon} size={22} color={ROW_ICON} />
+        </View>
+        <View style={styles.settingsTextWrap}>
+          <Text style={styles.settingsTitle}>{title}</Text>
+          <Text style={styles.settingsSubtitle}>{subtitle}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={CHEVRON} />
+      </TouchableOpacity>
+      {showDivider ? <View style={styles.settingsDivider} /> : null}
+    </>
+  );
+}
 
 export default function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, signOut } = useAuthStore();
   const { teams, currentTeam, fetchTeams, createTeam, selectTeam } = useTeamStore();
-  const {
-    teamGoals,
-    myGoals,
-    monthGoals,
-    fetchTeamGoals,
-    fetchMyGoals,
-    fetchMyGoalsForMonth,
-    fetchTodayCheckins,
-    endTeamGoal,
-    removeTeamGoal,
-  } = useGoalStore();
 
   const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
@@ -58,98 +66,35 @@ export default function MyPageScreen() {
 
   const [teamModalType, setTeamModalType] = useState<'create' | 'join' | null>(null);
   const [teamInputValue, setTeamInputValue] = useState('');
-  const [monthlyResolution, setMonthlyResolution] = useState('');
-  const [fabMenuVisible, setFabMenuVisible] = useState(false);
-  const [resolutionModalVisible, setResolutionModalVisible] = useState(false);
-  const [resolutionInput, setResolutionInput] = useState('');
 
-  const loadResolution = useCallback(async () => {
-    // fetchTeams 직후 등 리렌더 전에 호출될 수 있으므로 스토어에서 읽음
-    const u = useAuthStore.getState().user;
-    const team = useTeamStore.getState().currentTeam;
-    if (!u) {
-      setMonthlyResolution('');
-      setResolutionInput('');
-      return;
-    }
-    const yearMonth = dayjs().format('YYYY-MM');
-    try {
-      const content = await getMonthlyResolution(u.id, yearMonth, team?.id ?? null);
-      setMonthlyResolution(content);
-      setResolutionInput(content);
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
-  const loadData = useCallback(async () => {
-    if (!user) return;
-    await fetchTeams(user.id);
-    const team = useTeamStore.getState().currentTeam;
-    const teamId = team?.id ?? '';
-    await Promise.all([
-      fetchTeamGoals(teamId, user.id),
-      fetchMyGoals(user.id),
-      fetchMyGoalsForMonth(user.id, dayjs().format('YYYY-MM')),
-      fetchTodayCheckins(user.id),
-    ]);
-    await loadResolution();
-  }, [
-    user,
-    fetchTeams,
-    fetchTeamGoals,
-    fetchMyGoals,
-    fetchMyGoalsForMonth,
-    fetchTodayCheckins,
-    loadResolution,
-  ]);
-
-  // 팀 변경 시 한마디 다시 로드
-  React.useEffect(() => {
-    loadResolution();
-  }, [currentTeam?.id, loadResolution]);
+  const refreshTeams = useCallback(async () => {
+    if (user) await fetchTeams(user.id);
+  }, [user, fetchTeams]);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData]),
+      refreshTeams();
+    }, [refreshTeams]),
   );
 
-  const handleEndGoal = async (goalId: string) => {
-    if (!user) return;
-    const activeTeam = useTeamStore.getState().currentTeam;
-    await endTeamGoal(activeTeam?.id ?? '', user.id, goalId);
-  };
-
-  const handleRemoveGoal = async (goalId: string) => {
-    if (!user) return;
-    const activeTeam = useTeamStore.getState().currentTeam;
-    await removeTeamGoal(activeTeam?.id ?? '', user.id, goalId);
-  };
-
-  const handleUpdateResolution = async (text: string): Promise<boolean> => {
-    const u = useAuthStore.getState().user;
-    const team = useTeamStore.getState().currentTeam;
-    if (!u) return false;
-    const yearMonth = dayjs().format('YYYY-MM');
-    try {
-      const ok = await saveMonthlyResolution({
-        userId: u.id,
-        yearMonth,
-        content: text,
-        teamId: team?.id ?? null,
-      });
-      if (!ok) throw new Error('save failed');
-
-      setMonthlyResolution(text);
-      setResolutionInput(text);
-      await loadResolution();
-      return true;
-    } catch (e) {
-      console.error(e);
-      Alert.alert('저장 실패', '한마디 저장 중 오류가 발생했습니다.');
-      return false;
+  const handleOpenTeamModal = (type: 'create' | 'join') => {
+    if (teams.length >= 1) {
+      Alert.alert('알림', '현재는 팀을 1개까지만 생성/참가할 수 있습니다.');
+      return;
     }
+    setTeamModalType(type);
+  };
+
+  const handleTeamManagement = () => {
+    if (currentTeam) {
+      navigation.navigate('TeamMember', { teamId: currentTeam.id });
+      return;
+    }
+    Alert.alert('팀 관리', '팀이 없어요. 어떻게 진행할까요?', [
+      { text: '취소', style: 'cancel' },
+      { text: '팀 만들기', onPress: () => handleOpenTeamModal('create') },
+      { text: '코드로 참가', onPress: () => handleOpenTeamModal('join') },
+    ]);
   };
 
   const handleCreateTeam = async () => {
@@ -163,7 +108,7 @@ export default function MyPageScreen() {
             onPress: () => {
               setTeamModalType(null);
               setTeamInputValue('');
-              loadData();
+              refreshTeams();
             },
           },
         ]);
@@ -189,7 +134,7 @@ export default function MyPageScreen() {
             onPress: () => {
               setTeamModalType(null);
               setTeamInputValue('');
-              loadData();
+              refreshTeams();
             },
           },
         ]);
@@ -200,14 +145,6 @@ export default function MyPageScreen() {
       console.error(e);
       Alert.alert('오류', '팀 참가 중 오류가 발생했습니다.');
     }
-  };
-
-  const handleOpenTeamModal = (type: 'create' | 'join') => {
-    if (teams.length >= 1) {
-      Alert.alert('알림', '현재는 팀을 1개까지만 생성/참가할 수 있습니다.');
-      return;
-    }
-    setTeamModalType(type);
   };
 
   const handleLogout = () => {
@@ -223,141 +160,60 @@ export default function MyPageScreen() {
     ]);
   };
 
-  // ── 현재 팀에 해당하는 나의 목표만 필터링 ──
-  const currentTeamUserGoals = React.useMemo(() => {
-    if (!teamGoals || teamGoals.length === 0) return [];
-    if (!monthGoals || !user) return [];
-
-    const myOwnedGoalIds = new Set(
-      teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
-    );
-    return monthGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
-  }, [teamGoals, monthGoals, user]);
-
-  // ── 마이페이지 목표설정에 보여줄 목표 (user_goals에도 존재하는 것만) ──
-  const myVisibleGoals = React.useMemo(() => {
-    if (!teamGoals || !user) return [];
-    const activeGoalIds = new Set(currentTeamUserGoals.map((ug) => ug.goal_id));
-    return teamGoals.filter((g) => g.owner_id === user.id && activeGoalIds.has(g.id));
-  }, [teamGoals, currentTeamUserGoals, user]);
-
   return (
-    <View style={styles.container}>
+    <ScreenBackground>
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScreenHeader
-          title="마이페이지"
-          right={
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AppSettings')}
-              style={styles.headerButton}
-            >
-              <Ionicons name="settings-outline" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
-          }
-        />
-        <ScrollView ref={scrollRef} style={styles.scroll} keyboardShouldPersistTaps="handled">
-          {/* ── 프로필 카드 ── */}
-          <MyPageProfileCard user={user} onPress={() => navigation.navigate('ProfileEdit')} />
+        <ScrollView
+          style={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={ds.pagePadding}>
+            <View style={styles.header}>
+              <Text style={ds.headerTitle}>마이페이지</Text>
+            </View>
 
-          {/* ── 한달 목표 설정 ── */}
-          <GoalSetting
-            teamGoals={myVisibleGoals}
-            myGoals={currentTeamUserGoals}
-            onEnd={handleEndGoal}
-            onRemove={handleRemoveGoal}
-            monthlyResolution={monthlyResolution}
-          />
+            <MyPageProfileCard user={user} onPress={() => navigation.navigate('ProfileEdit')} />
 
-          <MyPageTeamSection
-            teams={teams}
-            currentTeam={currentTeam}
-            onOpenTeamMember={(team) => {
-              selectTeam(team);
-              navigation.navigate('TeamMember', { teamId: team.id });
-            }}
-            onSelectTeam={(team) => {
-              selectTeam(team);
-              loadData();
-            }}
-          />
+            <BaseCard glassOnly padded={false} style={styles.section}>
+              <SettingsRow
+                icon="notifications-outline"
+                title="알림 설정"
+                subtitle="루틴 리마인더"
+                onPress={() => navigation.navigate('AppSettings')}
+                showDivider
+              />
+              <SettingsRow
+                icon="people-outline"
+                title="팀 관리"
+                subtitle="팀 생성 및 참가"
+                onPress={handleTeamManagement}
+                showDivider
+              />
+              <SettingsRow
+                icon="help-circle-outline"
+                title="도움말"
+                subtitle="자주 묻는 질문"
+                onPress={() => Alert.alert('도움말', 'FAQ는 곧 제공될 예정이에요.')}
+                showDivider={false}
+              />
+            </BaseCard>
 
-          {/* ── 계정 관리 ── */}
-          <FrameCard
-            style={styles.sectionFrame}
-            contentStyle={styles.accountSection}
-            padded={false}
-          >
-            <SectionHeader title="계정 관리" inset />
-
-            <TouchableOpacity style={styles.accountRow} onPress={handleLogout}>
-              <View style={styles.accountRowLeft}>
-                <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
-                <Text style={styles.accountRowText}>로그아웃</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          </FrameCard>
-
-          <View style={{ height: 100 }} />
+            <BaseCard glassOnly padded={false}>
+              <TouchableOpacity
+                style={styles.logoutCard}
+                onPress={handleLogout}
+                activeOpacity={0.65}
+                accessibilityRole="button"
+                accessibilityLabel="로그아웃"
+              >
+                <Ionicons name="log-out-outline" size={22} color={colors.error} />
+                <Text style={styles.logoutText}>로그아웃</Text>
+              </TouchableOpacity>
+            </BaseCard>
+          </View>
         </ScrollView>
 
-        {/* ── 플로팅 버튼 (+) ── */}
-        {!fabMenuVisible && (
-          <TouchableOpacity
-            style={styles.floatingButton}
-            onPress={() => setFabMenuVisible(true)}
-            activeOpacity={0.8}
-          >
-            <Image
-              source={require('../../../assets/plus-btn.png')}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        )}
-
-        <MyPageFabMenu
-          visible={fabMenuVisible}
-          onClose={() => setFabMenuVisible(false)}
-          onCreateTeam={() => {
-            setFabMenuVisible(false);
-            handleOpenTeamModal('create');
-          }}
-          onJoinTeam={() => {
-            setFabMenuVisible(false);
-            handleOpenTeamModal('join');
-          }}
-          onAddResolution={() => {
-            setFabMenuVisible(false);
-            setResolutionInput(monthlyResolution);
-            setResolutionModalVisible(true);
-          }}
-          onAddRoutine={() => {
-            setFabMenuVisible(false);
-            navigation.navigate('AddRoutine');
-          }}
-        />
-
-        {/* ── 한마디 추가 모달 ── */}
-        <GlassModal
-          visible={resolutionModalVisible}
-          title="이번 달 한마디"
-          onClose={() => setResolutionModalVisible(false)}
-          onConfirm={async () => {
-            const ok = await handleUpdateResolution(resolutionInput);
-            if (ok) setResolutionModalVisible(false);
-          }}
-        >
-          <Input
-            placeholder="이번 달의 다짐이나 목표를 적어보세요"
-            value={resolutionInput}
-            onChangeText={setResolutionInput}
-            autoFocus
-            maxLength={50}
-          />
-        </GlassModal>
-
-        {/* ── 팀 생성/참가 모달 ── */}
         <GlassModal
           visible={!!teamModalType}
           title={teamModalType === 'create' ? '새로운 팀 만들기' : '초대 코드 입력'}
@@ -377,267 +233,70 @@ export default function MyPageScreen() {
           />
         </GlassModal>
       </SafeAreaView>
-    </View>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.screen },
-  safe: ds.screen,
-  scroll: { flex: 1 },
-  headerButton: { padding: spacing[1] },
-  profileFrame: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 16,
-  },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 16,
-  },
-  avatarLarge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 107, 61, 0.10)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.25)',
-  },
-  profileInfo: {
+  safe: {
     flex: 1,
   },
-  nickname: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 2,
-  },
-  detailText: {
-    fontSize: 13,
-    color: 'rgba(26,26,26,0.50)',
-    marginBottom: 2,
-  },
-  email: {
-    fontSize: 13,
-    color: 'rgba(26,26,26,0.35)',
-  },
-  sectionFrame: {
-    marginHorizontal: spacing[4],
-    marginBottom: spacing[4],
-  },
-  sectionCard: {
-    padding: 20,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  teamActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  teamActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 107, 61, 0.06)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.15)',
-  },
-  teamActionText: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: 'rgba(26,26,26,0.45)',
-    textAlign: 'center',
-    paddingVertical: 12,
-  },
-  teamImageWrap: {},
-  teamCardImage: {
-    width: 44,
-    height: 34,
-    borderRadius: 22,
-  },
-  teamCardImagePlaceholder: {
-    backgroundColor: 'rgba(255, 107, 61, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  teamItemFrame: {
-    marginBottom: 8,
-    borderRadius: 12,
-  },
-  activeTeamItemFrame: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', // 불투명도가 높은 흰색 유리 느낌
-    borderTopColor: 'rgba(255, 255, 255, 1)', // 좌상단은 빛을 받아 하얗게 빛남
-    borderLeftColor: 'rgba(229, 229, 229, 1)',
-    borderBottomColor: 'rgba(255, 135, 61, 0.22)',
-    borderWidth: 0.6,
-    shadowColor: '#929292ff',
-    shadowOffset: { width: 1, height: 1 }, // 우하단으로 넓게 퍼지는 빛 번짐
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
-    overflow: 'visible', // 글로우 효과가 잘리지 않도록
-  },
-  teamItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  teamItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-  },
-  activeTeamItem: {
-    backgroundColor: 'rgba(255, 107, 61, 0.06)',
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.22)',
-  },
-  teamInfo: {
+  scroll: {
     flex: 1,
   },
-  teamName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
+  scrollContent: {
+    paddingBottom: 48,
   },
-  activeTeamText: {
-    color: colors.primary,
-    fontWeight: '700',
+  header: {
+    paddingTop: spacing[3],
+    paddingBottom: spacing[4],
   },
-  inviteCode: {
-    fontSize: 12,
-    color: 'rgba(26,26,26,0.35)',
-    marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  accountSection: {
-    paddingHorizontal: 0,
-    paddingVertical: spacing[2],
-  },
-  accountRow: {
-    ...ds.rowBetween,
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing[4],
     paddingHorizontal: spacing[4],
-    paddingVertical: 14,
+    gap: spacing[3],
   },
-  accountRowLeft: {
-    ...ds.rowCenter,
-    gap: 10,
-  },
-  accountRowText: {
-    ...typography.bodyStrong,
-    fontWeight: '500',
-    color: colors.text,
-  },
-
-  leaderBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: 'rgba(255, 107, 61, 0.10)',
-  },
-  leaderText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  memberBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(26,26,26,0.25)',
-  },
-  memberText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: 'rgba(26,26,26,0.45)',
-  },
-
-  // ── 플로팅 버튼 ──
-  floatingButton: {
-    position: 'absolute',
-    right: 16,
-    bottom: 24,
-    width: 80,
-    height: 80,
+  iconCol: {
+    width: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  floatingButtonClose: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    borderRadius: 40,
-    width: 64,
-    height: 64,
-    // 모달 안에서 위치를 잡기 위해 명시적으로 지정
-    bottom: 120,
-    right: 24,
-  },
-
-  // ── FAB 메뉴 모달 ──
-  fabOverlay: {
+  settingsTextWrap: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  fabMenuContainer: {
-    position: 'absolute',
-    right: 20,
-    bottom: 200, // 플로팅 버튼 위로 뜨도록
-    width: 200,
+  settingsTitle: {
+    ...typography.bodyStrong,
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: 4,
   },
-  fabMenuSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 10,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  settingsSubtitle: {
+    ...typography.caption,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
-  fabMenuItem: {
+  settingsDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: DIVIDER,
+    marginLeft: spacing[4] + 28 + spacing[3],
+    marginRight: spacing[4],
+  },
+  logoutCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    gap: 12,
+    gap: spacing[3],
+    paddingVertical: spacing[4] + 2,
+    paddingHorizontal: spacing[4],
   },
-  fabMenuText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
+  logoutText: {
+    ...typography.bodyStrong,
+    fontSize: 16,
+    color: colors.error,
   },
-  fabMenuDivider: {
-    height: 1,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+  section: {
+    marginBottom: spacing[4],
   },
 });

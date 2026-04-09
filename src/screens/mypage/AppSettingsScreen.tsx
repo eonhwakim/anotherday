@@ -13,9 +13,9 @@ import {
   sendTestNotification,
   sendTestGoalReminderNotification,
 } from '../../utils/notifications';
-import FrameCard from '../../components/ui/FrameCard';
 import ScreenHeader from '../../components/ui/ScreenHeader';
 import SectionHeader from '../../components/ui/SectionHeader';
+import BaseCard from '../../components/ui/BaseCard';
 import { colors, ds, spacing, typography } from '../../design/recipes';
 
 export default function AppSettingsScreen() {
@@ -45,7 +45,7 @@ export default function AppSettingsScreen() {
       <View style={s.content}>
         <SectionHeader title="알림" subtitle="알림과 리마인더를 한 곳에서 관리해요" />
 
-        <FrameCard style={s.rowFrame} contentStyle={s.row} padded={false}>
+        <BaseCard glassOnly style={s.rowFrame} contentStyle={s.row} padded={false}>
           <View style={s.rowLeft}>
             <Ionicons name="notifications-outline" size={20} color={colors.text} />
             <View style={s.rowText}>
@@ -60,9 +60,9 @@ export default function AppSettingsScreen() {
             trackColor={{ false: 'rgba(0,0,0,0.10)', true: 'rgba(255,107,61,0.35)' }}
             thumbColor={dailyNoti ? colors.primary : '#f4f3f4'}
           />
-        </FrameCard>
+        </BaseCard>
 
-        <FrameCard style={s.rowFrame} contentStyle={s.row} padded={false}>
+        <BaseCard glassOnly style={s.rowFrame} contentStyle={s.row} padded={false}>
           <View style={s.rowLeft}>
             <Ionicons name="alarm-outline" size={20} color={colors.text} />
             <View style={s.rowText}>
@@ -77,7 +77,7 @@ export default function AppSettingsScreen() {
             trackColor={{ false: 'rgba(0,0,0,0.10)', true: 'rgba(255,107,61,0.35)' }}
             thumbColor={goalReminder ? colors.primary : '#f4f3f4'}
           />
-        </FrameCard>
+        </BaseCard>
 
         {__DEV__ && (
           <TouchableOpacity

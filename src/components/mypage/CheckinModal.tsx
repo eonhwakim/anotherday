@@ -170,6 +170,30 @@ export default function CheckinModal({
               const weeklyProgress =
                 isWeekly && targetCount != null ? ` (${weeklyDoneCount} / ${targetCount})` : '';
 
+              let remainingPasses = 0;
+              let totalPasses = 0;
+              let isPassDisabled = false;
+
+              if (isWeekly && targetCount != null) {
+                totalPasses = 7 - targetCount;
+                // 이번 주 남은 요일 계산
+                const weekEnd = dayjs().endOf('isoWeek').startOf('day');
+                const todayStart = dayjs().startOf('day');
+                const remainingDays = Math.max(0, weekEnd.diff(todayStart, 'day') + 1);
+
+                // 오늘 이미 체크인(완료/패스) 했는지 여부
+                const checkedInToday = done || isPass;
+                const availableDays = remainingDays - (checkedInToday ? 1 : 0);
+
+                const maxTotalCheckins = (weeklyDoneCount || 0) + availableDays;
+                remainingPasses = maxTotalCheckins - targetCount;
+
+                // 남은 패스권이 없으면 패스 버튼 비활성화
+                if (remainingPasses <= 0) {
+                  isPassDisabled = true;
+                }
+              }
+
               return (
                 <BaseCard
                   glassOnly
@@ -184,11 +208,7 @@ export default function CheckinModal({
                   <View style={styles.goalInfo}>
                     <Ionicons
                       name={
-                        done
-                          ? isPass
-                            ? 'remove-circle'
-                            : 'checkmark-circle'
-                          : 'ellipse-outline'
+                        done ? (isPass ? 'remove-circle' : 'checkmark-circle') : 'ellipse-outline'
                       }
                       size={22}
                       color={
@@ -213,7 +233,19 @@ export default function CheckinModal({
                   {done || isPass ? (
                     <View style={styles.actionRow}>
                       {isPass ? (
-                        <Text style={[styles.statusBadge, styles.badgePass]}>패스</Text>
+                        <View style={{ alignItems: 'center' }}>
+                          <Text style={[styles.statusBadge, styles.badgePass]}>패스</Text>
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: '500',
+                              marginTop: 0,
+                              color: colors.warning,
+                            }}
+                          >
+                            ({totalPasses - Math.max(0, remainingPasses)}/{totalPasses})
+                          </Text>
+                        </View>
                       ) : (
                         <Text style={[styles.statusBadge, styles.badgeSuccess]}>성공</Text>
                       )}
@@ -238,17 +270,30 @@ export default function CheckinModal({
                       />
                       {isWeekly && (
                         <Chip
-                          label="패스"
+                          label={
+                            <Text style={{ textAlign: 'center' }}>
+                              패스{'\n'}
+                              <Text style={{ fontSize: 10, fontWeight: '500' }}>
+                                ({totalPasses - Math.max(0, remainingPasses)}/{totalPasses})
+                              </Text>
+                            </Text>
+                          }
+                          numberOfLines={2}
                           icon={
                             <Ionicons
                               name="close-circle-outline"
                               size={16}
-                              color={colors.warning}
+                              color={isPassDisabled ? colors.textMuted : colors.warning}
                             />
                           }
-                          onPress={() => handlePassToggle(goal.id)}
-                          style={styles.passBtn}
-                          textStyle={styles.passBtnText}
+                          onPress={() => {
+                            if (!isPassDisabled) handlePassToggle(goal.id);
+                          }}
+                          style={[styles.passBtn, isPassDisabled && styles.passBtnDisabled]}
+                          textStyle={[
+                            styles.passBtnText,
+                            isPassDisabled && { color: colors.textMuted },
+                          ]}
                         />
                       )}
                     </View>
@@ -391,5 +436,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.warning,
+  },
+  passBtnDisabled: {
+    borderColor: 'rgba(26,26,26,0.1)',
+    backgroundColor: 'rgba(26,26,26,0.05)',
+    shadowOpacity: 0,
+    elevation: 0,
   },
 });

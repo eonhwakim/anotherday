@@ -18,11 +18,12 @@ import { pickProfileImage, uploadProfileImage, updateProfile } from '../../servi
 import { colors } from '../../design/tokens';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import CyberFrame from '../../components/ui/CyberFrame';
+import BaseCard from '../../components/ui/BaseCard';
+import ScreenBackground from '../../components/ui/ScreenBackground';
 
 export default function ProfileEditScreen() {
   const navigation = useNavigation();
-  const { user, refreshProfile, setUser, deleteAccount } = useAuthStore();
+  const { user, setUser, deleteAccount } = useAuthStore();
 
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [name, setName] = useState(user?.name || '');
@@ -125,115 +126,112 @@ export default function ProfileEditScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView style={styles.scroll}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={styles.title}>프로필 수정</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          <View style={styles.profileImageContainer}>
-            <TouchableOpacity onPress={handlePickImage} style={styles.imageWrapper}>
-              {imageUri ? (
-                <Image source={{ uri: imageUri }} style={styles.profileImage} />
-              ) : (
-                <View style={[styles.profileImage, styles.placeholderImage]}>
-                  <Ionicons name="person" size={36} color={colors.primaryLight} />
-                </View>
-              )}
-              <View style={styles.cameraIcon}>
-                <Ionicons name="camera" size={14} color="#FFF" />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <CyberFrame style={styles.formFrame} contentStyle={styles.form} glassOnly={false}>
-            <Input
-              label="닉네임"
-              value={nickname}
-              onChangeText={setNickname}
-              placeholder="닉네임을 입력하세요"
-            />
-
-            <Input
-              label="이름"
-              value={name}
-              onChangeText={setName}
-              placeholder="이름을 입력하세요"
-            />
-
-            <Text style={styles.label}>성별</Text>
-            <View style={styles.genderContainer}>
-              {['남성', '여성'].map((g) => {
-                const isActive = gender === g;
-                return (
-                  <TouchableOpacity
-                    key={g}
-                    style={{ flex: 1 }}
-                    activeOpacity={0.7}
-                    onPress={() => setGender(g)}
-                  >
-                    <CyberFrame
-                      style={[styles.genderBtnFrame, isActive && styles.genderBtnFrameActive]}
-                      contentStyle={styles.genderBtnContent}
-                      glassOnly={true}
-                    >
-                      <Text style={[styles.genderText, isActive && styles.genderTextActive]}>
-                        {g}
-                      </Text>
-                    </CyberFrame>
-                  </TouchableOpacity>
-                );
-              })}
+    <ScreenBackground>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <ScrollView style={styles.scroll}>
+            <View style={styles.header}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.title}>프로필 수정</Text>
+              <View style={{ width: 24 }} />
             </View>
 
-            <Input
-              label="나이"
-              value={age}
-              onChangeText={setAge}
-              placeholder="나이를 입력하세요"
-              keyboardType="number-pad"
-            />
-          </CyberFrame>
+            <View style={styles.profileImageContainer}>
+              <TouchableOpacity onPress={handlePickImage} style={styles.imageWrapper}>
+                {imageUri ? (
+                  <Image source={{ uri: imageUri }} style={styles.profileImage} />
+                ) : (
+                  <View style={[styles.profileImage, styles.placeholderImage]}>
+                    <Ionicons name="person" size={36} color={colors.primaryLight} />
+                  </View>
+                )}
+                <View style={styles.cameraIcon}>
+                  <Ionicons name="camera" size={14} color="#FFF" />
+                </View>
+              </TouchableOpacity>
+            </View>
 
-          <CyberFrame
-            style={styles.dangerFrame}
-            contentStyle={styles.dangerContent}
-            glassOnly={false}
-          >
-            <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
-              <View style={styles.accountRowLeft}>
-                <Ionicons name="trash-outline" size={20} color={colors.error} />
-                <Text style={[styles.accountRowText, { color: colors.error }]}>탈퇴하기</Text>
+            <BaseCard glassOnly style={styles.formFrame} contentStyle={styles.form}>
+              <Input
+                label="닉네임"
+                value={nickname}
+                onChangeText={setNickname}
+                placeholder="닉네임을 입력하세요"
+              />
+
+              <Input
+                label="이름"
+                value={name}
+                onChangeText={setName}
+                placeholder="이름을 입력하세요"
+              />
+
+              <Text style={styles.label}>성별</Text>
+              <View style={styles.genderContainer}>
+                {['남성', '여성'].map((g) => {
+                  const isActive = gender === g;
+                  return (
+                    <TouchableOpacity
+                      key={g}
+                      style={{ flex: 1 }}
+                      activeOpacity={0.7}
+                      onPress={() => setGender(g)}
+                    >
+                      <BaseCard
+                        style={[styles.genderBtnFrame, isActive && styles.genderBtnFrameActive]}
+                        contentStyle={styles.genderBtnContent}
+                        glassOnly
+                      >
+                        <Text style={[styles.genderText, isActive && styles.genderTextActive]}>
+                          {g}
+                        </Text>
+                      </BaseCard>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.error} />
-            </TouchableOpacity>
-          </CyberFrame>
 
-          <Text style={styles.accountDeleteHint}>
-            탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
-          </Text>
-        </ScrollView>
+              <Input
+                label="나이"
+                value={age}
+                onChangeText={setAge}
+                placeholder="나이를 입력하세요"
+                keyboardType="number-pad"
+              />
+            </BaseCard>
 
-        <View style={styles.footer}>
-          <Button title="저장하기" onPress={handleSave} loading={loading} />
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <BaseCard glassOnly style={styles.dangerFrame} contentStyle={styles.dangerContent}>
+              <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
+                <View style={styles.accountRowLeft}>
+                  <Ionicons name="trash-outline" size={20} color={colors.error} />
+                  <Text style={[styles.accountRowText, { color: colors.error }]}>탈퇴하기</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.error} />
+              </TouchableOpacity>
+            </BaseCard>
+
+            <Text style={styles.accountDeleteHint}>
+              탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
+            </Text>
+          </ScrollView>
+
+          <View style={styles.footer}>
+            <Button title="저장하기" onPress={handleSave} loading={loading} />
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // 흰색 배경으로 통일
   },
   scroll: {
     flex: 1,
