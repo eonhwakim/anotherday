@@ -84,19 +84,26 @@ interface GoalItem {
   frequency: string;
   targetCount: number | null;
   isEnded?: boolean;
+  totalTarget?: number;
+  totalDone?: number;
+  done: number;
+  pass: number;
+  fail: number;
+  rate: number | null;
 }
 
 export interface MyGoalDetail extends GoalItem {
   achievedWeeks: number;
   totalActiveWeeks: number;
-  rate: number | null;
 }
 
 export interface MemberDetail {
   userId: string;
   nickname: string;
+  profileImageUrl?: string | null;
   isMe: boolean;
   rate: number | null;
+  weeklyRates: { week: number; rate: number | null; startDate: string; endDate: string }[];
   goals: GoalItem[];
   hanmadi: string;
   hoego: string;
@@ -110,12 +117,14 @@ export interface WeeklyTeamGoal {
   isAchieved: boolean;
   isDaily: boolean;
   isEnded?: boolean;
+  startDate?: string | null;
   endDate?: string | null;
 }
 
 export interface WeeklyTeamMember {
   userId: string;
   nickname: string;
+  profileImageUrl?: string | null;
   doneCount: number;
   isMe: boolean;
   totalGoals: number;
@@ -644,6 +653,7 @@ export async function fetchWeeklyStats(params: {
           isAchieved: doneCount >= target,
           isDaily,
           isEnded: !!goal.end_date && goal.end_date <= weekEnd,
+          startDate: goal.start_date ?? null,
           endDate: goal.end_date ?? null,
         });
       });
@@ -653,6 +663,7 @@ export async function fetchWeeklyStats(params: {
       return {
         userId: uid,
         nickname: member.users?.nickname || '알 수 없음',
+        profileImageUrl: member.users?.profile_image_url ?? null,
         doneCount: userCheckins.length,
         isMe: uid === userId,
         totalGoals,
@@ -661,7 +672,6 @@ export async function fetchWeeklyStats(params: {
         goals,
       };
     })
-    .filter((member) => !member.isMe)
     .sort((a, b) => {
       if (a.isAllClear && !b.isAllClear) return -1;
       if (!a.isAllClear && b.isAllClear) return 1;
@@ -682,26 +692,41 @@ export async function fetchMonthlyStatisticsSummary(params: {
   teamId?: string;
 }): Promise<{
   myRate: number | null;
+  myPrevMonthRate: number | null;
+  myWeeklyRates: { week: number; rate: number | null; startDate: string; endDate: string }[];
   myGoalDetails: MyGoalDetail[];
   memberDetails: MemberDetail[];
+  monthTotalDays: number;
+  teamRate: number | null;
+  teamPrevRate: number | null;
+  mvpName: string | null;
 }> {
   const { userId, yearMonth, teamId } = params;
   const { ranges } = getCalendarWeekRanges(yearMonth);
+  
+  const prevMonthStr = dayjs(`${yearMonth}-01`).subtract(1, 'month').format('YYYY-MM');
+  const { ranges: prevRanges } = getCalendarWeekRanges(prevMonthStr);
+
   if (ranges.length === 0) {
-    return { myRate: null, myGoalDetails: [], memberDetails: [] };
+    return { myRate: null, myPrevMonthRate: null, myWeeklyRates: [], myGoalDetails: [], memberDetails: [], monthTotalDays: 0, teamRate: null, teamPrevRate: null, mvpName: null };
   }
 
   const dataStart = ranges[0].s.format('YYYY-MM-DD');
   const dataEnd = ranges[ranges.length - 1].e.format('YYYY-MM-DD');
+  const monthTotalDays = dayjs(dataEnd).diff(dayjs(dataStart), 'day') + 1;
+  const prevDataStart = prevRanges.length > 0 ? prevRanges[0].s.format('YYYY-MM-DD') : dataStart;
+  const prevDataEnd = prevRanges.length > 0 ? prevRanges[prevRanges.length - 1].e.format('YYYY-MM-DD') : dataStart;
+  
   const today = dayjs().format('YYYY-MM-DD');
   const endedRanges = ranges.filter((range) => range.e.format('YYYY-MM-DD') < today);
+  const prevEndedRanges = prevRanges.filter((range) => range.e.format('YYYY-MM-DD') < today);
 
-  const [{ data: myCheckins }, { data: myUserGoalsRaw }] = await Promise.all([
+  const [{ data: allCheckins }, { data: allUserGoalsRaw }] = await Promise.all([
     supabase
       .from('checkins')
       .select('goal_id, status, date')
       .eq('user_id', userId)
-      .gte('date', dataStart)
+      .gte('date', prevDataStart)
       .lte('date', dataEnd),
     supabase
       .from('user_goals')
@@ -709,25 +734,65 @@ export async function fetchMonthlyStatisticsSummary(params: {
       .eq('user_id', userId),
   ]);
 
-  const myGoalsFiltered = ((myUserGoalsRaw ?? []) as unknown as UserGoalJoinedRow[]).filter((goal) => {
+  const myCheckins = (allCheckins ?? []).filter(c => c.date >= dataStart && c.date <= dataEnd);
+  const myPrevCheckins = (allCheckins ?? []).filter(c => c.date >= prevDataStart && c.date <= prevDataEnd);
+
+  const myUserGoalsRaw = allUserGoalsRaw ?? [];
+
+  const myGoalsFiltered = (myUserGoalsRaw as unknown as UserGoalJoinedRow[]).filter((goal) => {
     if (goal.start_date && goal.start_date > dataEnd) return false;
     if (goal.end_date && goal.end_date < dataStart) return false;
     return true;
   });
 
+  const myPrevGoalsFiltered = (myUserGoalsRaw as unknown as UserGoalJoinedRow[]).filter((goal) => {
+    if (goal.start_date && goal.start_date > prevDataEnd) return false;
+    if (goal.end_date && goal.end_date < prevDataStart) return false;
+    return true;
+  });
+
   let myTotal = 0;
   let myFailed = 0;
-  endedRanges.forEach((range) => {
-    const result = calcWeekAchievement(
-      range.s.format('YYYY-MM-DD'),
-      myCheckins ?? [],
-      myGoalsFiltered,
-    );
-    myTotal += result.totalGoals;
-    myFailed += result.failedGoals;
+  const myWeeklyRates: { week: number; rate: number | null; startDate: string; endDate: string }[] = [];
+
+  ranges.forEach((range, index) => {
+    const isEnded = range.e.format('YYYY-MM-DD') < today;
+    let rate: number | null = null;
+    
+    if (isEnded) {
+      const result = calcWeekAchievement(
+        range.s.format('YYYY-MM-DD'),
+        myCheckins,
+        myGoalsFiltered,
+      );
+      myTotal += result.totalGoals;
+      myFailed += result.failedGoals;
+      
+      rate = result.totalGoals > 0 ? Math.round(((result.totalGoals - result.failedGoals) / result.totalGoals) * 100) : null;
+    }
+    
+    myWeeklyRates.push({ 
+      week: index + 1, 
+      rate,
+      startDate: range.s.format('MM.DD'),
+      endDate: range.e.format('MM.DD')
+    });
   });
 
   const myRate = myTotal > 0 ? Math.round(((myTotal - myFailed) / myTotal) * 100) : null;
+
+  let myPrevTotal = 0;
+  let myPrevFailed = 0;
+  prevEndedRanges.forEach((range) => {
+    const result = calcWeekAchievement(
+      range.s.format('YYYY-MM-DD'),
+      myPrevCheckins,
+      myPrevGoalsFiltered,
+    );
+    myPrevTotal += result.totalGoals;
+    myPrevFailed += result.failedGoals;
+  });
+  const myPrevMonthRate = myPrevTotal > 0 ? Math.round(((myPrevTotal - myPrevFailed) / myPrevTotal) * 100) : null;
 
   const myGoalDetails: MyGoalDetail[] = myGoalsFiltered.map((goal) => {
     const singleGoal = [
@@ -740,45 +805,67 @@ export async function fetchMonthlyStatisticsSummary(params: {
       },
     ];
 
-    let achievedWeeks = 0;
-    let totalActiveWeeks = 0;
-    endedRanges.forEach((range) => {
-      const result = calcWeekAchievement(
-        range.s.format('YYYY-MM-DD'),
-        myCheckins ?? [],
-        singleGoal,
-      );
-      if (result.totalGoals > 0) {
-        totalActiveWeeks += 1;
-        if (result.isAllClear) achievedWeeks += 1;
+    const goalCheckins = myCheckins.filter((checkin) => checkin.goal_id === goal.goal_id);
+    const goalDone = goalCheckins.filter((checkin) => checkin.status === 'done').length;
+    const explicitPass = goalCheckins.filter((checkin) => checkin.status === 'pass').length;
+    const goalStart = goal.start_date && goal.start_date > dataStart ? goal.start_date : dataStart;
+    const countEnd = today < dataEnd ? today : dataEnd;
+    const activeDays = goalStart <= countEnd ? dayjs(countEnd).diff(dayjs(goalStart), 'day') + 1 : 0;
+    
+    const goalFail = Math.max(0, activeDays - goalDone - explicitPass);
+
+    let totalTarget = 0;
+    let totalDone = 0;
+
+    ranges.forEach((range) => {
+      const wStart = range.s.format('YYYY-MM-DD');
+      const wEnd = range.e.format('YYYY-MM-DD');
+      
+      const effS = dayjsMax(range.s, dayjs(goal.start_date || wStart));
+      const effE = dayjsMin(range.e, dayjs(goal.end_date || wEnd));
+      
+      if (effS.isAfter(effE)) return;
+
+      if (goal.frequency === 'daily') {
+        totalTarget += effE.diff(effS, 'day') + 1;
+      } else {
+        totalTarget += goal.target_count || 1;
       }
+      
+      const weekDone = goalCheckins.filter(c => c.status === 'done' && c.date >= wStart && c.date <= wEnd).length;
+      totalDone += weekDone;
     });
+
+    const rate = totalTarget > 0 ? Math.min(100, Math.round((totalDone / totalTarget) * 100)) : null;
 
     return {
       goalId: goal.goal_id,
       name: goal.goals?.name ?? '목표',
       frequency: goal.frequency,
       targetCount: goal.target_count,
-          isEnded: !!goal.end_date && goal.end_date <= today,
-      achievedWeeks,
-      totalActiveWeeks,
-      rate: totalActiveWeeks > 0 ? Math.round((achievedWeeks / totalActiveWeeks) * 100) : null,
+      isEnded: !!goal.end_date && goal.end_date <= today,
+      achievedWeeks: 0, // Unused now, but kept for interface compatibility
+      totalActiveWeeks: 0, // Unused
+      rate,
+      done: goalDone,
+      pass: explicitPass,
+      fail: goalFail,
     };
   });
 
   if (!teamId) {
-    return { myRate, myGoalDetails, memberDetails: [] };
+    return { myRate, myPrevMonthRate, myWeeklyRates, myGoalDetails, memberDetails: [], monthTotalDays, teamRate: null, teamPrevRate: null, mvpName: null };
   }
 
   const { data: members } = await supabase
     .from('team_members')
-    .select('user_id, users(nickname)')
+    .select('user_id, users(nickname, profile_image_url)')
     .eq('team_id', teamId);
 
   const typedStatMembers = (members ?? []) as unknown as MemberNicknameRow[];
   const memberIds = typedStatMembers.map((member) => member.user_id);
   if (memberIds.length === 0) {
-    return { myRate, myGoalDetails, memberDetails: [] };
+    return { myRate, myPrevMonthRate, myWeeklyRates, myGoalDetails, memberDetails: [], monthTotalDays, teamRate: null, teamPrevRate: null, mvpName: null };
   }
 
   const [
@@ -791,7 +878,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
       .from('checkins')
       .select('user_id, goal_id, status, date')
       .in('user_id', memberIds)
-      .gte('date', dataStart)
+      .gte('date', prevDataStart)
       .lte('date', dataEnd),
     supabase
       .from('user_goals')
@@ -816,11 +903,24 @@ export async function fetchMonthlyStatisticsSummary(params: {
   const typedResolutions = (allResolutions ?? []) as ContentRow[];
   const typedRetrospectives = (allRetrospectives ?? []) as ContentRow[];
 
+  let teamTotal = 0;
+  let teamFailed = 0;
+  let teamPrevTotal = 0;
+  let teamPrevFailed = 0;
+
   const memberDetails = typedStatMembers
     .map((member) => {
       const uid = member.user_id;
       const userCheckins = typedTeamCheckins
-        .filter((checkin) => checkin.user_id === uid)
+        .filter((checkin) => checkin.user_id === uid && checkin.date >= dataStart && checkin.date <= dataEnd)
+        .map((checkin) => ({
+          goal_id: checkin.goal_id,
+          status: checkin.status,
+          date: checkin.date,
+        }));
+        
+      const userPrevCheckins = typedTeamCheckins
+        .filter((checkin) => checkin.user_id === uid && checkin.date >= prevDataStart && checkin.date <= prevDataEnd)
         .map((checkin) => ({
           goal_id: checkin.goal_id,
           status: checkin.status,
@@ -841,14 +941,55 @@ export async function fetchMonthlyStatisticsSummary(params: {
           start_date: goal.start_date,
           end_date: goal.end_date,
         }));
+        
+      const userPrevGoals = userGoalsRaw
+        .filter((goal) => {
+          if (goal.start_date && goal.start_date > prevDataEnd) return false;
+          if (goal.end_date && goal.end_date < prevDataStart) return false;
+          return true;
+        })
+        .map((goal) => ({
+          goal_id: goal.goal_id,
+          frequency: goal.frequency,
+          target_count: goal.target_count,
+          start_date: goal.start_date,
+          end_date: goal.end_date,
+        }));
 
       let total = 0;
       let failed = 0;
-      endedRanges.forEach((range) => {
-        const result = calcWeekAchievement(range.s.format('YYYY-MM-DD'), userCheckins, userGoals);
-        total += result.totalGoals;
-        failed += result.failedGoals;
+      const weeklyRates: { week: number; rate: number | null; startDate: string; endDate: string }[] = [];
+
+      ranges.forEach((range, index) => {
+        const isEnded = range.e.format('YYYY-MM-DD') < today;
+        let rate: number | null = null;
+
+        if (isEnded) {
+          const result = calcWeekAchievement(range.s.format('YYYY-MM-DD'), userCheckins, userGoals);
+          total += result.totalGoals;
+          failed += result.failedGoals;
+          rate = result.totalGoals > 0 ? Math.round(((result.totalGoals - result.failedGoals) / result.totalGoals) * 100) : null;
+        }
+
+        weeklyRates.push({
+          week: index + 1,
+          rate,
+          startDate: range.s.format('MM.DD'),
+          endDate: range.e.format('MM.DD'),
+        });
       });
+      teamTotal += total;
+      teamFailed += failed;
+
+      let prevTotal = 0;
+      let prevFailed = 0;
+      prevEndedRanges.forEach((range) => {
+        const result = calcWeekAchievement(range.s.format('YYYY-MM-DD'), userPrevCheckins, userPrevGoals);
+        prevTotal += result.totalGoals;
+        prevFailed += result.failedGoals;
+      });
+      teamPrevTotal += prevTotal;
+      teamPrevFailed += prevFailed;
 
       const goals: GoalItem[] = userGoalsRaw
         .filter((goal) => {
@@ -856,19 +997,62 @@ export async function fetchMonthlyStatisticsSummary(params: {
           if (goal.end_date && goal.end_date < dataStart) return false;
           return true;
         })
-        .map((goal) => ({
-          goalId: goal.goal_id,
-          name: goal.goals?.name ?? '목표',
-          frequency: goal.frequency,
-          targetCount: goal.target_count,
-          isEnded: !!goal.end_date && goal.end_date <= today,
-        }));
+        .map((goal) => {
+          let totalTarget = 0;
+          let totalDone = 0;
+
+          const goalCheckins = userCheckins.filter(c => c.goal_id === goal.goal_id);
+          const goalDone = goalCheckins.filter((checkin) => checkin.status === 'done').length;
+          const explicitPass = goalCheckins.filter((checkin) => checkin.status === 'pass').length;
+          const goalStart = goal.start_date && goal.start_date > dataStart ? goal.start_date : dataStart;
+          const countEnd = today < dataEnd ? today : dataEnd;
+          const activeDays = goalStart <= countEnd ? dayjs(countEnd).diff(dayjs(goalStart), 'day') + 1 : 0;
+          
+          const goalFail = Math.max(0, activeDays - goalDone - explicitPass);
+
+          ranges.forEach((range) => {
+            const wStart = range.s.format('YYYY-MM-DD');
+            const wEnd = range.e.format('YYYY-MM-DD');
+            
+            const effS = dayjsMax(range.s, dayjs(goal.start_date || wStart));
+            const effE = dayjsMin(range.e, dayjs(goal.end_date || wEnd));
+            
+            if (effS.isAfter(effE)) return;
+
+            if (goal.frequency === 'daily') {
+              totalTarget += effE.diff(effS, 'day') + 1;
+            } else {
+              totalTarget += goal.target_count || 1;
+            }
+            
+            const weekDone = goalCheckins.filter(c => c.status === 'done' && c.date >= wStart && c.date <= wEnd).length;
+            totalDone += weekDone;
+          });
+
+          const rate = totalTarget > 0 ? Math.min(100, Math.round((totalDone / totalTarget) * 100)) : null;
+
+          return {
+            goalId: goal.goal_id,
+            name: goal.goals?.name ?? '목표',
+            frequency: goal.frequency,
+            targetCount: goal.target_count,
+            isEnded: !!goal.end_date && goal.end_date <= today,
+            totalTarget,
+            totalDone,
+            done: goalDone,
+            pass: explicitPass,
+            fail: goalFail,
+            rate,
+          };
+        });
 
       return {
         userId: uid,
         nickname: member.users?.nickname || '알 수 없음',
+        profileImageUrl: member.users?.profile_image_url ?? null,
         isMe: uid === userId,
         rate: total > 0 ? Math.round(((total - failed) / total) * 100) : null,
+        weeklyRates,
         goals,
         hanmadi: typedResolutions.find((row) => row.user_id === uid)?.content || '',
         hoego: typedRetrospectives.find((row) => row.user_id === uid)?.content || '',
@@ -876,7 +1060,19 @@ export async function fetchMonthlyStatisticsSummary(params: {
     })
     .sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
 
-  return { myRate, myGoalDetails, memberDetails };
+  const teamRate = teamTotal > 0 ? Math.round(((teamTotal - teamFailed) / teamTotal) * 100) : null;
+  const teamPrevRate = teamPrevTotal > 0 ? Math.round(((teamPrevTotal - teamPrevFailed) / teamPrevTotal) * 100) : null;
+  /** 동률 1위는 모두 MVP — 닉네임을 쉼표로 이어 표시 */
+  const topRate = memberDetails.length > 0 ? memberDetails[0].rate : null;
+  const mvpName =
+    topRate !== null
+      ? memberDetails
+          .filter((m) => m.rate === topRate)
+          .map((m) => m.nickname)
+          .join(', ') || null
+      : null;
+
+  return { myRate, myPrevMonthRate, myWeeklyRates, myGoalDetails, memberDetails, monthTotalDays, teamRate, teamPrevRate, mvpName };
 }
 
 export async function fetchTeamDetailMonthlyData(

@@ -9,7 +9,11 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
 import type { UserGoal } from '../../types/domain';
-import { fetchWeeklyStats, type WeeklyTeamMember, type WeeklyStatsResult } from '../../services/statsService';
+import {
+  fetchWeeklyStats,
+  type WeeklyTeamMember,
+  type WeeklyStatsResult,
+} from '../../services/statsService';
 import { fetchMyGoalsForRange } from '../../services/goalService';
 
 function endedDateLabel(startDate?: string | null, endDate?: string | null) {
@@ -341,7 +345,7 @@ export default function WeeklyStatsTab() {
                                   <Text style={s.teamMemberGoalCount}>
                                     <Text
                                       style={
-                                        g.isAchieved ? { color: '#15803d' } : { color: '#EF4444' }
+                                        g.isAchieved ? { color: '#15803d' } : { color: '#888' }
                                       }
                                     >
                                       {g.doneCount}

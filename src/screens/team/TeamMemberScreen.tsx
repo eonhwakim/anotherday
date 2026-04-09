@@ -19,7 +19,7 @@ import { TeamMemberWithUser } from '../../types/domain';
 import { fetchTeamMembers } from '../../services/teamService';
 import ScreenHeader from '../../components/ui/ScreenHeader';
 import SectionHeader from '../../components/ui/SectionHeader';
-import FrameCard from '../../components/ui/FrameCard';
+import BaseCard from '../../components/ui/BaseCard';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { colors, ds, radius, spacing, typography } from '../../design/recipes';
@@ -137,7 +137,8 @@ export default function TeamMemberScreen() {
               activeOpacity={myRole === 'leader' ? 0.7 : 1}
               disabled={myRole !== 'leader'}
             >
-              <FrameCard
+              <BaseCard
+                glassOnly
                 style={styles.teamProfileFrame}
                 contentStyle={styles.teamProfileRow}
                 padded={false}
@@ -159,13 +160,14 @@ export default function TeamMemberScreen() {
                 {myRole === 'leader' && (
                   <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
                 )}
-              </FrameCard>
+              </BaseCard>
             </TouchableOpacity>
 
             <View style={styles.section}>
               <SectionHeader title={`팀 멤버 (${members.length})`} />
               {members.map((member) => (
-                <FrameCard
+                <BaseCard
+                  glassOnly
                   key={member.id}
                   style={styles.memberCardFrame}
                   contentStyle={styles.memberCardContent}
@@ -199,7 +201,7 @@ export default function TeamMemberScreen() {
                       </View>
                     </View>
                   </View>
-                </FrameCard>
+                </BaseCard>
               ))}
             </View>
 
@@ -208,25 +210,27 @@ export default function TeamMemberScreen() {
                 <View style={styles.dangerDivider} />
                 {myRole === 'leader' ? (
                   <TouchableOpacity onPress={handleDeleteTeam}>
-                    <FrameCard
+                    <BaseCard
+                      glassOnly
                       style={styles.dangerFrame}
                       contentStyle={styles.dangerBtn}
                       padded={false}
                     >
                       <Ionicons name="trash-outline" size={16} color="#EF4444" />
                       <Text style={styles.dangerBtnText}>팀 삭제</Text>
-                    </FrameCard>
+                    </BaseCard>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity onPress={handleLeaveTeam}>
-                    <FrameCard
+                    <BaseCard
+                      glassOnly
                       style={styles.dangerFrame}
                       contentStyle={styles.dangerBtn}
                       padded={false}
                     >
                       <Ionicons name="exit-outline" size={16} color="#EF4444" />
                       <Text style={styles.dangerBtnText}>팀 탈퇴</Text>
-                    </FrameCard>
+                    </BaseCard>
                   </TouchableOpacity>
                 )}
               </View>

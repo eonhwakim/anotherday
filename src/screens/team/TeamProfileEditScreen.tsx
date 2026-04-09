@@ -20,7 +20,7 @@ import { updateTeamProfile, uploadTeamProfileImage } from '../../services/teamSe
 import { colors } from '../../design/tokens';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
-import CyberFrame from '../../components/ui/CyberFrame';
+import BaseCard from '../../components/ui/BaseCard';
 import { RootStackParamList } from '../../types/navigation';
 
 type TeamProfileEditRouteProp = RouteProp<RootStackParamList, 'TeamProfileEdit'>;
@@ -131,14 +131,14 @@ export default function TeamProfileEditScreen() {
             </TouchableOpacity>
           </View>
 
-          <CyberFrame style={styles.formFrame} contentStyle={styles.form} glassOnly={false}>
+          <BaseCard glassOnly style={styles.formFrame} contentStyle={styles.form}>
             <Input
               label="팀 이름"
               value={name}
               onChangeText={setName}
               placeholder="팀 이름을 입력하세요"
             />
-          </CyberFrame>
+          </BaseCard>
         </ScrollView>
 
         <View style={styles.footer}>
