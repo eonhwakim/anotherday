@@ -330,7 +330,6 @@ export default function HomeScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
           scrollEnabled={!photoCarouselDragging}
           nestedScrollEnabled
           refreshControl={
@@ -368,7 +367,7 @@ export default function HomeScreen() {
               반가워요, {user?.nickname ?? ''}님
             </Text>
             <View style={styles.frameRow}>
-              <BaseCard style={{ alignSelf: 'flex-start' }}>
+              <BaseCard glassOnly style={{ alignSelf: 'flex-start' }}>
                 <Text style={[styles.dateText, isNight && styles.dateTextLight]}>{today}</Text>
                 <Text style={[styles.teamName, isNight && styles.teamNameLight]}>
                   {currentTeam?.name ? `${currentTeam?.name}` : '오늘의 목표'}
@@ -477,6 +476,7 @@ const styles = StyleSheet.create({
   frameRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    marginTop: 6,
   },
   greeting: {
     fontSize: 18,
@@ -513,11 +513,10 @@ const styles = StyleSheet.create({
   },
   mountainSection: {
     alignItems: 'center',
-    marginBottom: 0,
+    marginBottom: 12,
     zIndex: 10,
     position: 'relative',
-    top: -32,
-    // marginTop: 12,
+    top: 6,
   },
   goalSection: {
     paddingHorizontal: 20,

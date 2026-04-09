@@ -12,18 +12,16 @@ const DEFAULT_CONTAINER_WIDTH = Dimensions.get('window').width;
 const SVG_W = 310;
 const SVG_H = 400;
 /** 산 영역 세로 높이(이미지·SVG·캐릭터 Y 스케일 공통). 너비는 100% 유지, 산 PNG만 세로로 늘리려면 `mountainImage.resizeMode: 'stretch'` 유지 */
-const CONTAINER_HEIGHT = 540;
+const CONTAINER_HEIGHT = 400;
 
 const TRAIL_POINTS = [
-  { x: 128, y: 350 },
-  { x: 200, y: 320 },
-  { x: 250, y: 280 },
-  { x: 120, y: 250 },
-  { x: 50, y: 220 },
-  { x: 180, y: 165 },
-  { x: 170, y: 135 },
-  { x: 125, y: 100 },
-  { x: 165, y: 65 },
+  { x: 230, y: 310 },
+  { x: 70, y: 270 },
+  { x: 80, y: 240 },
+  { x: 240, y: 200 },
+  { x: 190, y: 150 },
+  { x: 120, y: 110 },
+  { x: 170, y: 65 },
 ] as const;
 
 const TRAIL_INPUT_RANGE = TRAIL_POINTS.map((_, i) => i / (TRAIL_POINTS.length - 1));
@@ -48,11 +46,12 @@ interface MountainProgressProps {
 interface ClimbingCharacterProps {
   member: MemberProgress;
   index: number;
-  totalMembers: number;
   containerWidth: number;
   avatarColor: string;
   startAnimation?: boolean;
   isMe: boolean;
+  stackTx: number;
+  stackTy: number;
 }
 
 function buildSmoothTrailPath(): string {
@@ -70,6 +69,93 @@ function buildSmoothTrailPath(): string {
 
 const MY_HIGHLIGHT_COLOR = colors.yellow;
 
+/** 같은 지점: 오른쪽·아래 **대각 일직선** 위에 멤버를 두고, 그 직선에 수직으로만 지그재그 */
+const STACK_STEP_X = 18;
+const STACK_STEP_Y = 2;
+/** 대각선에 수직(말줄 좌우) 흔들림 크기 */
+const ZIG_PERP_AMP = 12;
+
+const STACK_DIAG_LEN = Math.hypot(STACK_STEP_X, STACK_STEP_Y);
+/** (STEP_X, STEP_Y) 방향에 수직인 단위벡터 — 직선 좌우로 번갈아 밀 때 사용 */
+const PERP_X = -STACK_STEP_Y / STACK_DIAG_LEN;
+const PERP_Y = STACK_STEP_X / STACK_DIAG_LEN;
+
+/**
+ * rank마다 대각선을 따라 한 칸씩 이동 + 직선에 수직으로 ±진폭 (지그재그).
+ */
+function stackOffsetOnDiagonalZigzag(rank: number): { tx: number; ty: number } {
+  const alongX = rank * STACK_STEP_X;
+  const alongY = rank * STACK_STEP_Y;
+  if (rank === 0) return { tx: alongX, ty: alongY };
+  const perpSign = rank % 2 === 1 ? 1 : -1;
+  const z = ZIG_PERP_AMP * perpSign;
+  return {
+    tx: alongX + z * PERP_X,
+    ty: alongY + z * PERP_Y,
+  };
+}
+
+function memberProgressRatio(m: MemberProgress): number {
+  return Math.min(1, Math.max(0, m.totalGoals > 0 ? m.completedGoals / m.totalGoals : 0));
+}
+
+/**
+ * 동일 진행률(정수 %) 그룹만: 대각 일직선 + 수직 지그재그.
+ * `currentUserId`가 있으면 **마지막 rank** 슬롯.
+ */
+function computeStackOffsets(
+  members: MemberProgress[],
+  currentUserId: string | undefined,
+): { tx: number[]; ty: number[] } {
+  const n = members.length;
+  const tx = Array(n).fill(0);
+  const ty = Array(n).fill(0);
+  if (n <= 1) return { tx, ty };
+
+  const progress = members.map(memberProgressRatio);
+  const bucket = (p: number) => Math.round(p * 100);
+  const groups = new Map<number, number[]>();
+  progress.forEach((p, i) => {
+    const b = bucket(p);
+    if (!groups.has(b)) groups.set(b, []);
+    groups.get(b)!.push(i);
+  });
+
+  groups.forEach((indices) => {
+    if (indices.length <= 1) return;
+
+    const meMemberIndex =
+      currentUserId !== undefined
+        ? indices.find((i) => members[i].userId === currentUserId)
+        : undefined;
+    const others =
+      meMemberIndex !== undefined ? indices.filter((i) => i !== meMemberIndex) : indices;
+
+    if (currentUserId !== undefined && meMemberIndex !== undefined && others.length >= 1) {
+      const sortedOthers = [...others].sort((a, b) => a - b);
+      sortedOthers.forEach((memberIndex, rank) => {
+        const o = stackOffsetOnDiagonalZigzag(rank);
+        tx[memberIndex] = o.tx;
+        ty[memberIndex] = o.ty;
+      });
+      const lastRank = sortedOthers.length;
+      const o = stackOffsetOnDiagonalZigzag(lastRank);
+      tx[meMemberIndex] = o.tx;
+      ty[meMemberIndex] = o.ty;
+      return;
+    }
+
+    const sortedByOrder = [...indices].sort((a, b) => a - b);
+    sortedByOrder.forEach((memberIndex, rank) => {
+      const o = stackOffsetOnDiagonalZigzag(rank);
+      tx[memberIndex] = o.tx;
+      ty[memberIndex] = o.ty;
+    });
+  });
+
+  return { tx, ty };
+}
+
 function withAlpha(hexColor: string, alphaHex: string) {
   return `${hexColor}${alphaHex}`;
 }
@@ -81,6 +167,25 @@ export default function MountainProgress({
 }: MountainProgressProps) {
   const [containerWidth, setContainerWidth] = useState(DEFAULT_CONTAINER_WIDTH);
 
+  const stackOffsets = useMemo(
+    () => computeStackOffsets(members, currentUserId),
+    [members, currentUserId],
+  );
+
+  /** 레이어: 나를 마지막에 그려 위에 올림 */
+  const renderOrder = useMemo(() => {
+    if (!currentUserId) {
+      return members.map((member, originalIndex) => ({ member, originalIndex }));
+    }
+    const rest: { member: MemberProgress; originalIndex: number }[] = [];
+    let me: { member: MemberProgress; originalIndex: number } | null = null;
+    members.forEach((member, originalIndex) => {
+      if (member.userId === currentUserId) me = { member, originalIndex };
+      else rest.push({ member, originalIndex });
+    });
+    return me ? [...rest, me] : rest;
+  }, [members, currentUserId]);
+
   return (
     <View style={styles.sceneContainer}>
       <View
@@ -89,19 +194,22 @@ export default function MountainProgress({
       >
         <MountainScene />
 
-        {members.map((member, idx) => {
+        {renderOrder.map(({ member, originalIndex }) => {
           const isMe = currentUserId != null && member.userId === currentUserId;
-          const color = isMe ? MY_HIGHLIGHT_COLOR : AVATAR_COLORS[idx % AVATAR_COLORS.length];
+          const color = isMe
+            ? MY_HIGHLIGHT_COLOR
+            : AVATAR_COLORS[originalIndex % AVATAR_COLORS.length];
           return (
             <ClimbingCharacter
               key={member.userId}
               member={member}
-              index={idx}
-              totalMembers={members.length}
+              index={originalIndex}
               containerWidth={containerWidth}
               avatarColor={color}
               startAnimation={startAnimation}
               isMe={isMe}
+              stackTx={stackOffsets.tx[originalIndex] ?? 0}
+              stackTy={stackOffsets.ty[originalIndex] ?? 0}
             />
           );
         })}
@@ -115,7 +223,7 @@ function MountainScene() {
 
   return (
     <View style={styles.mountainScene}>
-      <Image source={require('../../../assets/kingdom.png')} style={styles.mountainImage} />
+      <Image source={require('../../../assets/mountain.png')} style={styles.mountainImage} />
       <Svg width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} preserveAspectRatio="none">
         <Defs>
           {/* 등산로 대각선(시작점→정상) 방향, viewBox 좌표 */}
@@ -130,9 +238,9 @@ function MountainScene() {
             {/* 양끝: 시안(기존 중간) / 중앙: 핑크·코랄·퍼플·밝은 톤(기존 위·아래) */}
             <Stop offset="10%" stopColor="#05D9E8" stopOpacity={0.7} />
             <Stop offset="33%" stopColor="#FFF0F8" stopOpacity={0.7} />
-            <Stop offset="40%" stopColor="#ef8e38" stopOpacity={0.7} />
-            <Stop offset="74%" stopColor="#ffafbd" stopOpacity={0.8} />
-            <Stop offset="100%" stopColor="#05D9E8" stopOpacity={0.7} />
+            <Stop offset="40%" stopColor="#f8b500" stopOpacity={0.8} />
+            <Stop offset="54%" stopColor="#ffafbd" stopOpacity={0.8} />
+            <Stop offset="100%" stopColor="#f3f9a7" stopOpacity={0.9} />
           </LinearGradient>
           <LinearGradient
             id={GRAD_GLOW}
@@ -143,7 +251,7 @@ function MountainScene() {
             gradientUnits="userSpaceOnUse"
           >
             <Stop offset="0%" stopColor="#FF2A6D" stopOpacity={0.5} />
-            <Stop offset="42%" stopColor="#05D9E8" stopOpacity={0.45} />
+            <Stop offset="42%" stopColor="#FFF0F8" stopOpacity={0.45} />
             <Stop offset="100%" stopColor="#FF2A6D" stopOpacity={0.4} />
           </LinearGradient>
         </Defs>
@@ -223,20 +331,17 @@ function MountainScene() {
 function ClimbingCharacter({
   member,
   index,
-  totalMembers,
   containerWidth,
   avatarColor,
   startAnimation,
   isMe,
+  stackTx,
+  stackTy,
 }: ClimbingCharacterProps) {
   const progress = Math.min(
     1,
     Math.max(0, member.totalGoals > 0 ? member.completedGoals / member.totalGoals : 0),
   );
-
-  // 퍼센트가 같은 멤버들끼리 겹치지 않도록 퍼센트 기반으로 그룹화하여 오프셋을 계산합니다.
-  // (이 로직은 부모 컴포넌트에서 계산해서 넘겨주는 것이 더 정확하지만, 여기서는 간단히 index를 사용하여 더 넓게 퍼지도록 수정합니다)
-  const spreadOffset = totalMembers > 1 ? ((index / (totalMembers - 1)) * 2 - 1) * 28 : 0;
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
@@ -327,7 +432,7 @@ function ClimbingCharacter({
 
   const animatedLeft = progressAnim.interpolate({
     inputRange: TRAIL_INPUT_RANGE,
-    outputRange: TRAIL_POINTS.map((pt) => (pt.x / SVG_W) * containerWidth + spreadOffset),
+    outputRange: TRAIL_POINTS.map((pt) => (pt.x / SVG_W) * containerWidth),
   });
   const animatedTop = progressAnim.interpolate({
     inputRange: TRAIL_INPUT_RANGE,
@@ -338,32 +443,46 @@ function ClimbingCharacter({
     <Animated.View
       style={[
         styles.characterWrapper,
-        { left: animatedLeft, top: Animated.add(animatedTop, bounceAnim), zIndex: isMe ? 30 : 20 },
+        {
+          left: animatedLeft,
+          top: Animated.add(animatedTop, bounceAnim),
+          zIndex: isMe ? 100 : 20 + index,
+          elevation: isMe ? 14 : 4,
+        },
       ]}
     >
-      <View style={[styles.bubble, { borderColor: isMe ? MY_HIGHLIGHT_COLOR : colors.holoCyan }]}>
-        <PercentLabel value={displayPercent} color={colors.sauvignonBlush} />
-      </View>
-      <View style={[styles.bubbleTail, { borderTopColor: withAlpha(avatarColor, '50') }]} />
-      <View style={[styles.avatarGlow, { shadowColor: avatarColor }]}>
-        <View
-          style={[
-            styles.avatar,
-            { backgroundColor: withAlpha(avatarColor, '20'), borderColor: avatarColor },
-          ]}
-        >
-          {member.profileImageUrl ? (
-            <Image source={{ uri: member.profileImageUrl }} style={styles.avatarImage} />
-          ) : (
-            <Text style={[styles.avatarText, { color: avatarColor }]}>{member.nickname?.[0]}</Text>
-          )}
+      <View
+        style={[
+          styles.characterStack,
+          { transform: [{ translateX: stackTx }, { translateY: stackTy }] },
+        ]}
+      >
+        <View style={[styles.bubble, { borderColor: isMe ? MY_HIGHLIGHT_COLOR : colors.holoCyan }]}>
+          <PercentLabel value={displayPercent} color={colors.sauvignonBlush} />
         </View>
-      </View>
-      <View style={[styles.shadow, { backgroundColor: withAlpha(avatarColor, '15') }]} />
-      <View style={styles.nicknameBadge}>
-        <Text style={styles.nicknameText} numberOfLines={1}>
-          {member.nickname ?? ''}
-        </Text>
+        <View style={[styles.bubbleTail, { borderTopColor: withAlpha(avatarColor, '50') }]} />
+        <View style={[styles.avatarGlow, { shadowColor: avatarColor }]}>
+          <View
+            style={[
+              styles.avatar,
+              { backgroundColor: withAlpha(avatarColor, '20'), borderColor: avatarColor },
+            ]}
+          >
+            {member.profileImageUrl ? (
+              <Image source={{ uri: member.profileImageUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={[styles.avatarText, { color: avatarColor }]}>
+                {member.nickname?.[0]}
+              </Text>
+            )}
+          </View>
+        </View>
+        <View style={[styles.shadow, { backgroundColor: withAlpha(avatarColor, '15') }]} />
+        <View style={styles.nicknameBadge}>
+          <Text style={styles.nicknameText} numberOfLines={1}>
+            {member.nickname ?? ''}
+          </Text>
+        </View>
       </View>
     </Animated.View>
   );
@@ -395,15 +514,15 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   mountainScene: {
-    width: '100%',
+    width: '95%',
     height: '100%',
-    justifyContent: 'flex-end',
+    alignSelf: 'center',
     alignItems: 'center',
   },
   mountainImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'contain', // 'stretch',
+    resizeMode: 'stretch', // 'stretch',
     position: 'absolute',
   },
   characterWrapper: {
@@ -412,6 +531,9 @@ const styles = StyleSheet.create({
     marginLeft: -20,
     marginTop: -40,
     zIndex: 20,
+  },
+  characterStack: {
+    alignItems: 'center',
   },
   bubble: {
     backgroundColor: 'rgba(5, 5, 16, 0.62)',
