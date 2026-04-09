@@ -16,8 +16,14 @@ export default function Input({
   success,
   rightElement,
   style,
+  onFocus,
+  onBlur,
+  editable = true,
   ...props
 }: InputProps) {
+  const [focused, setFocused] = React.useState(false);
+  const showFocusUi = focused && editable && !error;
+
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -25,7 +31,8 @@ export default function Input({
         style={[
           styles.inputWrapper,
           error ? styles.inputWrapperError : null,
-          success ? styles.inputWrapperSuccess : null,
+          success && !error && !showFocusUi ? styles.inputWrapperSuccess : null,
+          showFocusUi ? styles.inputWrapperFocused : null,
         ]}
         contentStyle={styles.inputContent}
         glassOnly={true}
@@ -33,6 +40,15 @@ export default function Input({
         <TextInput
           style={[styles.input, rightElement ? styles.inputWithRightElement : null, style]}
           placeholderTextColor={colors.textMuted}
+          editable={editable}
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
           {...props}
         />
         {rightElement && <View style={styles.rightElementContainer}>{rightElement}</View>}
@@ -49,6 +65,14 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     borderRadius: 12,
+  },
+  inputWrapperFocused: {
+    backgroundColor: colors.handleTint,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.48,
+    shadowRadius: 10,
+    elevation: 5,
   },
   inputContent: {
     paddingHorizontal: 0,

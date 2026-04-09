@@ -41,6 +41,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.brandPale,
   },
 });

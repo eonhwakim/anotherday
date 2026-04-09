@@ -4,7 +4,7 @@ import type { GestureResponderEvent, StyleProp, TextStyle, ViewStyle } from 'rea
 import { ds, radius, spacing, typography } from '../../design/recipes';
 
 interface ChipProps {
-  label: string;
+  label: ReactNode;
   icon?: ReactNode;
   onPress?: (event: GestureResponderEvent) => void;
   style?: StyleProp<ViewStyle>;

@@ -12,7 +12,13 @@ export const colors = {
   primaryStrong: 'rgba(255, 107, 61, 0.18)',
 
   background: 'rgba(255, 255, 255, 0.45)',
-  screen: '#FFFFFF',
+  white: '#FFFFFF',
+  screen: {
+    colors: ['#F6A07A', '#F8C7B0', '#FBEEE7', '#F7F2ED'],
+    locations: [0, 0.18, 0.42, 1],
+    start: { x: 0, y: 0 },
+    end: { x: 0, y: 1 },
+  },
   surface: '#FFFAF7',
   surfaceSoft: '#FFF7F3',
   surfaceLight: '#FFF2EC',
@@ -22,6 +28,7 @@ export const colors = {
   textMuted: 'rgba(26, 26, 26, 0.30)',
   textFaint: 'rgba(26, 26, 26, 0.35)',
 
+  border: 'rgba(255, 107, 61, 0.08)',
   borderMuted: 'rgba(75, 74, 74, 0.12)',
 
   success: '#22C55E',
@@ -75,12 +82,13 @@ export const radius = {
   md: 12,
   lg: 16,
   xl: 18,
+  xxl: 24,
   pill: 999,
 } as const;
 
 export const typography = {
   titleLg: {
-    fontSize: 36,
+    fontSize: 26,
     fontWeight: '800' as const,
   },
   titleMd: {
@@ -105,8 +113,8 @@ export const typography = {
     letterSpacing: 0.5,
   },
   caption: {
-    fontSize: 12,
-    fontWeight: '500' as const,
+    fontSize: 11,
+    fontWeight: '400' as const,
   },
   badge: {
     fontSize: 10,

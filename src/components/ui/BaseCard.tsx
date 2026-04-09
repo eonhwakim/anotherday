@@ -1,7 +1,7 @@
 import React, { memo, type ReactNode } from 'react';
 import { View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { radius, shadows } from '@/design/recipes';
+import { shadows } from '@/design/recipes';
 
 /** CyberFrame과 동일한 은빛 팔레트 (SVG 없이 그라데이션·뷰로만 표현) */
 const METAL = {
@@ -19,7 +19,7 @@ const METAL_COLORS = {
 } as const;
 
 const FRAME_PAD = 1.2;
-const R_OUT = radius.xl;
+const R_OUT = 24;
 const R_IN = Math.max(0, R_OUT - FRAME_PAD);
 
 export interface BaseCardProps {
@@ -64,10 +64,10 @@ function BaseCard({
     <View style={[styles.shadowWrap, style]}>
       <LinearGradient
         colors={[
-          METAL.silverBright,
+          METAL_COLORS.silverBright,
           METAL_COLORS.silverLight,
           METAL.silverBright,
-          METAL_COLORS.silverBright,
+          METAL_COLORS.silverDim,
         ]}
         locations={[0, 0.35, 0.65, 1]}
         start={{ x: 0, y: 0 }}
@@ -76,8 +76,8 @@ function BaseCard({
       >
         <View style={styles.innerPlate}>
           <LinearGradient
-            colors={['#FFF6F1', '#FFD9C8', '#FFD9C8', '#FFF6F1']}
-            locations={[0, 0.4, 0.7, 1]}
+            colors={['#FFF6F1', '#FFE9DF', '#FFE9DF', '#FFF6F1']}
+            locations={[0, 0.5, 0.7, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0.8, y: 1 }}
             style={StyleSheet.absoluteFill}
