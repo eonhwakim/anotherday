@@ -7,6 +7,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   Image,
+  AppState,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -208,18 +209,29 @@ export default function HomeScreen() {
   //   }
   // };
 
+  const updateTime = useCallback(() => {
+    if (isManualOverride) return;
+    const hour = dayjs().hour();
+    if (hour >= 5 && hour < 16) setTimePeriod('DAY');
+    else if (hour >= 16 && hour < 19) setTimePeriod('SUNSET');
+    else setTimePeriod('NIGHT');
+  }, [isManualOverride]);
+
   React.useEffect(() => {
-    const updateTime = () => {
-      if (isManualOverride) return;
-      const hour = dayjs().hour();
-      if (hour >= 5 && hour < 16) setTimePeriod('DAY');
-      else if (hour >= 16 && hour < 19) setTimePeriod('SUNSET');
-      else setTimePeriod('NIGHT');
-    };
     updateTime();
     const timer = setInterval(updateTime, 60000);
-    return () => clearInterval(timer);
-  }, [isManualOverride]);
+    
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        updateTime();
+      }
+    });
+
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, [updateTime]);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -278,8 +290,9 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       setIsStampFinished(false);
+      updateTime();
       loadData();
-    }, [loadData]),
+    }, [loadData, updateTime]),
   );
 
   const onRefresh = async () => {
