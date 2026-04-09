@@ -1,13 +1,15 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing } from '../../design/recipes';
+import { spacing } from '../../design/recipes';
+import BaseCard from '../ui/BaseCard';
 
 export interface TodayStatsData {
   ratePct: number;
   streak: number;
   doneToday: number;
   totalToday: number;
+  passToday: number;
 }
 
 const RATE_COLOR = '#E67E22';
@@ -24,7 +26,7 @@ function TodayStatsCard({ stats, style }: TodayStatsCardProps) {
 
   return (
     <View style={[styles.row, style]}>
-      <View style={styles.card}>
+      <BaseCard glassOnly padded={false} style={styles.card}>
         <View style={styles.valueRow}>
           <Ionicons name="flame" size={22} color={RATE_COLOR} />
           <Text style={[styles.value, styles.valueInline, { color: RATE_COLOR }]}>
@@ -32,25 +34,32 @@ function TodayStatsCard({ stats, style }: TodayStatsCardProps) {
           </Text>
         </View>
         <Text style={styles.label}>오늘 달성률</Text>
-      </View>
-      <View style={styles.card}>
+      </BaseCard>
+      <BaseCard glassOnly padded={false} style={styles.card}>
         <View style={styles.valueRow}>
           <Ionicons name="bicycle" size={24} color={STREAK_COLOR} />
           <Text style={[styles.value, styles.valueInline, { color: STREAK_COLOR }]}>
             {stats.streak}
           </Text>
         </View>
-        <Text style={styles.label}>연속 달성일</Text>
-      </View>
-      <View style={styles.card}>
+        <Text style={styles.label}>연속 달성</Text>
+      </BaseCard>
+      <BaseCard glassOnly padded={false} style={styles.card}>
         <View style={styles.valueRow}>
           <Ionicons name="trending-up" size={22} color={DONE_COLOR} />
-          <Text style={[styles.value, styles.valueInline, { color: DONE_COLOR }]}>
-            {stats.totalToday > 0 ? `${stats.doneToday}/${stats.totalToday}` : '—'}
-          </Text>
+          {stats.totalToday > 0 ? (
+            <Text style={[styles.value, styles.valueInline, { color: DONE_COLOR }]}>
+              {stats.doneToday}/{stats.totalToday}
+              {stats.passToday > 0 ? (
+                <Text style={styles.passValue}> ({stats.passToday}Pass)</Text>
+              ) : null}
+            </Text>
+          ) : (
+            <Text style={[styles.value, styles.valueInline, { color: DONE_COLOR }]}>—</Text>
+          )}
         </View>
         <Text style={styles.label}>오늘 완료</Text>
-      </View>
+      </BaseCard>
     </View>
   );
 }
@@ -61,27 +70,20 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: spacing[2],
-    marginBottom: spacing[4],
   },
   card: {
     flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: 20,
     paddingVertical: spacing[4],
     paddingHorizontal: spacing[2],
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 96,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
   },
   value: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    marginBottom: spacing[1],
+  },
+  passValue: {
+    fontSize: 12,
   },
   valueRow: {
     flexDirection: 'row',

@@ -11,11 +11,15 @@ import { getCalendarWeekRanges } from '../../lib/statsUtils';
 interface GoalSettingProps {
   teamGoals: Goal[];
   myGoals: UserGoal[];
+  weeklyDoneCounts?: Record<string, number>;
+  todayCheckedInGoalIds?: Set<string>;
   onEnd: (goalId: string) => void;
   onRemove: (goalId: string) => void;
   monthlyResolution?: string;
+  monthlyRetrospective?: string;
   /** 오른쪽 편집 아이콘 탭 시 (예: 한마디 GlassModal) */
   onEditResolution?: () => void;
+  onEditRetrospective?: () => void;
   title?: string;
   subtitle?: string;
   yearMonth?: string;
@@ -63,10 +67,14 @@ function isMergedWeekGoalForMonth(ug: UserGoal, yearMonth?: string): boolean {
 export default function GoalSetting({
   teamGoals = [],
   myGoals = [],
+  weeklyDoneCounts = {},
+  todayCheckedInGoalIds = new Set(),
   onEnd,
   onRemove,
   monthlyResolution = '',
+  monthlyRetrospective = '',
   onEditResolution,
+  onEditRetrospective,
   yearMonth,
 }: GoalSettingProps) {
   const todayStr = dayjs().format('YYYY-MM-DD');
@@ -123,41 +131,77 @@ export default function GoalSetting({
     ]);
   };
 
-  return (
-    <>
-      <View style={styles.resolutionSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>이번 달 한마디</Text>
+  const renderPassIndicator = (userGoal: UserGoal, doneCount: number, isEnded: boolean) => {
+    if (userGoal.frequency !== 'weekly_count' || isEnded) return null;
+    const targetCount = userGoal.target_count || 1;
+
+    const today = dayjs().startOf('day');
+    const weekEnd = dayjs().endOf('isoWeek').startOf('day');
+    const effEnd =
+      userGoal.end_date && dayjs(userGoal.end_date).isBefore(weekEnd)
+        ? dayjs(userGoal.end_date).startOf('day')
+        : weekEnd;
+
+    const remainingDays = Math.max(0, effEnd.diff(today, 'day') + 1);
+    const checkedInToday = todayCheckedInGoalIds.has(userGoal.goal_id);
+
+    // 오늘 이미 인증(완료 또는 패스)했다면 남은 요일에서 오늘을 제외
+    const availableDays = remainingDays - (checkedInToday ? 1 : 0);
+
+    // 앞으로 최대로 인증할 수 있는 횟수 = 현재까지 인증한 횟수 + 남은 인증 가능 요일
+    const maxTotalCheckins = doneCount + availableDays;
+
+    // 남은 패스권 = 최대로 인증할 수 있는 횟수 - 목표 횟수
+    const remainingPasses = maxTotalCheckins - targetCount;
+    const totalPasses = 7 - targetCount;
+
+    if (doneCount >= targetCount) {
+      return (
+        <View style={styles.indicatorRow}>
+          <Ionicons name="checkmark-circle" size={14} color={colors.successBright} />
+          <Text style={[styles.indicatorText, { color: colors.successBright }]}>
+            이번 주 목표 달성!
+          </Text>
         </View>
+      );
+    }
 
-        <BaseCard
-          glassOnly
-          padded={false}
-          style={styles.innerCard}
-          contentStyle={styles.resolutionBox}
-        >
-          <View style={styles.resolutionRow}>
-            <Text
-              style={[styles.resolutionText, !monthlyResolution && styles.placeholderText]}
-              numberOfLines={4}
-            >
-              {monthlyResolution ? monthlyResolution : '이번 달의 다짐이나 목표를 적어보세요.'}
-            </Text>
-            {onEditResolution ? (
-              <TouchableOpacity
-                onPress={onEditResolution}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                accessibilityRole="button"
-                accessibilityLabel="이번 달 한마디 편집"
-              >
-                <Ionicons name="create-outline" size={22} color={colors.primary} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </BaseCard>
+    if (remainingPasses < 0) {
+      return (
+        <View style={styles.indicatorRow}>
+          <Ionicons name="close-circle" size={14} color={colors.error} />
+          <Text style={[styles.indicatorText, { color: colors.error }]}>
+            이번 주 목표 달성 실패
+          </Text>
+        </View>
+      );
+    }
+
+    if (remainingPasses === 0) {
+      return (
+        <View style={styles.indicatorRow}>
+          <Ionicons name="warning" size={14} color={colors.warning} />
+          <Text style={[styles.indicatorText, { color: colors.warning }]}>
+            패스권 소진, 남은 날 모두 인증해야 해요!
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.indicatorRow}>
+        <Ionicons name="ticket-outline" size={14} color={colors.primary} />
+        <Text style={[styles.indicatorText, { color: colors.primary }]}>
+          남은 패스권: {remainingPasses}/{totalPasses}
+        </Text>
       </View>
+    );
+  };
 
-      <View style={styles.goalsSection}>
+  return (
+    <View style={{ marginBottom: 90 }}>
+      {/* 등록된 루틴 */}
+      <BaseCard glassOnly style={styles.section}>
         {teamGoals.length === 0 ? (
           <View style={styles.emptyBox}>
             <Ionicons name="bulb-outline" size={24} color={colors.textSecondary} />
@@ -167,12 +211,12 @@ export default function GoalSetting({
           </View>
         ) : (
           <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>등록된 루틴 (길게 누름: 종료/삭제)</Text>
-              <Text style={styles.hintLabel}>
-                * 종료는 기록을 남기고, 완전 삭제는 기록도 모두 삭제됩니다.
-              </Text>
+            <View style={styles.goalSection}>
+              {/* <Ionicons name="barbell-outline" size={20} color={colors.primary} /> */}
+              <Text style={styles.sectionTitle}>등록된 루틴 </Text>
+              <Text style={styles.sectionSubtitle}>(길게 누름: 종료/삭제)</Text>
             </View>
+
             <View style={styles.goalList}>
               {sortedGoals.map((goal, index) => {
                 const userGoal = getMyGoal(goal.id);
@@ -208,32 +252,36 @@ export default function GoalSetting({
                           >
                             {goal.name}
                           </Text>
-                          {userGoal ? (
-                            <View style={styles.goalPeriodRow}>
-                              <Text style={styles.goalPeriod}>
-                                {isEnded ? periodLabel(userGoal) : startLabel(userGoal)}
-                              </Text>
-                              {isMergedWeekGoal ? (
-                                <Badge
-                                  label="편입주"
-                                  tone="warning"
-                                  style={styles.mergedBadge}
-                                  textStyle={styles.mergedBadgeText}
-                                />
-                              ) : null}
-                              {isEnded ? (
-                                <View style={styles.endedBadge}>
-                                  <Text style={styles.endedBadgeText}>종료됨</Text>
-                                </View>
-                              ) : null}
-                            </View>
-                          ) : null}
+                          {/* 패스권 표시 */}
+                          {userGoal
+                            ? renderPassIndicator(userGoal, weeklyDoneCounts[goal.id] || 0, isEnded)
+                            : null}
                         </View>
                         {userGoal ? (
                           <View style={styles.goalMetaRight}>
                             <Text style={[styles.goalRowFreq, isEnded && styles.goalRowFreqEnded]}>
                               {freqLabel(userGoal)}
                             </Text>
+                            {userGoal ? (
+                              <View style={styles.goalPeriodRow}>
+                                <Text style={styles.goalPeriod}>
+                                  {isEnded ? periodLabel(userGoal) : startLabel(userGoal)}
+                                </Text>
+                                {isMergedWeekGoal ? (
+                                  <Badge
+                                    label="편입주"
+                                    tone="warning"
+                                    style={styles.mergedBadge}
+                                    textStyle={styles.mergedBadgeText}
+                                  />
+                                ) : null}
+                                {isEnded ? (
+                                  <View style={styles.endedBadge}>
+                                    <Text style={styles.endedBadgeText}>종료됨</Text>
+                                  </View>
+                                ) : null}
+                              </View>
+                            ) : null}
                           </View>
                         ) : null}
                       </View>
@@ -244,8 +292,66 @@ export default function GoalSetting({
             </View>
           </>
         )}
+      </BaseCard>
+
+      {/* 한마디/회고 */}
+      <View style={styles.resolutionSection}>
+        <BaseCard glassOnly padded={false} contentStyle={styles.resolutionCardInner}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.innerTitle}>이번 달 한마디</Text>
+          </View>
+          <View style={styles.resolutionRow}>
+            <Text
+              style={[styles.resolutionText, !monthlyResolution && styles.placeholderText]}
+              numberOfLines={4}
+            >
+              {monthlyResolution ? monthlyResolution : '이번 달의 다짐이나 목표를 적어보세요.'}
+            </Text>
+            {onEditResolution ? (
+              <TouchableOpacity
+                onPress={onEditResolution}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel="이번 달 한마디 편집"
+              >
+                <Ionicons name="create-outline" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </BaseCard>
+
+        <BaseCard
+          glassOnly
+          padded={false}
+          contentStyle={styles.resolutionCardInner}
+          style={{ marginTop: 12 }}
+        >
+          <View style={styles.sectionHeader}>
+            <Text style={styles.innerTitle}>이번 달 회고</Text>
+          </View>
+          <View style={styles.resolutionRow}>
+            <Text
+              style={[styles.resolutionText, !monthlyRetrospective && styles.placeholderText]}
+              numberOfLines={4}
+            >
+              {monthlyRetrospective
+                ? monthlyRetrospective
+                : '이번 달은 어떠셨나요? 회고를 남겨보세요.'}
+            </Text>
+            {onEditRetrospective ? (
+              <TouchableOpacity
+                onPress={onEditRetrospective}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel="이번 달 회고 편집"
+              >
+                <Ionicons name="create-outline" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </BaseCard>
       </View>
-    </>
+    </View>
   );
 }
 
@@ -253,18 +359,35 @@ const styles = StyleSheet.create({
   titleBlock: {
     marginBottom: spacing[4],
   },
-  resolutionSection: {
-    marginBottom: spacing[4],
-  },
   sectionHeader: {
     marginBottom: spacing[2],
   },
   sectionTitle: {
-    ...typography.titleMd,
+    ...typography.titleSm,
     color: colors.text,
   },
-  goalsSection: {
+  sectionSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginLeft: -spacing[2],
+  },
+  section: {
+    marginBottom: spacing[4],
+  },
+  goalSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[4],
     marginTop: spacing[1],
+  },
+  resolutionSection: {
+    marginBottom: spacing[5],
+  },
+  innerTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   //----------
   titleRow: {
@@ -284,18 +407,17 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  innerCard: {
-    borderRadius: radius.md,
-    marginTop: 0,
-  },
-  resolutionBox: {
-    paddingVertical: spacing[3],
-    paddingLeft: spacing[3] + 2,
-    paddingRight: spacing[2],
+  resolutionCardInner: {
+    paddingVertical: spacing[3] + 2,
+    paddingHorizontal: spacing[3] + 2,
   },
   resolutionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    backgroundColor: 'colors.brandLight',
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[2],
   },
   resolutionText: {
     flex: 1,
@@ -306,16 +428,12 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: colors.textMuted,
   },
-  section: {
-    marginTop: spacing[3],
-  },
   emptyBox: {
     alignItems: 'center',
     paddingVertical: spacing[8],
     gap: spacing[3],
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.brandLight,
     borderStyle: 'dashed',
   },
@@ -328,13 +446,13 @@ const styles = StyleSheet.create({
   hintLabel: {
     ...typography.caption,
     color: colors.textSecondary,
-    lineHeight: 20,
-    marginTop: spacing[1] + 2,
-    marginBottom: spacing[3],
-    paddingHorizontal: spacing[1],
+    textAlign: 'center',
+    alignSelf: 'stretch',
+    marginTop: spacing[1],
   },
   goalList: {
     gap: spacing[2] + 2,
+    marginBottom: spacing[4],
   },
   goalNumIcon: {
     width: 18,
@@ -352,7 +470,6 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   goalRowFrame: {
-    borderRadius: radius.md,
     marginTop: 0,
   },
   goalRowContentBox: {
@@ -424,5 +541,15 @@ const styles = StyleSheet.create({
   mergedBadgeText: {
     fontSize: 11,
     letterSpacing: 0,
+  },
+  indicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+  },
+  indicatorText: {
+    ...typography.caption,
+    fontWeight: '600',
   },
 });

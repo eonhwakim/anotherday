@@ -17,8 +17,16 @@ import type { UserGoal } from '../../types/domain';
 import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useTeamStore } from '../../stores/teamStore';
-import { getMonthlyResolution, saveMonthlyResolution } from '../../services/monthlyService';
-import { fetchMyGoalsForMonth as fetchMyGoalsForMonthByWindow } from '../../services/goalService';
+import {
+  getMonthlyResolution,
+  saveMonthlyResolution,
+  getMonthlyRetrospective,
+  saveMonthlyRetrospective,
+} from '../../services/monthlyService';
+import {
+  fetchMyGoalsForMonth as fetchMyGoalsForMonthByWindow,
+  fetchWeeklyDoneCountsForGoals,
+} from '../../services/goalService';
 import dayjs from '../../lib/dayjs';
 import { getCalendarWeekRanges, computeConsecutiveAchievementDays } from '../../lib/statsUtils';
 import { fetchCalendarMarkings } from '../../services/statsService';
@@ -26,7 +34,6 @@ import { colors, ds, radius, spacing, typography } from '../../design/recipes';
 import { useStatsStore } from '../../stores/statsStore';
 
 import ScreenBackground from '../../components/ui/ScreenBackground';
-import BaseCard from '../../components/ui/BaseCard';
 import GoalSetting from '../../components/goal/GoalSetting';
 import AddRoutineModal from '../../components/goal/AddRoutineModal';
 import TodayStatsCard from '../../components/goal/TodayStatsCard';
@@ -64,15 +71,20 @@ export default function GoalScreen() {
   const [yearMonth, setYearMonth] = useState(todayOwnedMonth);
   const [monthGoals, setMonthGoals] = useState<UserGoal[]>([]);
   const [monthlyResolution, setMonthlyResolution] = useState('');
+  const [monthlyRetrospective, setMonthlyRetrospective] = useState('');
+  const [weeklyDoneCounts, setWeeklyDoneCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [addRoutineVisible, setAddRoutineVisible] = useState(false);
   const [resolutionModalVisible, setResolutionModalVisible] = useState(false);
+  const [retrospectiveModalVisible, setRetrospectiveModalVisible] = useState(false);
   const [resolutionInput, setResolutionInput] = useState('');
+  const [retrospectiveInput, setRetrospectiveInput] = useState('');
   const [heroStats, setHeroStats] = useState<{
     ratePct: number;
     streak: number;
     doneToday: number;
     totalToday: number;
+    passToday: number;
   } | null>(null);
 
   const loadData = useCallback(async () => {
@@ -81,6 +93,7 @@ export default function GoalScreen() {
     if (!authUser) {
       setMonthGoals([]);
       setMonthlyResolution('');
+      setMonthlyRetrospective('');
       setHeroStats(null);
       setLoading(false);
       return;
@@ -96,26 +109,53 @@ export default function GoalScreen() {
       const streakYm1 = dayjs().subtract(1, 'month').format('YYYY-MM');
       const streakYm2 = dayjs().subtract(2, 'month').format('YYYY-MM');
 
-      const [goalRows, content, , m0, m1, m2] = await Promise.all([
+      const [goalRows, content, retroContent, , m0, m1, m2] = await Promise.all([
         fetchMyGoalsForMonthByWindow(authUser.id, yearMonth),
         getMonthlyResolution(authUser.id, yearMonth, currentSelectedTeam?.id ?? fallbackTeamId),
+        currentSelectedTeam?.id
+          ? getMonthlyRetrospective(authUser.id, yearMonth, currentSelectedTeam.id)
+          : Promise.resolve(''),
         fetchTeamGoals(teamId, authUser.id),
         fetchCalendarMarkings(authUser.id, streakYm0),
         fetchCalendarMarkings(authUser.id, streakYm1),
         fetchCalendarMarkings(authUser.id, streakYm2),
       ]);
 
+      const weeklyCounts = await fetchWeeklyDoneCountsForGoals({
+        userId: authUser.id,
+        goalIds: goalRows.map((g) => g.goal_id),
+      });
+
       await fetchMemberProgress(teamId || undefined, authUser.id);
       const me = useStatsStore.getState().memberProgress.find((p) => p.userId === authUser.id);
-      const totalToday = me?.totalGoals ?? 0;
-      const doneToday = me?.doneGoals ?? 0;
-      const ratePct = totalToday > 0 ? Math.round((doneToday / totalToday) * 100) : 0;
+      const totalTodayAll = me?.totalGoals ?? 0;
+
+      // 패스는 "실패"가 아니라 "제외"이므로,
+      // - 분모(total): !isPass 인 목표 수
+      // - 분자(done): isDone 이면서 !isPass 인 목표 수
+      const goalDetails = me?.goalDetails ?? [];
+      const passToday =
+        goalDetails.length > 0
+          ? goalDetails.filter((g) => !!g.isPass).length
+          : (me?.passGoals ?? 0);
+      const totalTodayNonPass =
+        goalDetails.length > 0
+          ? goalDetails.filter((g) => !g.isPass).length
+          : Math.max(0, totalTodayAll - (me?.passGoals ?? 0));
+      const doneToday =
+        goalDetails.length > 0
+          ? goalDetails.filter((g) => !g.isPass && !!g.isDone).length
+          : (me?.doneGoals ?? 0);
+
+      const ratePct = totalTodayNonPass > 0 ? Math.round((doneToday / totalTodayNonPass) * 100) : 0;
       const mergedMarkings = { ...m2, ...m1, ...m0 };
       const streak = computeConsecutiveAchievementDays(mergedMarkings);
 
       setMonthGoals(goalRows);
       setMonthlyResolution(content);
-      setHeroStats({ ratePct, streak, doneToday, totalToday });
+      setMonthlyRetrospective(retroContent);
+      setWeeklyDoneCounts(weeklyCounts);
+      setHeroStats({ ratePct, streak, doneToday, totalToday: totalTodayNonPass, passToday });
     } catch (error) {
       console.error(error);
     } finally {
@@ -123,32 +163,65 @@ export default function GoalScreen() {
     }
   }, [currentTeam?.id, fetchMemberProgress, fetchTeamGoals, fetchTeams, yearMonth]);
 
-  const handleUpdateResolution = useCallback(async (text: string): Promise<boolean> => {
-    const authUser = useAuthStore.getState().user;
-    const team = useTeamStore.getState().currentTeam;
-    if (!authUser) return false;
-    try {
-      const ok = await saveMonthlyResolution({
-        userId: authUser.id,
-        yearMonth,
-        content: text,
-        teamId: team?.id ?? null,
-      });
-      if (!ok) throw new Error('save failed');
-      setMonthlyResolution(text);
-      setResolutionInput(text);
-      return true;
-    } catch (e) {
-      console.error(e);
-      Alert.alert('저장 실패', '한마디 저장 중 오류가 발생했습니다.');
-      return false;
-    }
-  }, [yearMonth]);
+  const handleUpdateResolution = useCallback(
+    async (text: string): Promise<boolean> => {
+      const authUser = useAuthStore.getState().user;
+      const team = useTeamStore.getState().currentTeam;
+      if (!authUser) return false;
+      try {
+        const ok = await saveMonthlyResolution({
+          userId: authUser.id,
+          yearMonth,
+          content: text,
+          teamId: team?.id ?? null,
+        });
+        if (!ok) throw new Error('save failed');
+        setMonthlyResolution(text);
+        setResolutionInput(text);
+        return true;
+      } catch (e) {
+        console.error(e);
+        Alert.alert('저장 실패', '한마디 저장 중 오류가 발생했습니다.');
+        return false;
+      }
+    },
+    [yearMonth],
+  );
+
+  const handleUpdateRetrospective = useCallback(
+    async (text: string): Promise<boolean> => {
+      const authUser = useAuthStore.getState().user;
+      const team = useTeamStore.getState().currentTeam;
+      if (!authUser || !team?.id) return false;
+      try {
+        const ok = await saveMonthlyRetrospective({
+          userId: authUser.id,
+          yearMonth,
+          content: text,
+          teamId: team.id,
+        });
+        if (!ok) throw new Error('save failed');
+        setMonthlyRetrospective(text);
+        setRetrospectiveInput(text);
+        return true;
+      } catch (e) {
+        console.error(e);
+        Alert.alert('저장 실패', '회고 저장 중 오류가 발생했습니다.');
+        return false;
+      }
+    },
+    [yearMonth],
+  );
 
   const openResolutionModal = useCallback(() => {
     setResolutionInput(monthlyResolution);
     setResolutionModalVisible(true);
   }, [monthlyResolution]);
+
+  const openRetrospectiveModal = useCallback(() => {
+    setRetrospectiveInput(monthlyRetrospective);
+    setRetrospectiveModalVisible(true);
+  }, [monthlyRetrospective]);
 
   useFocusEffect(
     useCallback(() => {
@@ -211,7 +284,6 @@ export default function GoalScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -221,44 +293,37 @@ export default function GoalScreen() {
               <Text style={styles.subtitle}>매일 꾸준히, 작은 습관이 큰 변화를 만듭니다</Text>
             </View>
             {/* 오늘 통계 카드 */}
-            <TodayStatsCard stats={user ? heroStats : null} />
+            <View style={styles.section}>
+              <TodayStatsCard stats={user ? heroStats : null} />
+            </View>
 
             {/* 달력컨트롤 */}
-            <View style={styles.monthSelectorWrap}>
-              <View style={styles.monthSelector}>
-                <TouchableOpacity onPress={goToPrevMonth} activeOpacity={0.8}>
-                  <BaseCard
-                    glassOnly
-                    style={styles.monthButtonFrame}
-                    contentStyle={styles.monthButtonContent}
-                  >
-                    <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
-                  </BaseCard>
-                </TouchableOpacity>
+            <View style={styles.section}>
+              <View style={styles.monthSelectorWrap}>
+                <View style={styles.monthSelector}>
+                  <TouchableOpacity onPress={goToPrevMonth} activeOpacity={0.8}>
+                    <Ionicons name="chevron-back" size={24} color={colors.primaryLight} />
+                  </TouchableOpacity>
 
-                <View style={styles.monthLabelWrap}>
-                  <Text style={styles.monthLabel}>{monthLabel}</Text>
-                  {showCurrentChip ? (
-                    <View style={styles.monthStatusChip}>
-                      <Text style={styles.monthStatusChipText}>진행중</Text>
-                    </View>
-                  ) : null}
-                </View>
+                  <View style={styles.monthLabelWrap}>
+                    <Text style={styles.monthLabel}>{monthLabel}</Text>
+                    {showCurrentChip ? (
+                      <View style={styles.monthStatusChip}>
+                        <Text style={styles.monthStatusChipText}>진행중</Text>
+                      </View>
+                    ) : null}
+                  </View>
 
-                <TouchableOpacity onPress={goToNextMonth} activeOpacity={0.8} disabled={!canNext}>
-                  <BaseCard
-                    glassOnly
-                    style={[styles.monthButtonFrame, !canNext && styles.monthButtonFrameDisabled]}
-                    contentStyle={styles.monthButtonContent}
-                  >
+                  <TouchableOpacity onPress={goToNextMonth} activeOpacity={0.8} disabled={!canNext}>
                     <Ionicons
                       name="chevron-forward"
                       size={24}
-                      color={canNext ? colors.textSecondary : colors.textMuted}
+                      color={canNext ? colors.primaryLight : colors.textMuted}
                     />
-                  </BaseCard>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </View>
               </View>
+
               <Text style={styles.helperText}>
                 * 월초와 월말의 부분주는 4일 미만이면 인접 월에 편입돼요.
               </Text>
@@ -269,17 +334,27 @@ export default function GoalScreen() {
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : (
-              <>
-                <GoalSetting
-                  yearMonth={yearMonth}
-                  teamGoals={myVisibleGoals}
-                  myGoals={currentTeamUserGoals}
-                  onEnd={handleEndGoal}
-                  onRemove={handleRemoveGoal}
-                  monthlyResolution={monthlyResolution}
-                  onEditResolution={openResolutionModal}
-                />
-              </>
+              <GoalSetting
+                yearMonth={yearMonth}
+                teamGoals={myVisibleGoals}
+                myGoals={currentTeamUserGoals}
+                weeklyDoneCounts={weeklyDoneCounts}
+                todayCheckedInGoalIds={
+                  new Set(
+                    useStatsStore
+                      .getState()
+                      .memberProgress.find((p) => p.userId === user?.id)
+                      ?.goalDetails.filter((g) => g.isDone || g.isPass)
+                      .map((g) => g.goalId) || [],
+                  )
+                }
+                onEnd={handleEndGoal}
+                onRemove={handleRemoveGoal}
+                monthlyResolution={monthlyResolution}
+                monthlyRetrospective={monthlyRetrospective}
+                onEditResolution={openResolutionModal}
+                onEditRetrospective={currentTeam ? openRetrospectiveModal : undefined}
+              />
             )}
           </View>
         </ScrollView>
@@ -319,6 +394,26 @@ export default function GoalScreen() {
             maxLength={50}
           />
         </GlassModal>
+
+        <GlassModal
+          visible={retrospectiveModalVisible}
+          title={`${dayjs(`${yearMonth}-01`).format('YYYY년 M월')} 회고`}
+          onClose={() => setRetrospectiveModalVisible(false)}
+          onConfirm={async () => {
+            const ok = await handleUpdateRetrospective(retrospectiveInput);
+            if (ok) setRetrospectiveModalVisible(false);
+          }}
+        >
+          <Input
+            placeholder="이번 달은 어떠셨나요? 회고를 남겨보세요"
+            value={retrospectiveInput}
+            onChangeText={setRetrospectiveInput}
+            autoFocus
+            maxLength={200}
+            multiline
+            style={{ minHeight: 100, textAlignVertical: 'top' }}
+          />
+        </GlassModal>
       </SafeAreaView>
     </ScreenBackground>
   );
@@ -341,22 +436,23 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
-    marginTop: spacing[1],
-    lineHeight: 24,
+    marginTop: 6,
+  },
+  section: {
+    marginBottom: spacing[3],
   },
   monthSelectorWrap: {
-    marginVertical: spacing[2],
+    marginVertical: spacing[3],
   },
   monthSelector: {
     ...ds.rowCenter,
     justifyContent: 'center',
     gap: spacing[4],
-    marginBottom: spacing[3],
   },
   monthLabelWrap: {
     minWidth: 140,
     alignItems: 'center',
-    gap: spacing[2],
+    gap: spacing[1],
   },
   monthButtonFrame: {
     width: 48,
@@ -398,8 +494,9 @@ const styles = StyleSheet.create({
   helperText: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginBottom: spacing[3],
-    paddingHorizontal: spacing[1],
+    textAlign: 'center',
+    alignSelf: 'stretch',
+    marginTop: spacing[1],
   },
   loadingWrap: {
     minHeight: 280,
