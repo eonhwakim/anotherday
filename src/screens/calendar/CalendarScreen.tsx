@@ -12,7 +12,7 @@ import { useTeamStore } from '../../stores/teamStore';
 
 import dayjs from '../../lib/dayjs';
 import { colors } from '../../design/tokens';
-import { ds } from '../../design/recipes';
+import { ds, typography } from '../../design/recipes';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 
@@ -293,7 +293,7 @@ export default function CalendarScreen() {
             {teamWithCaption ? (
               <View style={styles.header}>
                 <Text style={ds.headerTitle}>캘린더</Text>
-                <Text style={styles.teamWithCaption}>{teamWithCaption}</Text>
+                <Text style={styles.subtitle}>{teamWithCaption}</Text>
               </View>
             ) : null}
 
@@ -365,10 +365,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 16,
   },
-  teamWithCaption: {
-    fontSize: 14,
+  subtitle: {
+    ...typography.body,
     color: colors.textSecondary,
-    marginTop: 10,
+    marginTop: 6,
   },
   calendarContainer: {
     borderRadius: 20,
