@@ -46,6 +46,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@tanstack/eslint-plugin-query": "^5.97.0",
     "@types/react": "~19.1.0",
     "@types/react-dom": "^19",
     "@types/react-native-web": "^0",

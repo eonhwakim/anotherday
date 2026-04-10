@@ -4,6 +4,7 @@ import tsPlugin from '@typescript-eslint/eslint-plugin';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import reactNativePlugin from 'eslint-plugin-react-native';
+import queryPlugin from '@tanstack/eslint-plugin-query';
 
 export default [
   {
@@ -35,6 +36,7 @@ export default [
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,
       'react-native': reactNativePlugin,
+      '@tanstack/query': queryPlugin,
     },
     settings: {
       react: {
@@ -45,6 +47,7 @@ export default [
       ...tsPlugin.configs.recommended.rules,
       ...reactPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
+      ...queryPlugin.configs.recommended.rules,
       'no-undef': 'off',
       'no-redeclare': 'off',
       'react/react-in-jsx-scope': 'off',
