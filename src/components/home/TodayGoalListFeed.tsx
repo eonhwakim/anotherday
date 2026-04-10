@@ -24,8 +24,9 @@ import DynamicBadge, {
   HOME_BADGE_POP_TRANSLATE_Y_PEAK_ADJUST_PX,
   HOME_BADGE_POP_TRANSLATE_Y_PEAK_RATIO,
 } from '../ui/MissionBadge';
-import { useStatsStore } from '../../stores/statsStore';
 import { useAuthStore } from '../../stores/authStore';
+import { handleServiceError } from '../../lib/serviceError';
+import { useToggleReactionMutation } from '../../queries/statsMutations';
 
 type BadgeState = 'START' | 'ALL_CLEAR' | 'FINISHER' | 'LEADER';
 
@@ -558,8 +559,8 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
   const animOpacity = animVal.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   const animSlide = animVal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
   const { width: screenWidth } = useWindowDimensions();
-  const { toggleReaction } = useStatsStore();
   const user = useAuthStore((s) => s.user);
+  const toggleReactionMutation = useToggleReactionMutation();
   const {
     cardWidth,
     carouselPanResponder,
@@ -573,13 +574,20 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
   const handleReactionPress = useCallback(
     async (checkin: CheckinWithGoal) => {
       if (!user) return;
-      await toggleReaction(checkin.id, {
-        id: user.id,
-        nickname: user.nickname,
-        profile_image_url: user.profile_image_url,
-      });
+      try {
+        await toggleReactionMutation.mutateAsync({
+          checkin,
+          user: {
+            id: user.id,
+            nickname: user.nickname,
+            profile_image_url: user.profile_image_url,
+          },
+        });
+      } catch (e) {
+        handleServiceError(e);
+      }
     },
-    [user, toggleReaction],
+    [toggleReactionMutation, user],
   );
 
   return (

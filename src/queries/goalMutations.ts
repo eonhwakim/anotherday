@@ -1,6 +1,14 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import dayjs from '../lib/dayjs';
-import { createCheckin, deleteCheckin, extendGoalsForNewMonth } from '../services/goalService';
+import {
+  addGoal,
+  createCheckin,
+  deleteCheckin,
+  endTeamGoal,
+  extendGoalsForNewMonth,
+  removeTeamGoal,
+} from '../services/goalService';
+import type { Goal } from '../types/domain';
 import { queryKeys } from './queryKeys';
 
 async function invalidateCheckinRelatedQueries(params: {
@@ -117,6 +125,137 @@ export function useExtendGoalsForNewMonthMutation(params: {
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.stats.memberProgress(teamId, userId, today),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useAddGoalMutation(params: {
+  userId?: string;
+  teamId?: string;
+  existingGoals: Goal[];
+}) {
+  const { userId, teamId, existingGoals } = params;
+  const queryClient = useQueryClient();
+  const today = dayjs().format('YYYY-MM-DD');
+
+  return useMutation({
+    mutationFn: (variables: {
+      teamId?: string;
+      userId: string;
+      name: string;
+      frequency?: 'daily' | 'weekly_count';
+      targetCount?: number | null;
+      duration?: 'continuous' | 'this_month';
+    }) =>
+      addGoal({
+        ...variables,
+        existingGoals,
+      }),
+    onSuccess: async () => {
+      if (!userId) return;
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.goals.mine(userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['goals', 'mine-month', userId],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['goals', 'team'],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.stats.memberProgress(teamId, userId, today),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useEndTeamGoalMutation(params: {
+  userId?: string;
+  teamId?: string;
+}) {
+  const { userId, teamId } = params;
+  const queryClient = useQueryClient();
+  const today = dayjs().format('YYYY-MM-DD');
+  const currentMonth = dayjs().format('YYYY-MM');
+
+  return useMutation({
+    mutationFn: ({ goalId }: { goalId: string }) => endTeamGoal(userId!, goalId),
+    onSuccess: async () => {
+      if (!userId) return;
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.goals.mine(userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['goals', 'mine-month', userId],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.goals.todayCheckins(userId, today),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['goals', 'team'],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.stats.memberProgress(teamId, userId, today),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.stats.calendar(userId, currentMonth),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.stats.monthlyCheckins(userId, currentMonth),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useRemoveTeamGoalMutation(params: {
+  userId?: string;
+  teamId?: string;
+}) {
+  const { userId, teamId } = params;
+  const queryClient = useQueryClient();
+  const today = dayjs().format('YYYY-MM-DD');
+  const currentMonth = dayjs().format('YYYY-MM');
+
+  return useMutation({
+    mutationFn: ({ goalId }: { goalId: string }) => removeTeamGoal(teamId ?? '', userId!, goalId),
+    onSuccess: async () => {
+      if (!userId) return;
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.goals.mine(userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['goals', 'mine-month', userId],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.goals.todayCheckins(userId, today),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['goals', 'team'],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.stats.memberProgress(teamId, userId, today),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.stats.calendar(userId, currentMonth),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.stats.monthlyCheckins(userId, currentMonth),
         }),
       ]);
     },

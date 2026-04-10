@@ -15,9 +15,11 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
-import { useGoalStore } from '../../stores/goalStore';
 import type { GoalFrequency } from '../../types/domain';
+import { handleServiceError } from '../../lib/serviceError';
 import { colors } from '../../design/tokens';
+import { useTeamGoalsQuery } from '../../queries/goalQueries';
+import { useAddGoalMutation } from '../../queries/goalMutations';
 import BaseCard from '../ui/BaseCard';
 import Input from '../common/Input';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
@@ -48,7 +50,12 @@ export default function RoutineComposer({
   }, [inModal, winH]);
   const { user } = useAuthStore();
   const { currentTeam } = useTeamStore();
-  const { addGoal, fetchMyGoals, fetchTeamGoals } = useGoalStore();
+  const { data: existingGoals = [] } = useTeamGoalsQuery(currentTeam?.id ?? '', user?.id);
+  const addGoalMutation = useAddGoalMutation({
+    userId: user?.id,
+    teamId: currentTeam?.id,
+    existingGoals,
+  });
 
   const [newGoal, setNewGoal] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -107,7 +114,7 @@ export default function RoutineComposer({
     setIsAdding(true);
 
     try {
-      const success = await addGoal({
+      const success = await addGoalMutation.mutateAsync({
         teamId: currentTeam?.id,
         userId: user.id,
         name: newGoal.trim(),
@@ -121,9 +128,6 @@ export default function RoutineComposer({
         return;
       }
 
-      await fetchMyGoals(user.id);
-      await fetchTeamGoals(currentTeam?.id ?? '', user.id);
-
       if (frequency === 'weekly_count') {
         Alert.alert(
           `주 ${targetCount ?? 'N'}회 루틴 등록 완료`,
@@ -134,6 +138,8 @@ export default function RoutineComposer({
       }
 
       await finishSuccess();
+    } catch (e) {
+      handleServiceError(e);
     } finally {
       setIsAdding(false);
     }

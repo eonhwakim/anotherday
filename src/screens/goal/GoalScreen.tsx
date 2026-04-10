@@ -17,6 +17,8 @@ import type { UserGoal } from '../../types/domain';
 import { useAuthStore } from '../../stores/authStore';
 import { useGoalStore } from '../../stores/goalStore';
 import { useTeamStore } from '../../stores/teamStore';
+import { handleServiceError } from '../../lib/serviceError';
+import { useEndTeamGoalMutation, useRemoveTeamGoalMutation } from '../../queries/goalMutations';
 import {
   getMonthlyResolution,
   saveMonthlyResolution,
@@ -62,8 +64,16 @@ function getOwningMonthForDate(dateStr: string): string {
 export default function GoalScreen() {
   const { user } = useAuthStore();
   const { currentTeam, fetchTeams } = useTeamStore();
-  const { teamGoals, fetchTeamGoals, endTeamGoal, removeTeamGoal } = useGoalStore();
+  const { teamGoals, fetchTeamGoals } = useGoalStore();
   const { fetchMemberProgress } = useStatsStore();
+  const endTeamGoalMutation = useEndTeamGoalMutation({
+    userId: user?.id,
+    teamId: currentTeam?.id,
+  });
+  const removeTeamGoalMutation = useRemoveTeamGoalMutation({
+    userId: user?.id,
+    teamId: currentTeam?.id,
+  });
   const todayOwnedMonth = React.useMemo(
     () => getOwningMonthForDate(dayjs().format('YYYY-MM-DD')),
     [],
@@ -232,21 +242,27 @@ export default function GoalScreen() {
   const handleEndGoal = useCallback(
     async (goalId: string) => {
       if (!user) return;
-      const activeTeam = useTeamStore.getState().currentTeam;
-      await endTeamGoal(activeTeam?.id ?? '', user.id, goalId);
-      await loadData();
+      try {
+        await endTeamGoalMutation.mutateAsync({ goalId });
+        await loadData();
+      } catch (e) {
+        handleServiceError(e);
+      }
     },
-    [endTeamGoal, loadData, user],
+    [endTeamGoalMutation, loadData, user],
   );
 
   const handleRemoveGoal = useCallback(
     async (goalId: string) => {
       if (!user) return;
-      const activeTeam = useTeamStore.getState().currentTeam;
-      await removeTeamGoal(activeTeam?.id ?? '', user.id, goalId);
-      await loadData();
+      try {
+        await removeTeamGoalMutation.mutateAsync({ goalId });
+        await loadData();
+      } catch (e) {
+        handleServiceError(e);
+      }
     },
-    [loadData, removeTeamGoal, user],
+    [loadData, removeTeamGoalMutation, user],
   );
 
   const currentTeamUserGoals = useMemo(() => {
