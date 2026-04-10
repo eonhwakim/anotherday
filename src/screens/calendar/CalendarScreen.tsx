@@ -1,13 +1,20 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
-import { useGoalStore } from '../../stores/goalStore';
-import { useStatsStore } from '../../stores/statsStore';
 import { useTeamStore } from '../../stores/teamStore';
 
 import dayjs from '../../lib/dayjs';
@@ -15,6 +22,12 @@ import { colors } from '../../design/tokens';
 import { ds, typography } from '../../design/recipes';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
+import { useTeamMembersQuery } from '../../queries/teamQueries';
+import {
+  useCalendarMarkingsQuery,
+  useMemberDateCheckinsQuery,
+} from '../../queries/statsQueries';
+import { queryKeys } from '../../queries/queryKeys';
 
 import CalendarDateSummaryCard from '../../components/calendar/CalendarDateSummaryCard';
 import CalendarMemberCheckinsSection from '../../components/calendar/CalendarMemberCheckinsSection';
@@ -23,15 +36,8 @@ import ScreenBackground from '../../components/ui/ScreenBackground';
 
 export default function CalendarScreen() {
   const user = useAuthStore((s) => s.user);
-  const { currentTeam, members, fetchMembers } = useTeamStore();
-  const { fetchTeamGoals, fetchMyGoals } = useGoalStore();
-  const {
-    calendarMarkings,
-    memberDateCheckins,
-    fetchCalendarMarkings,
-    fetchMemberDateCheckins,
-    fetchMonthlyCheckins,
-  } = useStatsStore();
+  const { currentTeam } = useTeamStore();
+  const queryClient = useQueryClient();
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
@@ -40,11 +46,15 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
   const [photoModal, setPhotoModal] = useState<{ url: string; checkinId: string } | null>(null);
+  const { data: members = [] } = useTeamMembersQuery(currentTeam?.id);
+  const { data: calendarMarkings = {} } = useCalendarMarkingsQuery(user?.id, currentMonth);
+  const { data: memberDateCheckins = [] } = useMemberDateCheckinsQuery(
+    currentTeam?.id,
+    user?.id,
+    selectedDate,
+  );
 
-  const selectedDateRef = useRef(selectedDate);
-  selectedDateRef.current = selectedDate;
-
-  const photoModalContext = React.useMemo(() => {
+  const photoModalContext = (() => {
     if (!photoModal)
       return {
         checkin: null as (typeof memberDateCheckins)[0]['checkins'][0] | null,
@@ -55,7 +65,7 @@ export default function CalendarScreen() {
       if (c) return { checkin: c, member: m };
     }
     return { checkin: null, member: null };
-  }, [photoModal, memberDateCheckins]);
+  })();
 
   useFocusEffect(
     useCallback(() => {
@@ -66,47 +76,38 @@ export default function CalendarScreen() {
         setSelectedDate(todayDate);
         setCurrentMonth(todayMonth);
 
-        fetchCalendarMarkings(user.id, todayMonth);
-        fetchMyGoals(user.id);
-        fetchTeamGoals(currentTeam?.id ?? '', user.id);
-        fetchMonthlyCheckins(user.id, todayMonth);
-        fetchMemberDateCheckins(currentTeam?.id, user.id, todayDate);
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.stats.calendar(user.id, todayMonth),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.stats.memberDateCheckins(currentTeam?.id, user.id, todayDate),
+        });
         if (currentTeam?.id) {
-          void fetchMembers(currentTeam.id);
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.teams.members(currentTeam.id),
+          });
         }
       }
     }, [
-      user,
       currentTeam,
-      fetchCalendarMarkings,
-      fetchMyGoals,
-      fetchTeamGoals,
-      fetchMonthlyCheckins,
-      fetchMemberDateCheckins,
-      fetchMembers,
+      queryClient,
+      user,
     ]),
   );
 
   const handleDayPress = useCallback(
     (day: DateData) => {
       setSelectedDate(day.dateString);
-      if (user) {
-        fetchMemberDateCheckins(currentTeam?.id, user.id, day.dateString);
-      }
     },
-    [user, currentTeam, fetchMemberDateCheckins],
+    [],
   );
 
   const handleMonthChange = useCallback(
     (month: DateData) => {
       const ym = `${month.year}-${String(month.month).padStart(2, '0')}`;
       setCurrentMonth(ym);
-      if (user) {
-        fetchCalendarMarkings(user.id, ym);
-        fetchMonthlyCheckins(user.id, ym);
-      }
     },
-    [user, fetchCalendarMarkings, fetchMonthlyCheckins],
+    [],
   );
 
   const { dataStart, dataEnd } = React.useMemo(
@@ -289,10 +290,10 @@ export default function CalendarScreen() {
     <ScreenBackground>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView ref={scrollRef} style={styles.scroll}>
-          <View style={ds.pagePadding}>
+          <View style={ds.pagePadding as ViewStyle}>
             {teamWithCaption ? (
               <View style={styles.header}>
-                <Text style={ds.headerTitle}>캘린더</Text>
+                <Text style={ds.headerTitle as TextStyle}>캘린더</Text>
                 <Text style={styles.subtitle}>{teamWithCaption}</Text>
               </View>
             ) : null}
