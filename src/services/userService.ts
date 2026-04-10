@@ -1,5 +1,13 @@
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabaseClient';
+import {
+  STORAGE_BUCKETS,
+  STORAGE_CACHE_CONTROL,
+  STORAGE_FOLDERS,
+} from '../constants/storage';
+import { requireAuthenticatedUserId } from '../lib/auth';
+import { buildUploadObjectPath, prepareImageUpload } from '../lib/storageUpload';
+import { ServiceError } from '../lib/serviceError';
 import type { User } from '../types/domain';
 
 /**
@@ -16,10 +24,11 @@ export async function updateProfile(
   }
 ): Promise<{ success: boolean; data?: User; error?: string }> {
   try {
+    const actorUserId = await requireAuthenticatedUserId(userId);
     const { data, error } = await supabase
       .from('users')
       .update(updates)
-      .eq('id', userId)
+      .eq('id', actorUserId)
       .select()
       .single();
 
@@ -31,7 +40,10 @@ export async function updateProfile(
     return { success: true, data: data as User };
   } catch (e) {
     console.error('updateProfile failed:', e);
-    return { success: false, error: e instanceof Error ? e.message : String(e) };
+    return {
+      success: false,
+      error: e instanceof ServiceError ? e.userMessage : e instanceof Error ? e.message : String(e),
+    };
   }
 }
 
@@ -44,18 +56,20 @@ export async function uploadProfileImage(
   imageUri: string
 ): Promise<string | null> {
   try {
-    // 파일명: profiles/{userId}/{timestamp}.jpg
-    const fileName = `profiles/${userId}/${Date.now()}.jpg`;
-
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
-    const arrayBuffer = await new Response(blob).arrayBuffer();
+    const actorUserId = await requireAuthenticatedUserId(userId);
+    const { arrayBuffer, contentType, extension } = await prepareImageUpload(imageUri);
+    const fileName = buildUploadObjectPath(
+      STORAGE_FOLDERS.PROFILES,
+      actorUserId,
+      `${Date.now()}.${extension}`,
+    );
 
     // checkin-photos 버킷 재사용 (없으면 생성 필요)
     const { error } = await supabase.storage
-      .from('checkin-photos')
+      .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
       .upload(fileName, arrayBuffer, {
-        contentType: 'image/jpeg',
+        contentType,
+        cacheControl: STORAGE_CACHE_CONTROL,
         upsert: false,
       });
 
@@ -65,7 +79,7 @@ export async function uploadProfileImage(
     }
 
     const { data: urlData } = supabase.storage
-      .from('checkin-photos')
+      .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
       .getPublicUrl(fileName);
 
     return urlData.publicUrl;

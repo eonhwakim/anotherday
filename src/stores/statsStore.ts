@@ -9,6 +9,7 @@ import type {
   ReactionWithUser,
 } from '../types/domain';
 import { handleServiceError } from '../lib/serviceError';
+import { runSingleFlight } from '../lib/requestCache';
 import {
   fetchCalendarMarkings,
   fetchCheckinsForDate,
@@ -17,6 +18,14 @@ import {
   fetchMonthlyCheckins,
   toggleReaction as persistToggleReaction,
 } from '../services/statsService';
+
+let memberProgressRequestSeq = 0;
+let calendarMarkingsRequestSeq = 0;
+let selectedDateCheckinsRequestSeq = 0;
+let monthlyCheckinsRequestSeq = 0;
+let memberDateCheckinsRequestSeq = 0;
+
+const pendingReactionIds = new Set<string>();
 
 /**
  * 같은 날짜를 다시 fetch할 때 서버 응답이 낙관적 리액션보다 늦게 도착하면
@@ -103,7 +112,12 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
   fetchMemberProgress: async (teamId, userId) => {
     try {
-      const progress = await fetchMemberProgress(teamId, userId);
+      const requestId = ++memberProgressRequestSeq;
+      const progress = await runSingleFlight(
+        `stats:memberProgress:${teamId ?? 'personal'}:${userId ?? ''}`,
+        () => fetchMemberProgress(teamId, userId),
+      );
+      if (requestId !== memberProgressRequestSeq) return;
       set({ memberProgress: progress });
     } catch (e) {
       handleServiceError(e, { silent: true });
@@ -112,7 +126,11 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
   fetchCalendarMarkings: async (userId, yearMonth) => {
     try {
-      const markings = await fetchCalendarMarkings(userId, yearMonth);
+      const requestId = ++calendarMarkingsRequestSeq;
+      const markings = await runSingleFlight(`stats:calendar:${userId}:${yearMonth}`, () =>
+        fetchCalendarMarkings(userId, yearMonth),
+      );
+      if (requestId !== calendarMarkingsRequestSeq) return;
       set({ calendarMarkings: markings });
     } catch (e) {
       handleServiceError(e, { silent: true });
@@ -121,7 +139,11 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
   fetchCheckinsForDate: async (userId, date) => {
     try {
-      const checkins = await fetchCheckinsForDate(userId, date);
+      const requestId = ++selectedDateCheckinsRequestSeq;
+      const checkins = await runSingleFlight(`stats:dateCheckins:${userId}:${date}`, () =>
+        fetchCheckinsForDate(userId, date),
+      );
+      if (requestId !== selectedDateCheckinsRequestSeq) return;
       set({ selectedDateCheckins: checkins });
     } catch (e) {
       handleServiceError(e, { silent: true });
@@ -130,7 +152,11 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
   fetchMonthlyCheckins: async (userId, yearMonth) => {
     try {
-      const checkins = await fetchMonthlyCheckins(userId, yearMonth);
+      const requestId = ++monthlyCheckinsRequestSeq;
+      const checkins = await runSingleFlight(`stats:monthlyCheckins:${userId}:${yearMonth}`, () =>
+        fetchMonthlyCheckins(userId, yearMonth),
+      );
+      if (requestId !== monthlyCheckinsRequestSeq) return;
       set({ monthlyCheckins: checkins });
     } catch (e) {
       handleServiceError(e, { silent: true });
@@ -139,7 +165,12 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
   fetchMemberDateCheckins: async (teamId, userId, date) => {
     try {
-      const summaries = await fetchMemberDateCheckins(teamId, userId, date);
+      const requestId = ++memberDateCheckinsRequestSeq;
+      const summaries = await runSingleFlight(
+        `stats:memberDateCheckins:${teamId ?? 'personal'}:${userId}:${date}`,
+        () => fetchMemberDateCheckins(teamId, userId, date),
+      );
+      if (requestId !== memberDateCheckinsRequestSeq) return;
       const prev = get().memberDateCheckins;
       const prevForDate = get().memberDateCheckinsForDate;
       const merged =
@@ -153,6 +184,11 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   },
 
   toggleReaction: async (checkinId, user: Pick<User, 'id' | 'nickname' | 'profile_image_url'>) => {
+    if (pendingReactionIds.has(checkinId)) {
+      return;
+    }
+
+    pendingReactionIds.add(checkinId);
     const userId = user.id;
     const currentMemberCheckins = get().memberDateCheckins;
     const currentMemberProgress = get().memberProgress;
@@ -217,6 +253,8 @@ export const useStatsStore = create<StatsState>((set, get) => ({
         memberDateCheckins: currentMemberCheckins,
         memberProgress: currentMemberProgress,
       });
+    } finally {
+      pendingReactionIds.delete(checkinId);
     }
   },
 

@@ -1,5 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabaseClient';
+import { STORAGE_BUCKETS, STORAGE_CACHE_CONTROL } from '../constants/storage';
+import { requireAuthenticatedUserId } from '../lib/auth';
+import { buildUploadObjectPath, prepareImageUpload } from '../lib/storageUpload';
 import { Alert } from 'react-native';
 
 // ─── 사진 인증 관련 서비스 ─────────────────────────────────────
@@ -79,23 +82,26 @@ export async function takePhoto(): Promise<string | null> {
 /** Supabase Storage에 이미지 업로드 후 public URL 반환 */
 export async function uploadCheckinPhoto(userId: string, imageUri: string): Promise<string | null> {
   try {
-    const fileName = `${userId}/${Date.now()}.jpg`;
+    const actorUserId = await requireAuthenticatedUserId(userId);
+    const { arrayBuffer, contentType, extension } = await prepareImageUpload(imageUri);
+    const fileName = buildUploadObjectPath(actorUserId, `${Date.now()}.${extension}`);
 
-    // React Native의 fetch로 로컬 파일을 읽어 ArrayBuffer로 변환 (외부 의존성 불필요)
-    const response = await fetch(imageUri);
-    const arrayBuffer = await response.arrayBuffer();
-
-    const { error } = await supabase.storage.from('checkin-photos').upload(fileName, arrayBuffer, {
-      contentType: 'image/jpeg',
-      upsert: false,
-    });
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
+      .upload(fileName, arrayBuffer, {
+        contentType,
+        cacheControl: STORAGE_CACHE_CONTROL,
+        upsert: false,
+      });
 
     if (error) {
       console.error('[Checkin] Upload error:', error.message);
       return null;
     }
 
-    const { data: urlData } = supabase.storage.from('checkin-photos').getPublicUrl(fileName);
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
+      .getPublicUrl(fileName);
 
     return urlData.publicUrl;
   } catch (e) {
@@ -115,8 +121,9 @@ export async function submitCheckin(
   memo: string | null,
 ): Promise<boolean> {
   try {
+    const actorUserId = await requireAuthenticatedUserId(userId);
     const { error } = await supabase.from('checkins').insert({
-      user_id: userId,
+      user_id: actorUserId,
       goal_id: goalId,
       date,
       photo_url: photoUrl,

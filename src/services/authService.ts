@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { requireAuthenticatedUserId } from '../lib/auth';
 import type { User } from '../types/domain';
 
 const SESSION_TIMEOUT_MS = 3000;
@@ -8,10 +9,11 @@ export async function ensureProfile(
   email: string,
   nickname?: string,
 ): Promise<User | null> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const displayName = nickname || email.split('@')[0];
 
   const { data, error } = await supabase.rpc('create_user_profile', {
-    user_id: userId,
+    user_id: actorUserId,
     user_email: email,
     user_nickname: displayName,
   });
@@ -74,8 +76,9 @@ export async function signOutAuth() {
 }
 
 export async function deleteUserAccount(userId: string) {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   return supabase.rpc('delete_user_account', {
-    user_id: userId,
+    user_id: actorUserId,
   });
 }
 

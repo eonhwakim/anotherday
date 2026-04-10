@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Goal, UserGoal, Checkin } from '../types/domain';
 import { handleServiceError } from '../lib/serviceError';
+import { runSingleFlight } from '../lib/requestCache';
 import { scheduleGoalReminderNotification } from '../utils/notifications';
 import dayjs from '../lib/dayjs';
 import {
@@ -18,6 +19,12 @@ import {
   removeTeamGoal,
   toggleUserGoal,
 } from '../services/goalService';
+
+let teamGoalsRequestSeq = 0;
+let myGoalsRequestSeq = 0;
+let monthGoalsRequestSeq = 0;
+let todayCheckinsRequestSeq = 0;
+let lastMonthGoalsRequestSeq = 0;
 
 interface GoalState {
   teamGoals: Goal[];
@@ -68,7 +75,11 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   fetchLastMonthGoals: async (userId) => {
     try {
-      const goals = await fetchLastMonthGoals(userId);
+      const requestId = ++lastMonthGoalsRequestSeq;
+      const goals = await runSingleFlight(`goal:lastMonthGoals:${userId}`, () =>
+        fetchLastMonthGoals(userId),
+      );
+      if (requestId !== lastMonthGoalsRequestSeq) return;
       set({ lastMonthGoals: goals });
     } catch (e) {
       handleServiceError(e, { silent: true });
@@ -104,7 +115,11 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   fetchTeamGoals: async (teamId, userId) => {
     try {
-      const goals = await fetchTeamGoals(teamId, userId);
+      const requestId = ++teamGoalsRequestSeq;
+      const goals = await runSingleFlight(`goal:teamGoals:${teamId}:${userId ?? ''}`, () =>
+        fetchTeamGoals(teamId, userId),
+      );
+      if (requestId !== teamGoalsRequestSeq) return;
       set({ teamGoals: goals });
     } catch (e) {
       handleServiceError(e, { silent: true });
@@ -113,7 +128,9 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   fetchMyGoals: async (userId) => {
     try {
-      const goals = await fetchMyGoals(userId);
+      const requestId = ++myGoalsRequestSeq;
+      const goals = await runSingleFlight(`goal:myGoals:${userId}`, () => fetchMyGoals(userId));
+      if (requestId !== myGoalsRequestSeq) return;
       set({ myGoals: goals });
     } catch (e) {
       handleServiceError(e, { silent: true });
@@ -122,7 +139,11 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   fetchMyGoalsForMonth: async (userId, yearMonth) => {
     try {
-      const goals = await fetchMyGoalsForMonth(userId, yearMonth);
+      const requestId = ++monthGoalsRequestSeq;
+      const goals = await runSingleFlight(`goal:monthGoals:${userId}:${yearMonth}`, () =>
+        fetchMyGoalsForMonth(userId, yearMonth),
+      );
+      if (requestId !== monthGoalsRequestSeq) return;
       set({ monthGoals: goals });
     } catch (e) {
       handleServiceError(e, { silent: true });
@@ -131,7 +152,11 @@ export const useGoalStore = create<GoalState>((set, get) => ({
 
   fetchTodayCheckins: async (userId) => {
     try {
-      const checkins = await fetchTodayCheckins(userId);
+      const requestId = ++todayCheckinsRequestSeq;
+      const checkins = await runSingleFlight(`goal:todayCheckins:${userId}`, () =>
+        fetchTodayCheckins(userId),
+      );
+      if (requestId !== todayCheckinsRequestSeq) return;
       set({ todayCheckins: checkins });
     } catch (e) {
       handleServiceError(e, { silent: true });

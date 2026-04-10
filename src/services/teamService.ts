@@ -1,4 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
+import {
+  STORAGE_BUCKETS,
+  STORAGE_CACHE_CONTROL,
+  STORAGE_FOLDERS,
+} from '../constants/storage';
+import { requireAuthenticatedUserId } from '../lib/auth';
+import { buildUploadObjectPath, prepareImageUpload } from '../lib/storageUpload';
 import { ServiceError } from '../lib/serviceError';
 import type { Team, TeamMemberRole, TeamMemberWithUser } from '../types/domain';
 
@@ -9,9 +16,10 @@ export interface TeamWithRole extends Team {
 
 /** 초대 코드로 팀 참가 (RPC로 RLS 우회) */
 export async function joinTeamByCode(inviteCode: string, userId: string): Promise<Team | null> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const { data, error } = await supabase.rpc('join_team_by_invite', {
     invite: inviteCode,
-    member_user_id: userId,
+    member_user_id: actorUserId,
   });
 
   if (error) {
@@ -78,9 +86,10 @@ export async function fetchTeamMembers(
 }
 
 export async function createTeamWithMember(name: string, userId: string): Promise<Team | null> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const { data, error } = await supabase.rpc('create_team_with_member', {
     team_name: name,
-    member_user_id: userId,
+    member_user_id: actorUserId,
   });
 
   if (error || !data) {
@@ -91,9 +100,10 @@ export async function createTeamWithMember(name: string, userId: string): Promis
 }
 
 export async function deleteTeamById(teamId: string, userId: string): Promise<boolean> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const { error } = await supabase.rpc('delete_team', {
     p_team_id: teamId,
-    p_user_id: userId,
+    p_user_id: actorUserId,
   });
 
   if (error) {
@@ -104,9 +114,10 @@ export async function deleteTeamById(teamId: string, userId: string): Promise<bo
 }
 
 export async function leaveTeamById(teamId: string, userId: string): Promise<boolean> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const { error } = await supabase.rpc('leave_team', {
     p_team_id: teamId,
-    p_user_id: userId,
+    p_user_id: actorUserId,
   });
 
   if (error) {
@@ -131,7 +142,10 @@ export async function updateTeamProfile(
     return { success: true };
   } catch (e) {
     console.error('updateTeamProfile failed:', e);
-    return { success: false, error: e instanceof Error ? e.message : String(e) };
+    return {
+      success: false,
+      error: e instanceof ServiceError ? e.userMessage : e instanceof Error ? e.message : String(e),
+    };
   }
 }
 
@@ -141,22 +155,29 @@ export async function uploadTeamProfileImage(
   imageUri: string,
 ): Promise<string | null> {
   try {
-    const fileName = `teams/${teamId}/${Date.now()}.jpg`;
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
-    const arrayBuffer = await new Response(blob).arrayBuffer();
+    const { arrayBuffer, contentType, extension } = await prepareImageUpload(imageUri);
+    const fileName = buildUploadObjectPath(
+      STORAGE_FOLDERS.TEAMS,
+      teamId,
+      `${Date.now()}.${extension}`,
+    );
 
-    const { error } = await supabase.storage.from('checkin-photos').upload(fileName, arrayBuffer, {
-      contentType: 'image/jpeg',
-      upsert: false,
-    });
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
+      .upload(fileName, arrayBuffer, {
+        contentType,
+        cacheControl: STORAGE_CACHE_CONTROL,
+        upsert: false,
+      });
 
     if (error) {
       console.error('Team profile image upload error:', error);
       return null;
     }
 
-    const { data: urlData } = supabase.storage.from('checkin-photos').getPublicUrl(fileName);
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
+      .getPublicUrl(fileName);
 
     return urlData.publicUrl;
   } catch (e) {

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { requireAuthenticatedUserId } from '../lib/auth';
 import dayjs from '../lib/dayjs';
 import { getCalendarWeekRanges } from '../lib/statsUtils';
 import { ServiceError } from '../lib/serviceError';
@@ -116,12 +117,13 @@ export async function fetchLastMonthGoals(userId: string): Promise<UserGoal[]> {
 export async function copyGoalsFromLastMonth(userId: string, goals: UserGoal[]): Promise<boolean> {
   if (goals.length === 0) return true;
 
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const today = dayjs().format('YYYY-MM-DD');
   const endOfMonth = dayjs().endOf('month').format('YYYY-MM-DD');
 
   const updates = goals.map((g) => ({
     id: g.id,
-    user_id: userId,
+    user_id: actorUserId,
     goal_id: g.goal_id,
     start_date: today,
     end_date: endOfMonth,
@@ -142,13 +144,14 @@ export async function extendGoalsForNewMonth(
   userId: string,
   newMonthStr: string,
 ): Promise<boolean> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const nextWindow = getRoutineWindowForMonth(newMonthStr);
-  const targets = await fetchExtendableGoalsForMonth(userId, newMonthStr);
+  const targets = await fetchExtendableGoalsForMonth(actorUserId, newMonthStr);
 
   if (!targets || targets.length === 0) return true;
 
   const inserts = targets.map((goal) => ({
-    user_id: userId,
+    user_id: actorUserId,
     goal_id: goal.goal_id,
     is_active: true,
     frequency: goal.frequency,
@@ -277,16 +280,17 @@ export async function fetchMyGoalsForRange(
 }
 
 export async function endTeamGoal(userId: string, goalId: string): Promise<boolean> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const today = dayjs().format('YYYY-MM-DD');
   const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
-  const currentGoalRow = await findCurrentUserGoalPeriod(userId, goalId, today);
+  const currentGoalRow = await findCurrentUserGoalPeriod(actorUserId, goalId, today);
 
   if (!currentGoalRow) return false;
 
   const { count: todayCheckinCount, error: todayCheckinError } = await supabase
     .from('checkins')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
+    .eq('user_id', actorUserId)
     .eq('goal_id', goalId)
     .eq('date', today);
 
@@ -339,12 +343,13 @@ export async function createCheckin(params: {
   status?: 'done' | 'pass';
 }): Promise<boolean> {
   const { userId, goalId, date, photoUrl, memo, status = 'done' } = params;
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const checkinDate = date ?? dayjs().format('YYYY-MM-DD');
 
   const { data: existing, error: existingError } = await supabase
     .from('checkins')
     .select('id')
-    .eq('user_id', userId)
+    .eq('user_id', actorUserId)
     .eq('goal_id', goalId)
     .eq('date', checkinDate)
     .maybeSingle();
@@ -356,7 +361,7 @@ export async function createCheckin(params: {
   if (existing) return false;
 
   const { error } = await supabase.from('checkins').insert({
-    user_id: userId,
+    user_id: actorUserId,
     goal_id: goalId,
     date: checkinDate,
     photo_url: photoUrl ?? null,
@@ -372,10 +377,11 @@ export async function createCheckin(params: {
 }
 
 export async function toggleUserGoal(userId: string, goalId: string): Promise<boolean> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const { data: current, error: selectError } = await supabase
     .from('user_goals')
     .select('is_active')
-    .eq('user_id', userId)
+    .eq('user_id', actorUserId)
     .eq('goal_id', goalId)
     .single();
 
@@ -386,7 +392,7 @@ export async function toggleUserGoal(userId: string, goalId: string): Promise<bo
   const { error: updateError } = await supabase
     .from('user_goals')
     .update({ is_active: !current.is_active })
-    .eq('user_id', userId)
+    .eq('user_id', actorUserId)
     .eq('goal_id', goalId);
 
   if (updateError) {
@@ -414,6 +420,7 @@ export async function addGoal(params: {
     duration = 'continuous',
     existingGoals,
   } = params;
+  const actorUserId = await requireAuthenticatedUserId(userId);
 
   const trimmed = name.trim();
   if (!trimmed) return false;
@@ -449,14 +456,14 @@ export async function addGoal(params: {
   }
 
   const myExisting = existingGoals.find(
-    (goal) => goal.name.toLowerCase() === trimmed.toLowerCase() && goal.owner_id === userId,
+    (goal) => goal.name.toLowerCase() === trimmed.toLowerCase() && goal.owner_id === actorUserId,
   );
 
   if (myExisting) {
     const { data: myGoal, error: myGoalError } = await supabase
       .from('user_goals')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', actorUserId)
       .eq('goal_id', myExisting.id)
       .maybeSingle();
 
@@ -487,7 +494,7 @@ export async function addGoal(params: {
     }
 
     const { error } = await supabase.from('user_goals').insert({
-      user_id: userId,
+      user_id: actorUserId,
       goal_id: myExisting.id,
       is_active: true,
       frequency,
@@ -505,7 +512,7 @@ export async function addGoal(params: {
 
   const payload: { name: string; owner_id: string; team_id?: string } = {
     name: trimmed,
-    owner_id: userId,
+    owner_id: actorUserId,
   };
   if (teamId) payload.team_id = teamId;
 
@@ -515,7 +522,7 @@ export async function addGoal(params: {
   }
 
   const { error: userGoalError } = await supabase.from('user_goals').insert({
-    user_id: userId,
+    user_id: actorUserId,
     goal_id: newGoal.id,
     is_active: true,
     frequency,
@@ -532,8 +539,9 @@ export async function addGoal(params: {
 }
 
 export async function removeTeamGoal(teamId: string, userId: string, goalId: string): Promise<boolean> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
   const today = dayjs().format('YYYY-MM-DD');
-  const currentGoalRow = await findCurrentUserGoalPeriod(userId, goalId, today);
+  const currentGoalRow = await findCurrentUserGoalPeriod(actorUserId, goalId, today);
 
   if (!currentGoalRow) return false;
 
@@ -543,7 +551,7 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
   const { error: checkinDeleteError } = await supabase
     .from('checkins')
     .delete()
-    .eq('user_id', userId)
+    .eq('user_id', actorUserId)
     .eq('goal_id', goalId)
     .gte('date', activeStart)
     .lte('date', activeEnd);
