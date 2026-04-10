@@ -17,9 +17,9 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
-import { useGoalStore } from '../../stores/goalStore';
 import BaseCard from '../../components/ui/BaseCard';
 import dayjs from '../../lib/dayjs';
+import { handleServiceError } from '../../lib/serviceError';
 import { colors } from '../../design/tokens';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
@@ -33,6 +33,7 @@ import {
   useTodayCheckinsQuery,
   useWeeklyDoneCountsQuery,
 } from '../../queries/goalQueries';
+import { useExtendGoalsForNewMonthMutation } from '../../queries/goalMutations';
 import { useMemberProgressQuery } from '../../queries/statsQueries';
 
 import MountainProgress from '../../components/home/MountainProgress';
@@ -44,7 +45,10 @@ import CheckinModal from '../../components/mypage/CheckinModal';
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam } = useTeamStore();
-  const { extendGoalsForNewMonth } = useGoalStore();
+  const extendGoalsForNewMonthMutation = useExtendGoalsForNewMonthMutation({
+    userId: user?.id,
+    teamId: currentTeam?.id,
+  });
   const todayStr = dayjs().format('YYYY-MM-DD');
 
   const { data: myGoals = [], refetch: refetchMyGoals } = useMyGoalsQuery(user?.id);
@@ -141,11 +145,6 @@ export default function HomeScreen() {
       });
   }, [currentTeamUserGoals, teamGoals, todayStr, user, weeklyDoneCounts]);
 
-  const handleCheckinDone = async () => {
-    if (!user) return;
-    await loadData();
-  };
-
   // ── 안내 모달 체크 (유저 정보 로드 완료 시) ──
   // React.useEffect(() => {
   //   if (!user) return;
@@ -212,13 +211,18 @@ export default function HomeScreen() {
 
   const handleMonthlyPromptContinue = async () => {
     if (!user || !promptNewMonth) return;
-    const ok = await extendGoalsForNewMonth(user.id, promptNewMonth);
-    if (!ok) return;
+    try {
+      const ok = await extendGoalsForNewMonthMutation.mutateAsync({
+        newMonthStr: promptNewMonth,
+      });
+      if (!ok) return;
 
-    await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
-    setShowMonthlyPrompt(false);
-    setExtendableGoals([]);
-    await loadData();
+      await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
+      setShowMonthlyPrompt(false);
+      setExtendableGoals([]);
+    } catch (e) {
+      handleServiceError(e);
+    }
   };
 
   const handleMonthlyPromptNewPlan = async () => {
@@ -439,7 +443,6 @@ export default function HomeScreen() {
         goalsWithFrequency={goalsForCheckinModal}
         checkins={todayCheckins}
         onClose={() => setCheckinModalVisible(false)}
-        onCheckinDone={handleCheckinDone}
       />
     </View>
   );

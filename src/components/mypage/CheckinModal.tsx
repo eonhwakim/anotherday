@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, Checkin } from '../../types/domain';
-import { useGoalStore } from '../../stores/goalStore';
 import { useAuthStore } from '../../stores/authStore';
 import { takePhoto, uploadCheckinPhoto } from '../../services/checkinService';
 import { colors } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
+import { handleServiceError } from '../../lib/serviceError';
+import { useDeleteCheckinMutation, useCreateCheckinMutation } from '../../queries/goalMutations';
+import { useTeamStore } from '../../stores/teamStore';
 import Chip from '../ui/Chip';
 import BaseCard from '../ui/BaseCard';
 import BottomSheetModal from '../ui/BottomSheetModal';
@@ -34,8 +36,15 @@ export default function CheckinModal({
   onCheckinDone,
 }: CheckinModalProps) {
   const user = useAuthStore((s) => s.user);
-  const createCheckin = useGoalStore((s) => s.createCheckin);
-  const deleteCheckin = useGoalStore((s) => s.deleteCheckin);
+  const currentTeamId = useTeamStore((s) => s.currentTeam?.id);
+  const createCheckinMutation = useCreateCheckinMutation({
+    userId: user?.id,
+    teamId: currentTeamId,
+  });
+  const deleteCheckinMutation = useDeleteCheckinMutation({
+    userId: user?.id,
+    teamId: currentTeamId,
+  });
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -66,11 +75,11 @@ export default function CheckinModal({
   const handleCancelPass = async (checkinId: string) => {
     try {
       await runWithLoading(async () => {
-        await deleteCheckin(checkinId);
+        await deleteCheckinMutation.mutateAsync(checkinId);
         await refreshAfterMutation();
       });
     } catch (e) {
-      console.error('[Checkin] handleCancelCheckin error:', e);
+      handleServiceError(e);
     }
   };
 
@@ -79,16 +88,20 @@ export default function CheckinModal({
     if (!user) return;
     try {
       await runWithLoading(async () => {
-        await createCheckin({
+        const created = await createCheckinMutation.mutateAsync({
           userId: user.id,
           goalId,
           date: today,
           status: 'pass',
         });
+        if (!created) {
+          Alert.alert('알림', '이미 체크인된 목표입니다.');
+          return;
+        }
         await refreshAfterMutation();
       });
     } catch (e) {
-      console.error('[Checkin] handlePassToggle error:', e);
+      handleServiceError(e);
     }
   };
 
@@ -122,7 +135,7 @@ export default function CheckinModal({
           console.warn('[Checkin] 사진 업로드 실패, 사진 없이 진행:', uploadErr);
         }
 
-        const success = await createCheckin({
+        const success = await createCheckinMutation.mutateAsync({
           userId: user.id,
           goalId,
           date: today,
@@ -141,11 +154,7 @@ export default function CheckinModal({
         }
       });
     } catch (e) {
-      console.error('[Checkin] handleSuccess error:', e);
-      Alert.alert(
-        '오류',
-        `인증 처리 중 문제가 발생했어요.\n${e instanceof Error ? e.message : ''}`,
-      );
+      handleServiceError(e);
     }
   };
 
