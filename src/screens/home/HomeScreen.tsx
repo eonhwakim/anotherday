@@ -18,7 +18,6 @@ import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useGoalStore } from '../../stores/goalStore';
-import { useStatsStore } from '../../stores/statsStore';
 import BaseCard from '../../components/ui/BaseCard';
 import dayjs from '../../lib/dayjs';
 import { colors } from '../../design/tokens';
@@ -27,8 +26,14 @@ import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import {
   fetchExtendableGoalsForMonth,
-  fetchWeeklyDoneCountsForGoals,
 } from '../../services/goalService';
+import {
+  useMyGoalsQuery,
+  useTeamGoalsQuery,
+  useTodayCheckinsQuery,
+  useWeeklyDoneCountsQuery,
+} from '../../queries/goalQueries';
+import { useMemberProgressQuery } from '../../queries/statsQueries';
 
 import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalListFeed';
@@ -38,17 +43,24 @@ import CheckinModal from '../../components/mypage/CheckinModal';
 
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
-  const { currentTeam, fetchTeams, fetchMembers } = useTeamStore();
-  const {
-    myGoals,
-    teamGoals,
-    todayCheckins,
-    fetchTeamGoals,
-    fetchTodayCheckins,
-    fetchMyGoals,
-    extendGoalsForNewMonth,
-  } = useGoalStore();
-  const { memberProgress, fetchMemberProgress } = useStatsStore();
+  const { currentTeam } = useTeamStore();
+  const { extendGoalsForNewMonth } = useGoalStore();
+  const todayStr = dayjs().format('YYYY-MM-DD');
+
+  const { data: myGoals = [], refetch: refetchMyGoals } = useMyGoalsQuery(user?.id);
+  const { data: teamGoals = [], refetch: refetchTeamGoals } = useTeamGoalsQuery(
+    currentTeam?.id ?? '',
+    user?.id,
+  );
+  const { data: todayCheckins = [], refetch: refetchTodayCheckins } = useTodayCheckinsQuery(
+    user?.id,
+    todayStr,
+  );
+  const { data: memberProgress = [], refetch: refetchMemberProgress } = useMemberProgressQuery(
+    currentTeam?.id,
+    user?.id,
+    todayStr,
+  );
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
@@ -63,7 +75,6 @@ export default function HomeScreen() {
   const [promptNewMonth, setPromptNewMonth] = React.useState<string>('');
   const [extendableGoals, setExtendableGoals] = React.useState<typeof myGoals>([]);
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
-  const [weeklyDoneCounts, setWeeklyDoneCounts] = React.useState<Record<string, number>>({});
   const [photoCarouselDragging, setPhotoCarouselDragging] = React.useState(false);
 
   const getMonthlyPromptStorageKey = useCallback(
@@ -81,15 +92,36 @@ export default function HomeScreen() {
     return myGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
   }, [teamGoals, myGoals, user]);
 
+  const weeklyGoalIds = React.useMemo(() => {
+    if (!user || teamGoals.length === 0 || myGoals.length === 0) {
+      return [];
+    }
+
+    const myOwnedGoalIds = new Set(teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id));
+    return myGoals
+      .filter((ug) => ug.frequency === 'weekly_count')
+      .filter((ug) => myOwnedGoalIds.has(ug.goal_id))
+      .filter((ug) => {
+        if (ug.start_date && todayStr < ug.start_date) return false;
+        if (ug.end_date && todayStr > ug.end_date) return false;
+        return true;
+      })
+      .map((ug) => ug.goal_id);
+  }, [myGoals, teamGoals, todayStr, user]);
+
+  const { data: weeklyDoneCounts = {}, refetch: refetchWeeklyDoneCounts } = useWeeklyDoneCountsQuery({
+    userId: user?.id,
+    goalIds: weeklyGoalIds,
+  });
+
   // ── 인증 모달용: 활성+비활성 모두 포함 (패스 토글 가능)
   const goalsForCheckinModal = React.useMemo(() => {
     const ugSource = currentTeamUserGoals;
     const myOwnedGoalIds = new Set(
-      (teamGoals || []).filter((g) => g.owner_id === user?.id).map((g) => g.id),
+      teamGoals.filter((g) => g.owner_id === user?.id).map((g) => g.id),
     );
-    const todayStr = dayjs().format('YYYY-MM-DD');
 
-    return (teamGoals || [])
+    return teamGoals
       .filter((g) => myOwnedGoalIds.has(g.id))
       .filter((g) => {
         const ug = ugSource.find((u) => u.goal_id === g.id);
@@ -107,7 +139,7 @@ export default function HomeScreen() {
           weeklyDoneCount: weeklyDoneCounts[g.id] ?? 0,
         };
       });
-  }, [teamGoals, currentTeamUserGoals, user, weeklyDoneCounts]);
+  }, [currentTeamUserGoals, teamGoals, todayStr, user, weeklyDoneCounts]);
 
   const handleCheckinDone = async () => {
     if (!user) return;
@@ -233,58 +265,34 @@ export default function HomeScreen() {
     };
   }, [updateTime]);
 
-  const loadData = useCallback(async () => {
+  React.useEffect(() => {
     if (!user) return;
-    await fetchTeams(user.id);
-    const team = useTeamStore.getState().currentTeam;
-    const teamId = team?.id;
-    const promises = [
-      fetchTeamGoals(teamId ?? '', user.id),
-      fetchTodayCheckins(user.id),
-      fetchMyGoals(user.id),
-      fetchMemberProgress(teamId, user.id),
-    ];
-    if (teamId) promises.push(fetchMembers(teamId));
-    await Promise.all(promises);
-
-    const latestTeamGoals = useGoalStore.getState().teamGoals;
-    const latestMyGoals = useGoalStore.getState().myGoals;
-    const myOwnedGoalIds = new Set(
-      latestTeamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
-    );
-    const todayStr = dayjs().format('YYYY-MM-DD');
-    const weeklyGoalIds = latestMyGoals
-      .filter((ug) => ug.frequency === 'weekly_count')
-      .filter((ug) => myOwnedGoalIds.has(ug.goal_id))
-      .filter((ug) => {
-        if (ug.start_date && todayStr < ug.start_date) return false;
-        if (ug.end_date && todayStr > ug.end_date) return false;
-        return true;
-      })
-      .map((ug) => ug.goal_id);
-
-    const counts = await fetchWeeklyDoneCountsForGoals({
-      userId: user.id,
-      goalIds: weeklyGoalIds,
-    });
-    setWeeklyDoneCounts(counts);
-
-    const progress = useStatsStore.getState().memberProgress;
-    const myProgress = progress.find((p) => p.userId === user.id);
+    const myProgress = memberProgress.find((p) => p.userId === user.id);
     if (myProgress) {
       const uncompleted = myProgress.goalDetails
         .filter((g) => g.isActive && !g.isDone && !g.isPass)
         .map((g) => g.goalName);
       scheduleGoalReminderNotification(uncompleted).catch(() => {});
     }
+  }, [memberProgress, user]);
+
+  const loadData = useCallback(async () => {
+    if (!user) return;
+
+    await Promise.all([
+      refetchTeamGoals(),
+      refetchTodayCheckins(),
+      refetchMyGoals(),
+      refetchMemberProgress(),
+      refetchWeeklyDoneCounts(),
+    ]);
   }, [
+    refetchMemberProgress,
+    refetchMyGoals,
+    refetchTeamGoals,
+    refetchTodayCheckins,
+    refetchWeeklyDoneCounts,
     user,
-    fetchTeams,
-    fetchTeamGoals,
-    fetchTodayCheckins,
-    fetchMyGoals,
-    fetchMemberProgress,
-    fetchMembers,
   ]);
 
   useFocusEffect(
