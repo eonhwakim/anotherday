@@ -1,5 +1,14 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -7,9 +16,11 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { AppTabParamList } from '../../types/navigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
+import { handleServiceError } from '../../lib/serviceError';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
-import { joinTeamByCode } from '../../services/teamService';
+import { useCreateTeamMutation, useJoinTeamMutation } from '../../queries/teamMutations';
+import { useUserTeamsQuery } from '../../queries/teamQueries';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import { colors, ds, spacing, typography } from '../../design/recipes';
 
@@ -58,7 +69,10 @@ function SettingsRow({
 export default function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, signOut } = useAuthStore();
-  const { teams, currentTeam, fetchTeams, createTeam, selectTeam } = useTeamStore();
+  const { teams, currentTeam, selectTeam } = useTeamStore();
+  const teamsQuery = useUserTeamsQuery(user?.id);
+  const createTeamMutation = useCreateTeamMutation(user?.id);
+  const joinTeamMutation = useJoinTeamMutation(user?.id);
 
   const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
@@ -67,14 +81,10 @@ export default function MyPageScreen() {
   const [teamModalType, setTeamModalType] = useState<'create' | 'join' | null>(null);
   const [teamInputValue, setTeamInputValue] = useState('');
 
-  const refreshTeams = useCallback(async () => {
-    if (user) await fetchTeams(user.id);
-  }, [user, fetchTeams]);
-
   useFocusEffect(
     useCallback(() => {
-      refreshTeams();
-    }, [refreshTeams]),
+      void teamsQuery.refetch();
+    }, [teamsQuery]),
   );
 
   const handleOpenTeamModal = (type: 'create' | 'join') => {
@@ -100,7 +110,9 @@ export default function MyPageScreen() {
   const handleCreateTeam = async () => {
     if (!user || !teamInputValue.trim()) return;
     try {
-      const team = await createTeam(teamInputValue.trim(), user.id);
+      const team = await createTeamMutation.mutateAsync({
+        name: teamInputValue.trim(),
+      });
       if (team) {
         Alert.alert('성공', '팀이 생성되었습니다!', [
           {
@@ -108,7 +120,6 @@ export default function MyPageScreen() {
             onPress: () => {
               setTeamModalType(null);
               setTeamInputValue('');
-              refreshTeams();
             },
           },
         ]);
@@ -116,25 +127,24 @@ export default function MyPageScreen() {
         Alert.alert('실패', '팀 생성 중 오류가 발생했습니다.');
       }
     } catch (e) {
-      console.error(e);
-      Alert.alert('오류', '알 수 없는 오류가 발생했습니다.');
+      handleServiceError(e);
     }
   };
 
   const handleJoinTeam = async () => {
     if (!user || !teamInputValue.trim()) return;
     try {
-      const team = await joinTeamByCode(teamInputValue.trim(), user.id);
+      const team = await joinTeamMutation.mutateAsync({
+        inviteCode: teamInputValue.trim(),
+      });
       if (team) {
         selectTeam(team);
-        await fetchTeams(user.id);
         Alert.alert('환영합니다!', `${team.name} 팀에 합류하셨습니다.`, [
           {
             text: '확인',
             onPress: () => {
               setTeamModalType(null);
               setTeamInputValue('');
-              refreshTeams();
             },
           },
         ]);
@@ -142,8 +152,7 @@ export default function MyPageScreen() {
         Alert.alert('실패', '초대 코드가 올바르지 않거나 팀을 찾을 수 없습니다.');
       }
     } catch (e) {
-      console.error(e);
-      Alert.alert('오류', '팀 참가 중 오류가 발생했습니다.');
+      handleServiceError(e);
     }
   };
 
@@ -168,9 +177,9 @@ export default function MyPageScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={ds.pagePadding}>
+          <View style={ds.pagePadding as ViewStyle}>
             <View style={styles.header}>
-              <Text style={ds.headerTitle}>마이페이지</Text>
+              <Text style={ds.headerTitle as TextStyle}>마이페이지</Text>
             </View>
 
             <MyPageProfileCard user={user} onPress={() => navigation.navigate('ProfileEdit')} />

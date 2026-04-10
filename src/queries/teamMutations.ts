@@ -1,6 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ServiceError } from '../lib/serviceError';
 import {
+  createTeamWithMember,
+  deleteTeamById,
+  joinTeamByCode,
+  leaveTeamById,
   updateTeamProfile,
   uploadTeamProfileImage,
   type TeamWithRole,
@@ -18,6 +22,124 @@ interface UpdatedTeamProfile {
   teamId: string;
   name: string;
   profileImageUrl: string | null;
+}
+
+export function useCreateTeamMutation(userId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ name }: { name: string }) => {
+      if (!userId) {
+        throw new ServiceError('로그인이 필요합니다.', 'useCreateTeamMutation');
+      }
+      return createTeamWithMember(name, userId);
+    },
+    onSuccess: async (team) => {
+      if (!team || !userId) return;
+
+      useTeamStore.setState((state) => ({
+        teams: [...state.teams, team],
+        currentTeam: team,
+      }));
+
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.teams.list(userId),
+      });
+    },
+  });
+}
+
+export function useJoinTeamMutation(userId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ inviteCode }: { inviteCode: string }) => {
+      if (!userId) {
+        throw new ServiceError('로그인이 필요합니다.', 'useJoinTeamMutation');
+      }
+      return joinTeamByCode(inviteCode, userId);
+    },
+    onSuccess: async (team) => {
+      if (!team || !userId) return;
+
+      useTeamStore.setState({
+        currentTeam: team,
+        members: [],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.teams.list(userId),
+      });
+    },
+  });
+}
+
+function removeTeamFromStore(teamId: string) {
+  useTeamStore.setState((state) => {
+    const teams = state.teams.filter((team) => team.id !== teamId);
+    return {
+      teams,
+      currentTeam:
+        state.currentTeam?.id === teamId ? (teams[0] ?? null) : state.currentTeam,
+      members: state.currentTeam?.id === teamId ? [] : state.members,
+    };
+  });
+}
+
+export function useDeleteTeamMutation(userId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ teamId }: { teamId: string }) => {
+      if (!userId) {
+        throw new ServiceError('로그인이 필요합니다.', 'useDeleteTeamMutation');
+      }
+      return deleteTeamById(teamId, userId);
+    },
+    onSuccess: async (_ok, { teamId }) => {
+      if (!userId) return;
+
+      removeTeamFromStore(teamId);
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.teams.list(userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.teams.members(teamId),
+          exact: false,
+        }),
+      ]);
+    },
+  });
+}
+
+export function useLeaveTeamMutation(userId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ teamId }: { teamId: string }) => {
+      if (!userId) {
+        throw new ServiceError('로그인이 필요합니다.', 'useLeaveTeamMutation');
+      }
+      return leaveTeamById(teamId, userId);
+    },
+    onSuccess: async (_ok, { teamId }) => {
+      if (!userId) return;
+
+      removeTeamFromStore(teamId);
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.teams.list(userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.teams.members(teamId),
+          exact: false,
+        }),
+      ]);
+    },
+  });
 }
 
 export function useUpdateTeamProfileMutation() {

@@ -15,8 +15,10 @@ import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
+import { handleServiceError } from '../../lib/serviceError';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
+import { useDeleteTeamMutation, useLeaveTeamMutation } from '../../queries/teamMutations';
 import { useTeamMembersQuery } from '../../queries/teamQueries';
 import ScreenHeader from '../../components/ui/ScreenHeader';
 import SectionHeader from '../../components/ui/SectionHeader';
@@ -32,7 +34,9 @@ export default function TeamMemberScreen() {
   const route = useRoute<TeamMemberScreenRouteProp>();
   const { teamId } = route.params;
   const { user } = useAuthStore();
-  const { teams, deleteTeam, leaveTeam, fetchTeams } = useTeamStore();
+  const { teams } = useTeamStore();
+  const deleteTeamMutation = useDeleteTeamMutation(user?.id);
+  const leaveTeamMutation = useLeaveTeamMutation(user?.id);
   const { data: members = [], isLoading, refetch } = useTeamMembersQuery(teamId, {
     detailed: true,
   });
@@ -66,11 +70,11 @@ export default function TeamMemberScreen() {
           style: 'destructive',
           onPress: async () => {
             if (!user) return;
-            const ok = await deleteTeam(teamId, user.id);
-            if (ok) {
-              await fetchTeams(user.id);
+            try {
+              await deleteTeamMutation.mutateAsync({ teamId });
               navigation.goBack();
-            } else {
+            } catch (e) {
+              handleServiceError(e);
               Alert.alert('오류', '팀 삭제에 실패했습니다. 다시 시도해주세요.');
             }
           },
@@ -90,11 +94,11 @@ export default function TeamMemberScreen() {
           style: 'destructive',
           onPress: async () => {
             if (!user) return;
-            const ok = await leaveTeam(teamId, user.id);
-            if (ok) {
-              await fetchTeams(user.id);
+            try {
+              await leaveTeamMutation.mutateAsync({ teamId });
               navigation.goBack();
-            } else {
+            } catch (e) {
+              handleServiceError(e);
               Alert.alert('오류', '팀 탈퇴에 실패했습니다. 다시 시도해주세요.');
             }
           },

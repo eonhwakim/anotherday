@@ -3,8 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAuthStore } from '../stores/authStore';
-import { useTeamStore } from '../stores/teamStore';
 import { RootStackParamList } from '../types/navigation';
+import { useUserTeamsQuery } from '../queries/teamQueries';
 import AuthStack from './AuthStack';
 import AppTabs from './AppTabs';
 import TeamMemberScreen from '../screens/team/TeamMemberScreen';
@@ -19,19 +19,18 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   const { user, isLoading: authLoading, restoreSession } = useAuthStore();
-  const { currentTeam, fetchTeams } = useTeamStore();
+  const teamsQuery = useUserTeamsQuery(user?.id);
   const [isReady, setIsReady] = useState(false);
 
   // 1. 세션 복원
   useEffect(() => {
-    restoreSession();
-  }, []);
+    void restoreSession();
+  }, [restoreSession]);
 
   // 2. 유저 정보 로드 후, 팀 정보 로드 + 알림 스케줄
   useEffect(() => {
     const init = async () => {
       if (user) {
-        await fetchTeams(user.id);
         scheduleDailyNotifications().catch(() => {});
       }
       setIsReady(true);
@@ -40,10 +39,10 @@ export default function RootNavigator() {
     if (!authLoading) {
       init();
     }
-  }, [user, authLoading, isReady]);
+  }, [user, authLoading]);
 
   // 로딩 화면
-  if (authLoading || !isReady) {
+  if (authLoading || (user && teamsQuery.isLoading) || !isReady) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={colors.primary} />
