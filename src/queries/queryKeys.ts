@@ -4,7 +4,8 @@ export const queryKeys = {
   },
   teams: {
     list: (userId: string) => ['teams', 'list', userId] as const,
-    members: (teamId: string) => ['teams', 'members', teamId] as const,
+    members: (teamId: string, detailed = false) =>
+      ['teams', 'members', teamId, detailed ? 'detailed' : 'basic'] as const,
     detailMonth: (teamId: string, yearMonth: string) =>
       ['teams', 'detail-month', teamId, yearMonth] as const,
   },

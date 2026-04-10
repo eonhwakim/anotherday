@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,17 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  type TextStyle,
+  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
-import { TeamMemberWithUser } from '../../types/domain';
-import { fetchTeamMembers } from '../../services/teamService';
+import { useTeamMembersQuery } from '../../queries/teamQueries';
 import ScreenHeader from '../../components/ui/ScreenHeader';
 import SectionHeader from '../../components/ui/SectionHeader';
 import BaseCard from '../../components/ui/BaseCard';
@@ -32,43 +33,27 @@ export default function TeamMemberScreen() {
   const { teamId } = route.params;
   const { user } = useAuthStore();
   const { teams, deleteTeam, leaveTeam, fetchTeams } = useTeamStore();
-
-  const [members, setMembers] = useState<TeamMemberWithUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [teamName, setTeamName] = useState('');
+  const { data: members = [], isLoading, refetch } = useTeamMembersQuery(teamId, {
+    detailed: true,
+  });
 
   const currentTeamInfo = teams.find((t) => t.id === teamId);
+  const teamName = currentTeamInfo?.name ?? '';
   const myRole = currentTeamInfo?.role;
 
-  useEffect(() => {
-    if (currentTeamInfo) {
-      setTeamName(currentTeamInfo.name);
-    }
-  }, [currentTeamInfo]);
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
 
-  const loadData = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const memberList =
-        ((await fetchTeamMembers(teamId, { detailed: true })) as TeamMemberWithUser[]) || [];
-      const sortedMembers = memberList.sort((a, b) => {
-        if (a.role === 'leader' && b.role !== 'leader') return -1;
-        if (a.role !== 'leader' && b.role === 'leader') return 1;
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      });
-      setMembers(sortedMembers);
-    } catch (e) {
-      console.error(e);
-      Alert.alert('오류', '데이터를 불러오지 못했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, user]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const sortedMembers = React.useMemo(() => {
+    return [...members].sort((a, b) => {
+      if (a.role === 'leader' && b.role !== 'leader') return -1;
+      if (a.role !== 'leader' && b.role === 'leader') return 1;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+  }, [members]);
 
   const handleDeleteTeam = () => {
     Alert.alert(
@@ -123,7 +108,7 @@ export default function TeamMemberScreen() {
       <ScreenHeader title={teamName || '팀 멤버'} onBack={() => navigation.goBack()} />
 
       <ScrollView style={styles.content}>
-        {loading ? (
+        {isLoading ? (
           <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
         ) : (
           <>
@@ -137,12 +122,12 @@ export default function TeamMemberScreen() {
               activeOpacity={myRole === 'leader' ? 0.7 : 1}
               disabled={myRole !== 'leader'}
             >
-              <BaseCard
-                glassOnly
-                style={styles.teamProfileFrame}
-                contentStyle={styles.teamProfileRow}
-                padded={false}
-              >
+                <BaseCard
+                  glassOnly
+                  style={styles.teamProfileFrame}
+                  contentStyle={styles.teamProfileRow as ViewStyle}
+                  padded={false}
+                >
                 <View style={styles.teamAvatarWrap}>
                   {/* @ts-ignore */}
                   <Avatar
@@ -163,9 +148,9 @@ export default function TeamMemberScreen() {
               </BaseCard>
             </TouchableOpacity>
 
-            <View style={styles.section}>
-              <SectionHeader title={`팀 멤버 (${members.length})`} />
-              {members.map((member) => (
+            <View style={styles.section as ViewStyle}>
+              <SectionHeader title={`팀 멤버 (${sortedMembers.length})`} />
+              {sortedMembers.map((member) => (
                 <BaseCard
                   glassOnly
                   key={member.id}
@@ -176,8 +161,8 @@ export default function TeamMemberScreen() {
                   <View style={styles.memberRow}>
                     <View style={styles.memberProfile}>
                       <Avatar uri={member.user.profile_image_url} size={48} />
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={styles.memberMeta}>
+                        <View style={styles.memberRoleRow}>
                           <Text style={styles.nickname}>{member.user.nickname}</Text>
                           {member.role === 'leader' ? (
                             <Badge label="LEADER" tone="leader" />
@@ -185,10 +170,8 @@ export default function TeamMemberScreen() {
                             <Badge label="MEMBER" tone="member" />
                           )}
                         </View>
-                        {/* @ts-ignore */}
                         {(member.user.name || member.user.gender || member.user.age) && (
                           <Text style={styles.memberDetail}>
-                            {/* @ts-ignore */}
                             {[
                               member.user.name || '',
                               member.user.gender || '',
@@ -245,7 +228,7 @@ export default function TeamMemberScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: ds.screen,
+  safe: ds.screen as ViewStyle,
   content: {
     flex: 1,
     padding: spacing[4],
@@ -255,7 +238,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
   },
   teamProfileRow: {
-    ...ds.rowCenter,
+    ...(ds.rowCenter as ViewStyle),
     gap: spacing[4],
     padding: spacing[5],
   },
@@ -272,7 +255,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
   },
-  section: ds.section,
+  section: ds.section as ViewStyle,
   memberCardFrame: {
     marginBottom: spacing[3],
     borderRadius: radius.md,
@@ -281,12 +264,20 @@ const styles = StyleSheet.create({
     padding: spacing[3],
   },
   memberRow: {
-    ...ds.rowBetween,
+    ...(ds.rowBetween as ViewStyle),
   },
   memberProfile: {
-    ...ds.rowCenter,
+    ...(ds.rowCenter as ViewStyle),
     gap: spacing[3],
     flex: 1,
+  },
+  memberMeta: {
+    flex: 1,
+  },
+  memberRoleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   nickname: {
     ...typography.titleSm,
@@ -313,14 +304,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   dangerBtn: {
-    ...ds.rowCenter,
+    ...(ds.rowCenter as ViewStyle),
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 14,
     paddingHorizontal: spacing[5],
   },
   dangerBtnText: {
-    ...typography.bodyStrong,
+    ...(typography.bodyStrong as TextStyle),
     color: colors.error,
   },
 });

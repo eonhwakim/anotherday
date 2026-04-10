@@ -34,7 +34,8 @@ export interface TeamMember {
 
 /** 팀 멤버 + 유저 정보 조인 결과 */
 export interface TeamMemberWithUser extends TeamMember {
-  user: Pick<User, 'id' | 'nickname' | 'profile_image_url'>;
+  user: Pick<User, 'id' | 'nickname' | 'profile_image_url'> &
+    Partial<Pick<User, 'name' | 'gender' | 'age'>>;
 }
 
 /** 팀 공통 목표 */
