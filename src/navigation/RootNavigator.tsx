@@ -7,10 +7,8 @@ import { useTeamStore } from '../stores/teamStore';
 import { RootStackParamList } from '../types/navigation';
 import AuthStack from './AuthStack';
 import AppTabs from './AppTabs';
-import TeamDetailScreen from '../screens/team/TeamDetailScreen';
 import TeamMemberScreen from '../screens/team/TeamMemberScreen';
 import TeamProfileEditScreen from '../screens/team/TeamProfileEditScreen';
-import MemberStatsScreen from '../screens/team/MemberStatsScreen';
 import ProfileEditScreen from '../screens/mypage/ProfileEditScreen';
 import AppSettingsScreen from '../screens/mypage/AppSettingsScreen';
 import AddRoutineScreen from '../screens/mypage/AddRoutineScreen';
@@ -64,10 +62,8 @@ export default function RootNavigator() {
           <>
             <Stack.Screen name="App" component={AppTabs} />
             <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
-            <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
             <Stack.Screen name="TeamMember" component={TeamMemberScreen} />
             <Stack.Screen name="TeamProfileEdit" component={TeamProfileEditScreen} />
-            <Stack.Screen name="MemberStats" component={MemberStatsScreen} />
             <Stack.Screen name="AppSettings" component={AppSettingsScreen} />
             <Stack.Screen name="AddRoutine" component={AddRoutineScreen} />
           </>
