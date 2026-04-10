@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -7,33 +8,36 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
+  type TextStyle,
+  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-import type { UserGoal } from '../../types/domain';
 import { useAuthStore } from '../../stores/authStore';
-import { useGoalStore } from '../../stores/goalStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { handleServiceError } from '../../lib/serviceError';
+import {
+  useMyGoalsForMonthQuery,
+  useTeamGoalsQuery,
+  useWeeklyDoneCountsQuery,
+} from '../../queries/goalQueries';
 import { useEndTeamGoalMutation, useRemoveTeamGoalMutation } from '../../queries/goalMutations';
 import {
-  getMonthlyResolution,
+  useMonthlyResolutionQuery,
+  useMonthlyRetrospectiveQuery,
+} from '../../queries/monthlyQueries';
+import { queryKeys } from '../../queries/queryKeys';
+import {
   saveMonthlyResolution,
-  getMonthlyRetrospective,
   saveMonthlyRetrospective,
 } from '../../services/monthlyService';
-import {
-  fetchMyGoalsForMonth as fetchMyGoalsForMonthByWindow,
-  fetchWeeklyDoneCountsForGoals,
-} from '../../services/goalService';
+import { fetchCalendarMarkings } from '../../services/statsService';
 import dayjs from '../../lib/dayjs';
 import { getCalendarWeekRanges, computeConsecutiveAchievementDays } from '../../lib/statsUtils';
-import { fetchCalendarMarkings } from '../../services/statsService';
+import { useMemberProgressQuery } from '../../queries/statsQueries';
 import { colors, ds, radius, spacing, typography } from '../../design/recipes';
-import { useStatsStore } from '../../stores/statsStore';
 
 import ScreenBackground from '../../components/ui/ScreenBackground';
 import GoalSetting from '../../components/goal/GoalSetting';
@@ -63,9 +67,8 @@ function getOwningMonthForDate(dateStr: string): string {
 
 export default function GoalScreen() {
   const { user } = useAuthStore();
-  const { currentTeam, fetchTeams } = useTeamStore();
-  const { teamGoals, fetchTeamGoals } = useGoalStore();
-  const { fetchMemberProgress } = useStatsStore();
+  const { currentTeam } = useTeamStore();
+  const queryClient = useQueryClient();
   const endTeamGoalMutation = useEndTeamGoalMutation({
     userId: user?.id,
     teamId: currentTeam?.id,
@@ -78,149 +81,214 @@ export default function GoalScreen() {
     () => getOwningMonthForDate(dayjs().format('YYYY-MM-DD')),
     [],
   );
+  const todayStr = dayjs().format('YYYY-MM-DD');
   const [yearMonth, setYearMonth] = useState(todayOwnedMonth);
-  const [monthGoals, setMonthGoals] = useState<UserGoal[]>([]);
-  const [monthlyResolution, setMonthlyResolution] = useState('');
-  const [monthlyRetrospective, setMonthlyRetrospective] = useState('');
-  const [weeklyDoneCounts, setWeeklyDoneCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
   const [addRoutineVisible, setAddRoutineVisible] = useState(false);
   const [resolutionModalVisible, setResolutionModalVisible] = useState(false);
   const [retrospectiveModalVisible, setRetrospectiveModalVisible] = useState(false);
   const [resolutionInput, setResolutionInput] = useState('');
   const [retrospectiveInput, setRetrospectiveInput] = useState('');
-  const [heroStats, setHeroStats] = useState<{
-    ratePct: number;
-    streak: number;
-    doneToday: number;
-    totalToday: number;
-    passToday: number;
-  } | null>(null);
+  const teamGoalsQuery = useTeamGoalsQuery(
+    currentTeam?.id ?? '',
+    user?.id,
+  );
+  const monthGoalsQuery = useMyGoalsForMonthQuery(
+    user?.id,
+    yearMonth,
+  );
+  const memberProgressQuery = useMemberProgressQuery(
+    currentTeam?.id,
+    user?.id,
+    todayStr,
+  );
+  const monthlyResolutionQuery = useMonthlyResolutionQuery({
+    userId: user?.id,
+    yearMonth,
+    teamId: currentTeam?.id ?? null,
+  });
+  const monthlyRetrospectiveQuery = useMonthlyRetrospectiveQuery({
+    userId: user?.id,
+    yearMonth,
+    teamId: currentTeam?.id ?? null,
+  });
+
+  const teamGoals = useMemo(() => teamGoalsQuery.data ?? [], [teamGoalsQuery.data]);
+  const monthGoals = useMemo(() => monthGoalsQuery.data ?? [], [monthGoalsQuery.data]);
+  const memberProgress = useMemo(
+    () => memberProgressQuery.data ?? [],
+    [memberProgressQuery.data],
+  );
+  const monthlyResolution = monthlyResolutionQuery.data ?? '';
+  const monthlyRetrospective = monthlyRetrospectiveQuery.data ?? '';
+
+  const streakMonths = useMemo(
+    () => [
+      dayjs().format('YYYY-MM'),
+      dayjs().subtract(1, 'month').format('YYYY-MM'),
+      dayjs().subtract(2, 'month').format('YYYY-MM'),
+    ],
+    [],
+  );
+
+  const streakQueries = useQueries({
+    queries: streakMonths.map((month) => ({
+      queryKey: user?.id
+        ? queryKeys.stats.calendar(user.id, month)
+        : ['stats', 'calendar', null, month],
+      queryFn: () => fetchCalendarMarkings(user!.id, month),
+      enabled: !!user?.id,
+    })),
+  });
+
+  const currentTeamUserGoals = useMemo(() => {
+    if (!teamGoals || teamGoals.length === 0) return [];
+    if (!monthGoals || !user) return [];
+
+    const myOwnedGoalIds = new Set(
+      teamGoals.filter((goal) => goal.owner_id === user.id).map((goal) => goal.id),
+    );
+    return monthGoals.filter((userGoal) => myOwnedGoalIds.has(userGoal.goal_id));
+  }, [teamGoals, monthGoals, user]);
+
+  const weeklyGoalIds = useMemo(
+    () =>
+      currentTeamUserGoals
+        .filter((goal) => goal.frequency === 'weekly_count')
+        .map((goal) => goal.goal_id),
+    [currentTeamUserGoals],
+  );
+  const weeklyDoneCountsQuery = useWeeklyDoneCountsQuery({
+    userId: user?.id,
+    goalIds: weeklyGoalIds,
+  });
+  const weeklyDoneCounts = weeklyDoneCountsQuery.data ?? {};
+
+  const todayCheckedInGoalIds = useMemo(
+    () =>
+      new Set(
+        (
+          memberProgress.find((progress) => progress.userId === user?.id)?.goalDetails ?? []
+        )
+          .filter((goal) => goal.isDone || goal.isPass)
+          .map((goal) => goal.goalId),
+      ),
+    [memberProgress, user?.id],
+  );
+
+  const heroStats = useMemo(() => {
+    if (!user) return null;
+
+    const me = memberProgress.find((progress) => progress.userId === user.id);
+    if (!me) return null;
+
+    const totalTodayAll = me.totalGoals ?? 0;
+    const goalDetails = me.goalDetails ?? [];
+    const passToday =
+      goalDetails.length > 0
+        ? goalDetails.filter((goal) => !!goal.isPass).length
+        : (me.passGoals ?? 0);
+    const totalTodayNonPass =
+      goalDetails.length > 0
+        ? goalDetails.filter((goal) => !goal.isPass).length
+        : Math.max(0, totalTodayAll - (me.passGoals ?? 0));
+    const doneToday =
+      goalDetails.length > 0
+        ? goalDetails.filter((goal) => !goal.isPass && !!goal.isDone).length
+        : (me.doneGoals ?? 0);
+    const ratePct = totalTodayNonPass > 0 ? Math.round((doneToday / totalTodayNonPass) * 100) : 0;
+
+    const mergedMarkings = streakQueries.reduce<Record<string, unknown>>((acc, query) => {
+      return query.data ? { ...acc, ...query.data } : acc;
+    }, {});
+    const streak = computeConsecutiveAchievementDays(mergedMarkings as Parameters<typeof computeConsecutiveAchievementDays>[0]);
+
+    return { ratePct, streak, doneToday, totalToday: totalTodayNonPass, passToday };
+  }, [memberProgress, streakQueries, user]);
+
+  const isLoading =
+    !user ||
+    teamGoalsQuery.isLoading ||
+    monthGoalsQuery.isLoading ||
+    memberProgressQuery.isLoading ||
+    weeklyDoneCountsQuery.isLoading ||
+    monthlyResolutionQuery.isLoading ||
+    (Boolean(currentTeam?.id) && monthlyRetrospectiveQuery.isLoading) ||
+    streakQueries.some((query) => query.isLoading);
 
   const loadData = useCallback(async () => {
-    const authUser = useAuthStore.getState().user;
-    const fallbackTeamId = currentTeam?.id ?? null;
-    if (!authUser) {
-      setMonthGoals([]);
-      setMonthlyResolution('');
-      setMonthlyRetrospective('');
-      setHeroStats(null);
-      setLoading(false);
-      return;
+    if (!user) return;
+
+    const refetches: Promise<unknown>[] = [
+      monthGoalsQuery.refetch(),
+      memberProgressQuery.refetch(),
+      weeklyDoneCountsQuery.refetch(),
+      monthlyResolutionQuery.refetch(),
+      ...streakQueries.map((query) => query.refetch()),
+    ];
+
+    if (currentTeam?.id) {
+      refetches.unshift(teamGoalsQuery.refetch(), monthlyRetrospectiveQuery.refetch());
     }
 
-    setLoading(true);
-    try {
-      await fetchTeams(authUser.id);
-      const currentSelectedTeam = useTeamStore.getState().currentTeam;
-      const teamId = currentSelectedTeam?.id ?? '';
-
-      const streakYm0 = dayjs().format('YYYY-MM');
-      const streakYm1 = dayjs().subtract(1, 'month').format('YYYY-MM');
-      const streakYm2 = dayjs().subtract(2, 'month').format('YYYY-MM');
-
-      const [goalRows, content, retroContent, , m0, m1, m2] = await Promise.all([
-        fetchMyGoalsForMonthByWindow(authUser.id, yearMonth),
-        getMonthlyResolution(authUser.id, yearMonth, currentSelectedTeam?.id ?? fallbackTeamId),
-        currentSelectedTeam?.id
-          ? getMonthlyRetrospective(authUser.id, yearMonth, currentSelectedTeam.id)
-          : Promise.resolve(''),
-        fetchTeamGoals(teamId, authUser.id),
-        fetchCalendarMarkings(authUser.id, streakYm0),
-        fetchCalendarMarkings(authUser.id, streakYm1),
-        fetchCalendarMarkings(authUser.id, streakYm2),
-      ]);
-
-      const weeklyCounts = await fetchWeeklyDoneCountsForGoals({
-        userId: authUser.id,
-        goalIds: goalRows.map((g) => g.goal_id),
-      });
-
-      await fetchMemberProgress(teamId || undefined, authUser.id);
-      const me = useStatsStore.getState().memberProgress.find((p) => p.userId === authUser.id);
-      const totalTodayAll = me?.totalGoals ?? 0;
-
-      // 패스는 "실패"가 아니라 "제외"이므로,
-      // - 분모(total): !isPass 인 목표 수
-      // - 분자(done): isDone 이면서 !isPass 인 목표 수
-      const goalDetails = me?.goalDetails ?? [];
-      const passToday =
-        goalDetails.length > 0
-          ? goalDetails.filter((g) => !!g.isPass).length
-          : (me?.passGoals ?? 0);
-      const totalTodayNonPass =
-        goalDetails.length > 0
-          ? goalDetails.filter((g) => !g.isPass).length
-          : Math.max(0, totalTodayAll - (me?.passGoals ?? 0));
-      const doneToday =
-        goalDetails.length > 0
-          ? goalDetails.filter((g) => !g.isPass && !!g.isDone).length
-          : (me?.doneGoals ?? 0);
-
-      const ratePct = totalTodayNonPass > 0 ? Math.round((doneToday / totalTodayNonPass) * 100) : 0;
-      const mergedMarkings = { ...m2, ...m1, ...m0 };
-      const streak = computeConsecutiveAchievementDays(mergedMarkings);
-
-      setMonthGoals(goalRows);
-      setMonthlyResolution(content);
-      setMonthlyRetrospective(retroContent);
-      setWeeklyDoneCounts(weeklyCounts);
-      setHeroStats({ ratePct, streak, doneToday, totalToday: totalTodayNonPass, passToday });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentTeam?.id, fetchMemberProgress, fetchTeamGoals, fetchTeams, yearMonth]);
+    await Promise.all(refetches);
+  }, [
+    currentTeam?.id,
+    memberProgressQuery,
+    monthGoalsQuery,
+    monthlyResolutionQuery,
+    monthlyRetrospectiveQuery,
+    streakQueries,
+    teamGoalsQuery,
+    user,
+    weeklyDoneCountsQuery,
+  ]);
 
   const handleUpdateResolution = useCallback(
     async (text: string): Promise<boolean> => {
-      const authUser = useAuthStore.getState().user;
-      const team = useTeamStore.getState().currentTeam;
-      if (!authUser) return false;
+      if (!user) return false;
       try {
         const ok = await saveMonthlyResolution({
-          userId: authUser.id,
+          userId: user.id,
           yearMonth,
           content: text,
-          teamId: team?.id ?? null,
+          teamId: currentTeam?.id ?? null,
         });
         if (!ok) throw new Error('save failed');
-        setMonthlyResolution(text);
         setResolutionInput(text);
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.monthly.resolution(user.id, yearMonth, currentTeam?.id ?? null),
+        });
         return true;
       } catch (e) {
-        console.error(e);
-        Alert.alert('저장 실패', '한마디 저장 중 오류가 발생했습니다.');
+        handleServiceError(e);
         return false;
       }
     },
-    [yearMonth],
+    [currentTeam?.id, queryClient, user, yearMonth],
   );
 
   const handleUpdateRetrospective = useCallback(
     async (text: string): Promise<boolean> => {
-      const authUser = useAuthStore.getState().user;
-      const team = useTeamStore.getState().currentTeam;
-      if (!authUser || !team?.id) return false;
+      if (!user || !currentTeam?.id) return false;
       try {
         const ok = await saveMonthlyRetrospective({
-          userId: authUser.id,
+          userId: user.id,
           yearMonth,
           content: text,
-          teamId: team.id,
+          teamId: currentTeam.id,
         });
         if (!ok) throw new Error('save failed');
-        setMonthlyRetrospective(text);
         setRetrospectiveInput(text);
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.monthly.retrospective(user.id, yearMonth, currentTeam.id),
+        });
         return true;
       } catch (e) {
-        console.error(e);
-        Alert.alert('저장 실패', '회고 저장 중 오류가 발생했습니다.');
+        handleServiceError(e);
         return false;
       }
     },
-    [yearMonth],
+    [currentTeam?.id, queryClient, user, yearMonth],
   );
 
   const openResolutionModal = useCallback(() => {
@@ -235,7 +303,7 @@ export default function GoalScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      void loadData();
     }, [loadData]),
   );
 
@@ -244,12 +312,11 @@ export default function GoalScreen() {
       if (!user) return;
       try {
         await endTeamGoalMutation.mutateAsync({ goalId });
-        await loadData();
       } catch (e) {
         handleServiceError(e);
       }
     },
-    [endTeamGoalMutation, loadData, user],
+    [endTeamGoalMutation, user],
   );
 
   const handleRemoveGoal = useCallback(
@@ -257,23 +324,12 @@ export default function GoalScreen() {
       if (!user) return;
       try {
         await removeTeamGoalMutation.mutateAsync({ goalId });
-        await loadData();
       } catch (e) {
         handleServiceError(e);
       }
     },
-    [loadData, removeTeamGoalMutation, user],
+    [removeTeamGoalMutation, user],
   );
-
-  const currentTeamUserGoals = useMemo(() => {
-    if (!teamGoals || teamGoals.length === 0) return [];
-    if (!monthGoals || !user) return [];
-
-    const myOwnedGoalIds = new Set(
-      teamGoals.filter((goal) => goal.owner_id === user.id).map((goal) => goal.id),
-    );
-    return monthGoals.filter((userGoal) => myOwnedGoalIds.has(userGoal.goal_id));
-  }, [teamGoals, monthGoals, user]);
 
   const myVisibleGoals = useMemo(() => {
     if (!teamGoals || !user) return [];
@@ -303,9 +359,9 @@ export default function GoalScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={ds.pagePadding}>
+          <View style={ds.pagePadding as ViewStyle}>
             <View style={styles.header}>
-              <Text style={ds.headerTitle}>내 목표</Text>
+              <Text style={ds.headerTitle as TextStyle}>내 목표</Text>
               <Text style={styles.subtitle}>매일 꾸준히, 작은 습관이 큰 변화를 만듭니다</Text>
             </View>
             {/* 오늘 통계 카드 */}
@@ -345,7 +401,7 @@ export default function GoalScreen() {
               </Text>
             </View>
 
-            {loading ? (
+            {isLoading ? (
               <View style={styles.loadingWrap}>
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
@@ -355,15 +411,7 @@ export default function GoalScreen() {
                 teamGoals={myVisibleGoals}
                 myGoals={currentTeamUserGoals}
                 weeklyDoneCounts={weeklyDoneCounts}
-                todayCheckedInGoalIds={
-                  new Set(
-                    useStatsStore
-                      .getState()
-                      .memberProgress.find((p) => p.userId === user?.id)
-                      ?.goalDetails.filter((g) => g.isDone || g.isPass)
-                      .map((g) => g.goalId) || [],
-                  )
-                }
+                todayCheckedInGoalIds={todayCheckedInGoalIds}
                 onEnd={handleEndGoal}
                 onRemove={handleRemoveGoal}
                 monthlyResolution={monthlyResolution}
@@ -390,7 +438,6 @@ export default function GoalScreen() {
         <AddRoutineModal
           visible={addRoutineVisible}
           onClose={() => setAddRoutineVisible(false)}
-          onDone={loadData}
         />
 
         <GlassModal
@@ -461,7 +508,7 @@ const styles = StyleSheet.create({
     marginVertical: spacing[3],
   },
   monthSelector: {
-    ...ds.rowCenter,
+    ...(ds.rowCenter as ViewStyle),
     justifyContent: 'center',
     gap: spacing[4],
   },

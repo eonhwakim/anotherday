@@ -35,4 +35,10 @@ export const queryKeys = {
     monthlySummary: (userId: string, yearMonth: string, teamId?: string) =>
       ['stats', 'monthly-summary', userId, yearMonth, teamId ?? null] as const,
   },
+  monthly: {
+    resolution: (userId: string, yearMonth: string, teamId?: string | null) =>
+      ['monthly', 'resolution', userId, yearMonth, teamId ?? null] as const,
+    retrospective: (userId: string, yearMonth: string, teamId?: string | null) =>
+      ['monthly', 'retrospective', userId, yearMonth, teamId ?? null] as const,
+  },
 } as const;

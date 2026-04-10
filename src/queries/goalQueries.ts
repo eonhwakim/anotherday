@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import dayjs from '../lib/dayjs';
 import {
   fetchMyGoals,
+  fetchMyGoalsForMonth,
   fetchTeamGoals,
   fetchTodayCheckins,
   fetchWeeklyDoneCountsForGoals,
@@ -12,7 +13,7 @@ export function useTeamGoalsQuery(teamId: string, userId?: string) {
   return useQuery({
     queryKey: queryKeys.goals.team(teamId, userId),
     queryFn: () => fetchTeamGoals(teamId, userId),
-    enabled: !!userId,
+    enabled: !!userId && !!teamId,
   });
 }
 
@@ -29,6 +30,17 @@ export function useTodayCheckinsQuery(userId?: string, date = dayjs().format('YY
     queryKey: userId ? queryKeys.goals.todayCheckins(userId, date) : ['goals', 'today-checkins', null, date],
     queryFn: () => fetchTodayCheckins(userId!),
     enabled: !!userId,
+  });
+}
+
+export function useMyGoalsForMonthQuery(userId?: string, yearMonth?: string) {
+  return useQuery({
+    queryKey:
+      userId && yearMonth
+        ? queryKeys.goals.mineMonth(userId, yearMonth)
+        : ['goals', 'mine-month', null, yearMonth ?? null],
+    queryFn: () => fetchMyGoalsForMonth(userId!, yearMonth!),
+    enabled: !!userId && !!yearMonth,
   });
 }
 
