@@ -33,6 +33,12 @@ export const queryKeys = {
       ['stats', 'member-date-checkins', teamId ?? null, userId, date] as const,
     weekly: (teamId: string, userId: string, weekStart: string) =>
       ['stats', 'weekly', teamId, userId, weekStart] as const,
+    weeklyBundle: (
+      teamId: string | undefined,
+      userId: string | undefined,
+      weekStart: string,
+      goalFingerprint: string,
+    ) => ['stats', 'weekly-bundle', teamId ?? null, userId ?? null, weekStart, goalFingerprint] as const,
     monthlySummary: (userId: string, yearMonth: string, teamId?: string) =>
       ['stats', 'monthly-summary', userId, yearMonth, teamId ?? null] as const,
   },

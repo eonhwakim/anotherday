@@ -1,30 +1,35 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
-import { useGoalStore } from '../../stores/goalStore';
+import { handleServiceError } from '../../lib/serviceError';
 import dayjs from '../../lib/dayjs';
 import BaseCard from '../../components/ui/BaseCard';
 import ReviewModal from '../../components/stats/ReviewModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  fetchMonthlyStatisticsSummary,
-  fetchWeeklyStats,
-  type MemberDetail,
-  type MyGoalDetail,
-  type WeeklyStatsResult,
-  type WeeklyTeamMember,
-} from '../../services/statsService';
-import { fetchMyGoalsForRange } from '../../services/goalService';
 import { saveMonthlyRetrospective } from '../../services/monthlyService';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import ScreenBackground from '../../components/ui/ScreenBackground';
 import { colors, ds, radius, spacing, typography } from '../../design/recipes';
-import type { UserGoal } from '../../types/domain';
+import { useTeamGoalsQuery } from '../../queries/goalQueries';
+import { queryKeys } from '../../queries/queryKeys';
+import {
+  useMonthlyStatisticsSummaryQuery,
+  useWeeklyStatisticsBundleQuery,
+} from '../../queries/statsQueries';
 import MyWeeklyStatistics from './MyWeeklyStatistics';
 import TeamWeeklyStatistics from './TeamWeeklyStatistics';
 import MyMonthlyStatistics from './MyMonthlyStatistics';
@@ -36,8 +41,12 @@ type StatsPeriod = 'monthly' | 'weekly';
 export default function StatisticsScreen() {
   const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const { user } = useAuthStore();
-  const { currentTeam, fetchTeams } = useTeamStore();
-  const { fetchTeamGoals, fetchMyGoals, teamGoals } = useGoalStore();
+  const { currentTeam } = useTeamStore();
+  const queryClient = useQueryClient();
+  const { data: teamGoals = [], refetch: refetchTeamGoals } = useTeamGoalsQuery(
+    currentTeam?.id ?? '',
+    user?.id,
+  );
 
   const scrollRef = useRef<ScrollView>(null);
   useTabDoubleTapScrollTop({ navigation: tabNavigation, scrollRef });
@@ -46,20 +55,6 @@ export default function StatisticsScreen() {
   const [activeTab, setActiveTab] = useState<StatsPeriod>('weekly');
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
   const [weekStart, setWeekStart] = useState(dayjs().startOf('isoWeek').format('YYYY-MM-DD'));
-
-  const [myRate, setMyRate] = useState<number | null>(null);
-  const [myPrevMonthRate, setMyPrevMonthRate] = useState<number | null>(null);
-  const [myWeeklyRates, setMyWeeklyRates] = useState<{ week: number; rate: number | null; startDate: string; endDate: string }[]>([]);
-  const [myGoalDetails, setMyGoalDetails] = useState<MyGoalDetail[]>([]);
-  const [memberDetails, setMemberDetails] = useState<MemberDetail[]>([]);
-  const [monthTotalDays, setMonthTotalDays] = useState<number>(0);
-  const [teamRate, setTeamRate] = useState<number | null>(null);
-  const [teamPrevRate, setTeamPrevRate] = useState<number | null>(null);
-  const [mvpName, setMvpName] = useState<string | null>(null);
-
-  const [weeklyTeamData, setWeeklyTeamData] = useState<WeeklyTeamMember[]>([]);
-  const [weeklyCheckins, setWeeklyCheckins] = useState<WeeklyStatsResult['weeklyCheckins']>([]);
-  const [myWeeklyGoalPeriods, setMyWeeklyGoalPeriods] = useState<UserGoal[]>([]);
   const [chartAnimationKey, setChartAnimationKey] = useState(0);
   const prevWeeklyScopeRef = useRef<StatsScope>(activeScope);
   const isFocused = useIsFocused();
@@ -72,29 +67,54 @@ export default function StatisticsScreen() {
   const [editReviewModalVisible, setEditReviewModalVisible] = useState(false);
   const [tempText, setTempText] = useState('');
 
+  const monthlySummaryQuery = useMonthlyStatisticsSummaryQuery(
+    user?.id,
+    yearMonth,
+    currentTeam?.id,
+  );
+  const weeklyBundleQuery = useWeeklyStatisticsBundleQuery({
+    userId: user?.id,
+    teamId: currentTeam?.id,
+    weekStart,
+    teamGoals,
+  });
+
+  const myRate = monthlySummaryQuery.data?.myRate ?? null;
+  const myPrevMonthRate = monthlySummaryQuery.data?.myPrevMonthRate ?? null;
+  const myWeeklyRates = monthlySummaryQuery.data?.myWeeklyRates ?? [];
+  const myGoalDetails = monthlySummaryQuery.data?.myGoalDetails ?? [];
+  const memberDetails = monthlySummaryQuery.data?.memberDetails ?? [];
+  const monthTotalDays = monthlySummaryQuery.data?.monthTotalDays ?? 0;
+  const teamRate = monthlySummaryQuery.data?.teamRate ?? null;
+  const teamPrevRate = monthlySummaryQuery.data?.teamPrevRate ?? null;
+  const mvpName = monthlySummaryQuery.data?.mvpName ?? null;
+  const weeklyTeamData = weeklyBundleQuery.data?.weeklyTeamData ?? [];
+  const weeklyCheckins = weeklyBundleQuery.data?.weeklyCheckins ?? [];
+  const myWeeklyGoalPeriods = weeklyBundleQuery.data?.myWeeklyGoalPeriods ?? [];
+
   const goalNameMap = useMemo(
     () => new Map((teamGoals ?? []).map((goal) => [goal.id, goal.name])),
     [teamGoals],
   );
 
   const goToPrevMonth = () => {
-    if (isMonthlyLoading) return;
-    fetchMonthlyStats(dayjs(`${yearMonth}-01`).subtract(1, 'month').format('YYYY-MM'));
+    if (monthlySummaryQuery.isFetching) return;
+    setYearMonth(dayjs(`${yearMonth}-01`).subtract(1, 'month').format('YYYY-MM'));
   };
 
   const goToNextMonth = () => {
-    if (isMonthlyLoading) return;
+    if (monthlySummaryQuery.isFetching) return;
     const nextMonth = dayjs(`${yearMonth}-01`).add(1, 'month').format('YYYY-MM');
-    if (nextMonth <= dayjs().format('YYYY-MM')) fetchMonthlyStats(nextMonth);
+    if (nextMonth <= dayjs().format('YYYY-MM')) setYearMonth(nextMonth);
   };
 
   const goToPrevWeek = () => {
-    if (isWeeklyLoading) return;
-    fetchWeeklyData(dayjs(weekStart).subtract(1, 'week').format('YYYY-MM-DD'));
+    if (weeklyBundleQuery.isFetching) return;
+    setWeekStart(dayjs(weekStart).subtract(1, 'week').format('YYYY-MM-DD'));
   };
   const goToNextWeek = () => {
-    if (isWeeklyLoading) return;
-    fetchWeeklyData(dayjs(weekStart).add(1, 'week').format('YYYY-MM-DD'));
+    if (weeklyBundleQuery.isFetching) return;
+    setWeekStart(dayjs(weekStart).add(1, 'week').format('YYYY-MM-DD'));
   };
 
   const canNext =
@@ -102,108 +122,14 @@ export default function StatisticsScreen() {
   const monthLabel = dayjs(`${yearMonth}-01`).format('YYYY년 M월');
   const monthNum = dayjs(`${yearMonth}-01`).month() + 1;
 
-  const loadStoreData = useCallback(async () => {
-    if (!user) return;
-
-    await fetchTeams(user.id);
-    const team = useTeamStore.getState().currentTeam;
-
-    if (team) {
-      await Promise.all([fetchTeamGoals(team.id, user.id), fetchMyGoals(user.id)]);
-      return;
-    }
-
-    await fetchMyGoals(user.id);
-  }, [fetchMyGoals, fetchTeamGoals, fetchTeams, user]);
-
-  const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
-  const [isMonthlyLoading, setIsMonthlyLoading] = useState(false);
-
-  const fetchMonthlyStats = useCallback(async (targetYearMonth: string) => {
-    if (!user) return;
-    setIsMonthlyLoading(true);
-    try {
-      const summary = await fetchMonthlyStatisticsSummary({
-        userId: user.id,
-        yearMonth: targetYearMonth,
-        teamId: useTeamStore.getState().currentTeam?.id,
-      });
-
-      setYearMonth(targetYearMonth);
-      setMyRate(summary.myRate);
-      setMyPrevMonthRate(summary.myPrevMonthRate);
-      setMyWeeklyRates(summary.myWeeklyRates);
-      setMyGoalDetails(summary.myGoalDetails as MyGoalDetail[]);
-      setMemberDetails(summary.memberDetails as MemberDetail[]);
-      setMonthTotalDays(summary.monthTotalDays);
-      setTeamRate(summary.teamRate);
-      setTeamPrevRate(summary.teamPrevRate);
-      setMvpName(summary.mvpName);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsMonthlyLoading(false);
-    }
-  }, [user]);
-
-  const fetchWeeklyData = useCallback(async (targetWeekStart: string) => {
-    if (!user) return;
-    setIsWeeklyLoading(true);
-
-    const teamId = useTeamStore.getState().currentTeam?.id;
-    if (!teamId) {
-      setWeekStart(targetWeekStart);
-      setWeeklyTeamData([]);
-      setWeeklyCheckins([]);
-      setMyWeeklyGoalPeriods([]);
-      setIsWeeklyLoading(false);
-      return;
-    }
-
-    try {
-      const weekEnd = dayjs(targetWeekStart).endOf('isoWeek').format('YYYY-MM-DD');
-      const liveGoalNameMap = new Map(
-        (useGoalStore.getState().teamGoals ?? []).map((goal) => [goal.id, goal.name]),
-      );
-      const [weeklyStats, myGoalPeriods] = await Promise.all([
-        fetchWeeklyStats({
-          teamId,
-          userId: user.id,
-          weekStart: targetWeekStart,
-          goalNameMap: liveGoalNameMap,
-        }),
-        fetchMyGoalsForRange(user.id, targetWeekStart, weekEnd),
-      ]);
-
-      setWeekStart(targetWeekStart);
-      setWeeklyTeamData(weeklyStats.weeklyTeamData);
-      setWeeklyCheckins(weeklyStats.weeklyCheckins);
-      setMyWeeklyGoalPeriods(myGoalPeriods);
-      setChartAnimationKey((prev) => prev + 1);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsWeeklyLoading(false);
-    }
-  }, [user]);
-
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      const load = async () => {
-        await loadStoreData();
-        if (!isActive) return;
-        await Promise.all([fetchWeeklyData(weekStart), fetchMonthlyStats(yearMonth)]);
-      };
-
-      void load();
-
-      return () => {
-        isActive = false;
-      };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadStoreData, fetchWeeklyData, fetchMonthlyStats]),
+      void Promise.all([
+        refetchTeamGoals(),
+        monthlySummaryQuery.refetch(),
+        weeklyBundleQuery.refetch(),
+      ]);
+    }, [monthlySummaryQuery, refetchTeamGoals, weeklyBundleQuery]),
   );
 
   /** 통계 페이지 “진입 순간”에만 나의통계/주간/오늘 주차로 초기화 */
@@ -216,9 +142,8 @@ export default function StatisticsScreen() {
     setActiveTab('weekly');
     const thisWeek = dayjs().startOf('isoWeek').format('YYYY-MM-DD');
     if (weekStartRef.current !== thisWeek) {
-      fetchWeeklyData(thisWeek);
+      setWeekStart(thisWeek);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocused]);
 
   /** 나의 통계 ↔ 팀 통계 전환 시 같은 animationKey면 멤버 차트가 묻힌 느낌이 나서 키를 올려 재생 */
@@ -246,12 +171,12 @@ export default function StatisticsScreen() {
 
       if (!ok) throw new Error('save failed');
 
-      setMemberDetails((prev) =>
-        prev.map((member) => (member.isMe ? { ...member, hoego: tempText } : member)),
-      );
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.stats.monthlySummary(user.id, yearMonth, currentTeam.id),
+      });
       setEditReviewModalVisible(false);
-    } catch {
-      Alert.alert('저장 실패', '회고 저장 중 오류가 발생했습니다.');
+    } catch (e) {
+      handleServiceError(e);
     }
   };
 
@@ -270,9 +195,9 @@ export default function StatisticsScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={ds.pagePadding}>
+          <View style={ds.pagePadding as ViewStyle}>
             <View style={styles.header}>
-              <Text style={ds.headerTitle}>통계</Text>
+              <Text style={ds.headerTitle as TextStyle}>통계</Text>
               <Text style={styles.subtitle}>
                 월초와 월말의 부분주는 4일 미만이면 인접 월에 편입돼요.
               </Text>
