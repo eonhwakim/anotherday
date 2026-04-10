@@ -15,9 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useAuthStore } from '../../stores/authStore';
+import { handleServiceError } from '../../lib/serviceError';
 import { useTeamStore } from '../../stores/teamStore';
-import { updateTeamProfile, uploadTeamProfileImage } from '../../services/teamService';
+import { useUpdateTeamProfileMutation } from '../../queries/teamMutations';
 import { colors } from '../../design/tokens';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
@@ -30,12 +30,12 @@ export default function TeamProfileEditScreen() {
   const navigation = useNavigation();
   const route = useRoute<TeamProfileEditRouteProp>();
   const { teamId } = route.params;
-  const { teams, fetchTeams } = useTeamStore();
+  const { teams } = useTeamStore();
+  const updateTeamProfileMutation = useUpdateTeamProfileMutation();
   const team = teams.find((t) => t.id === teamId);
 
   const [name, setName] = useState(team?.name || '');
   const [imageUri, setImageUri] = useState<string | null>(team?.profile_image_url || null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (team) {
@@ -67,38 +67,16 @@ export default function TeamProfileEditScreen() {
       return;
     }
 
-    setLoading(true);
     try {
-      let finalImageUrl = imageUri;
-
-      if (imageUri && !imageUri.startsWith('http')) {
-        const uploadedUrl = await uploadTeamProfileImage(teamId, imageUri);
-        if (uploadedUrl) {
-          finalImageUrl = uploadedUrl;
-        } else {
-          Alert.alert('오류', '이미지 업로드에 실패했습니다.');
-          setLoading(false);
-          return;
-        }
-      }
-
-      const result = await updateTeamProfile(teamId, {
+      const updated = await updateTeamProfileMutation.mutateAsync({
+        teamId,
         name: name.trim(),
-        profile_image_url: finalImageUrl,
+        imageUri,
       });
-
-      if (result.success) {
-        const user = useAuthStore.getState().user;
-        if (user) await fetchTeams(user.id);
-        navigation.goBack();
-      } else {
-        Alert.alert('실패', result.error || '팀 프로필 수정에 실패했습니다.');
-      }
+      setImageUri(updated.profileImageUrl);
+      navigation.goBack();
     } catch (e) {
-      console.error(e);
-      Alert.alert('오류', '알 수 없는 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
+      handleServiceError(e);
     }
   };
 
@@ -143,7 +121,11 @@ export default function TeamProfileEditScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Button title="저장하기" onPress={handleSave} loading={loading} />
+          <Button
+            title="저장하기"
+            onPress={handleSave}
+            loading={updateTeamProfileMutation.isPending}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
