@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -34,6 +35,7 @@ import {
   useWeeklyDoneCountsQuery,
 } from '../../queries/goalQueries';
 import { useExtendGoalsForNewMonthMutation } from '../../queries/goalMutations';
+import { queryKeys } from '../../queries/queryKeys';
 import { useMemberProgressQuery } from '../../queries/statsQueries';
 
 import MountainProgress from '../../components/home/MountainProgress';
@@ -45,23 +47,25 @@ import CheckinModal from '../../components/mypage/CheckinModal';
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam } = useTeamStore();
+  const currentTeamId = currentTeam?.id;
+  const queryClient = useQueryClient();
   const extendGoalsForNewMonthMutation = useExtendGoalsForNewMonthMutation({
     userId: user?.id,
-    teamId: currentTeam?.id,
+    teamId: currentTeamId,
   });
   const todayStr = dayjs().format('YYYY-MM-DD');
 
-  const { data: myGoals = [], refetch: refetchMyGoals } = useMyGoalsQuery(user?.id);
-  const { data: teamGoals = [], refetch: refetchTeamGoals } = useTeamGoalsQuery(
-    currentTeam?.id ?? '',
+  const { data: myGoals = [] } = useMyGoalsQuery(user?.id);
+  const { data: teamGoals = [] } = useTeamGoalsQuery(
+    currentTeamId ?? '',
     user?.id,
   );
-  const { data: todayCheckins = [], refetch: refetchTodayCheckins } = useTodayCheckinsQuery(
+  const { data: todayCheckins = [] } = useTodayCheckinsQuery(
     user?.id,
     todayStr,
   );
-  const { data: memberProgress = [], refetch: refetchMemberProgress } = useMemberProgressQuery(
-    currentTeam?.id,
+  const { data: memberProgress = [] } = useMemberProgressQuery(
+    currentTeamId,
     user?.id,
     todayStr,
   );
@@ -113,7 +117,7 @@ export default function HomeScreen() {
       .map((ug) => ug.goal_id);
   }, [myGoals, teamGoals, todayStr, user]);
 
-  const { data: weeklyDoneCounts = {}, refetch: refetchWeeklyDoneCounts } = useWeeklyDoneCountsQuery({
+  const { data: weeklyDoneCounts = {} } = useWeeklyDoneCountsQuery({
     userId: user?.id,
     goalIds: weeklyGoalIds,
   });
@@ -280,22 +284,47 @@ export default function HomeScreen() {
     }
   }, [memberProgress, user]);
 
-  const loadData = useCallback(async () => {
+  const refreshHomeQueries = useCallback(async () => {
     if (!user) return;
 
-    await Promise.all([
-      refetchTeamGoals(),
-      refetchTodayCheckins(),
-      refetchMyGoals(),
-      refetchMemberProgress(),
-      refetchWeeklyDoneCounts(),
-    ]);
+    const refreshes = [
+      queryClient.refetchQueries({
+        queryKey: queryKeys.goals.mine(user.id),
+        exact: true,
+        type: 'active',
+      }),
+      queryClient.refetchQueries({
+        queryKey: queryKeys.goals.todayCheckins(user.id, todayStr),
+        exact: true,
+        type: 'active',
+      }),
+      queryClient.refetchQueries({
+        queryKey: queryKeys.stats.memberProgress(currentTeamId, user.id, todayStr),
+        exact: true,
+        type: 'active',
+      }),
+      queryClient.refetchQueries({
+        queryKey: ['goals', 'weekly-done-counts', user.id],
+        exact: false,
+        type: 'active',
+      }),
+    ];
+
+    if (currentTeamId) {
+      refreshes.unshift(
+        queryClient.refetchQueries({
+          queryKey: queryKeys.goals.team(currentTeamId, user.id),
+          exact: true,
+          type: 'active',
+        }),
+      );
+    }
+
+    await Promise.all(refreshes);
   }, [
-    refetchMemberProgress,
-    refetchMyGoals,
-    refetchTeamGoals,
-    refetchTodayCheckins,
-    refetchWeeklyDoneCounts,
+    currentTeamId,
+    queryClient,
+    todayStr,
     user,
   ]);
 
@@ -303,13 +332,13 @@ export default function HomeScreen() {
     useCallback(() => {
       setIsStampFinished(false);
       updateTime();
-      loadData();
-    }, [loadData, updateTime]),
+      void refreshHomeQueries();
+    }, [refreshHomeQueries, updateTime]),
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await refreshHomeQueries();
     setRefreshing(false);
   };
 
