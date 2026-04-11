@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { STORAGE_BUCKETS, STORAGE_CACHE_CONTROL } from '../constants/storage';
 import { requireAuthenticatedUserId } from '../lib/auth';
 import { buildUploadObjectPath, prepareImageUpload } from '../lib/storageUpload';
+import { ServiceError } from '../lib/serviceError';
 import { Alert } from 'react-native';
 
 // ─── 사진 인증 관련 서비스 ─────────────────────────────────────
@@ -96,24 +97,40 @@ export async function uploadCheckinPhoto(userId: string, imageUri: string): Prom
   const { arrayBuffer, contentType, extension } = await prepareImageUpload(imageUri);
   const fileName = buildUploadObjectPath(actorUserId, `${Date.now()}.${extension}`);
 
-  const { error } = await withTimeout(
-    supabase.storage.from(STORAGE_BUCKETS.CHECKIN_PHOTOS).upload(fileName, arrayBuffer, {
-      contentType,
-      cacheControl: STORAGE_CACHE_CONTROL,
-      upsert: false,
-    }),
-    UPLOAD_TIMEOUT_MS,
-  );
+  try {
+    const { error } = await withTimeout(
+      supabase.storage.from(STORAGE_BUCKETS.CHECKIN_PHOTOS).upload(fileName, arrayBuffer, {
+        contentType,
+        cacheControl: STORAGE_CACHE_CONTROL,
+        upsert: false,
+      }),
+      UPLOAD_TIMEOUT_MS,
+    );
 
-  if (error) {
-    throw new Error(error.message);
+    if (error) {
+      throw new ServiceError(
+        '사진을 서버에 저장하지 못했습니다. 잠시 후 다시 시도해주세요.',
+        'uploadCheckinPhoto',
+        error.message,
+      );
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      throw error;
+    }
+
+    throw new ServiceError(
+      '사진 업로드에 실패했습니다. 네트워크 상태를 확인해주세요.',
+      'uploadCheckinPhoto',
+      error instanceof Error ? error.message : 'unknown upload error',
+    );
   }
-
-  const { data: urlData } = supabase.storage
-    .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
-    .getPublicUrl(fileName);
-
-  return urlData.publicUrl;
 }
 
 // ─── 체크인/PASS DB 로직 ───────────────────────────────────────

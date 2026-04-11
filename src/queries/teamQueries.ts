@@ -24,10 +24,6 @@ export function useUserTeamsQuery(userId?: string) {
       return {
         teams,
         currentTeam: nextCurrentTeam,
-        members:
-          state.currentTeam?.id && nextCurrentTeam?.id !== state.currentTeam.id
-            ? []
-            : state.members,
       };
     });
   }, [query.data]);

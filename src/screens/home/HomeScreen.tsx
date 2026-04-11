@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -25,15 +26,14 @@ import { scheduleGoalReminderNotification } from '../../utils/notifications';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import {
-  fetchExtendableGoalsForMonth,
-} from '../../services/goalService';
-import {
+  useExtendableGoalsForMonthQuery,
   useMyGoalsQuery,
   useTeamGoalsQuery,
   useTodayCheckinsQuery,
   useWeeklyDoneCountsQuery,
 } from '../../queries/goalQueries';
 import { useExtendGoalsForNewMonthMutation } from '../../queries/goalMutations';
+import { queryKeys } from '../../queries/queryKeys';
 import { useMemberProgressQuery } from '../../queries/statsQueries';
 
 import MountainProgress from '../../components/home/MountainProgress';
@@ -45,23 +45,25 @@ import CheckinModal from '../../components/mypage/CheckinModal';
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam } = useTeamStore();
+  const currentTeamId = currentTeam?.id;
+  const queryClient = useQueryClient();
   const extendGoalsForNewMonthMutation = useExtendGoalsForNewMonthMutation({
     userId: user?.id,
-    teamId: currentTeam?.id,
+    teamId: currentTeamId,
   });
   const todayStr = dayjs().format('YYYY-MM-DD');
 
-  const { data: myGoals = [], refetch: refetchMyGoals } = useMyGoalsQuery(user?.id);
-  const { data: teamGoals = [], refetch: refetchTeamGoals } = useTeamGoalsQuery(
-    currentTeam?.id ?? '',
+  const { data: myGoals = [] } = useMyGoalsQuery(user?.id);
+  const { data: teamGoals = [] } = useTeamGoalsQuery(
+    currentTeamId ?? '',
     user?.id,
   );
-  const { data: todayCheckins = [], refetch: refetchTodayCheckins } = useTodayCheckinsQuery(
+  const { data: todayCheckins = [] } = useTodayCheckinsQuery(
     user?.id,
     todayStr,
   );
-  const { data: memberProgress = [], refetch: refetchMemberProgress } = useMemberProgressQuery(
-    currentTeam?.id,
+  const { data: memberProgress = [] } = useMemberProgressQuery(
+    currentTeamId,
     user?.id,
     todayStr,
   );
@@ -77,7 +79,6 @@ export default function HomeScreen() {
   // const [showGuideModal, setShowGuideModal] = React.useState(false);
   const [showMonthlyPrompt, setShowMonthlyPrompt] = React.useState(false);
   const [promptNewMonth, setPromptNewMonth] = React.useState<string>('');
-  const [extendableGoals, setExtendableGoals] = React.useState<typeof myGoals>([]);
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
   const [photoCarouselDragging, setPhotoCarouselDragging] = React.useState(false);
 
@@ -113,10 +114,12 @@ export default function HomeScreen() {
       .map((ug) => ug.goal_id);
   }, [myGoals, teamGoals, todayStr, user]);
 
-  const { data: weeklyDoneCounts = {}, refetch: refetchWeeklyDoneCounts } = useWeeklyDoneCountsQuery({
+  const { data: weeklyDoneCounts = {} } = useWeeklyDoneCountsQuery({
     userId: user?.id,
     goalIds: weeklyGoalIds,
   });
+  const { data: extendableGoals = [], isFetched: isExtendableGoalsFetched } =
+    useExtendableGoalsForMonthQuery(user?.id, promptNewMonth || undefined);
 
   // ── 인증 모달용: 활성+비활성 모두 포함 (패스 토글 가능)
   const goalsForCheckinModal = React.useMemo(() => {
@@ -195,12 +198,7 @@ export default function HomeScreen() {
         const alreadyShown = await AsyncStorage.getItem(storageKey);
         if (alreadyShown) return;
 
-        const targets = await fetchExtendableGoalsForMonth(user.id, matchedMonth);
-        if (targets.length === 0) return;
-
-        setExtendableGoals(targets);
         setPromptNewMonth(matchedMonth);
-        setTimeout(() => setShowMonthlyPrompt(true), 800);
       } catch (e) {
         console.error('[MonthlyPrompt] Error:', e);
       }
@@ -208,6 +206,18 @@ export default function HomeScreen() {
 
     checkMonthlyPrompt();
   }, [getMonthlyPromptStorageKey, user]);
+
+  React.useEffect(() => {
+    if (!promptNewMonth || showMonthlyPrompt || !isExtendableGoalsFetched) return;
+
+    if (extendableGoals.length === 0) {
+      setPromptNewMonth('');
+      return;
+    }
+
+    const timer = setTimeout(() => setShowMonthlyPrompt(true), 800);
+    return () => clearTimeout(timer);
+  }, [extendableGoals.length, isExtendableGoalsFetched, promptNewMonth, showMonthlyPrompt]);
 
   const handleMonthlyPromptContinue = async () => {
     if (!user || !promptNewMonth) return;
@@ -219,7 +229,7 @@ export default function HomeScreen() {
 
       await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
       setShowMonthlyPrompt(false);
-      setExtendableGoals([]);
+      setPromptNewMonth('');
     } catch (e) {
       handleServiceError(e);
     }
@@ -230,7 +240,7 @@ export default function HomeScreen() {
       await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
     }
     setShowMonthlyPrompt(false);
-    setExtendableGoals([]);
+    setPromptNewMonth('');
   };
 
   // const handleCloseGuide = async (savePreference: boolean) => {
@@ -280,22 +290,47 @@ export default function HomeScreen() {
     }
   }, [memberProgress, user]);
 
-  const loadData = useCallback(async () => {
+  const refreshHomeQueries = useCallback(async () => {
     if (!user) return;
 
-    await Promise.all([
-      refetchTeamGoals(),
-      refetchTodayCheckins(),
-      refetchMyGoals(),
-      refetchMemberProgress(),
-      refetchWeeklyDoneCounts(),
-    ]);
+    const refreshes = [
+      queryClient.refetchQueries({
+        queryKey: queryKeys.goals.mine(user.id),
+        exact: true,
+        type: 'active',
+      }),
+      queryClient.refetchQueries({
+        queryKey: queryKeys.goals.todayCheckins(user.id, todayStr),
+        exact: true,
+        type: 'active',
+      }),
+      queryClient.refetchQueries({
+        queryKey: queryKeys.stats.memberProgress(currentTeamId, user.id, todayStr),
+        exact: true,
+        type: 'active',
+      }),
+      queryClient.refetchQueries({
+        queryKey: ['goals', 'weekly-done-counts', user.id],
+        exact: false,
+        type: 'active',
+      }),
+    ];
+
+    if (currentTeamId) {
+      refreshes.unshift(
+        queryClient.refetchQueries({
+          queryKey: queryKeys.goals.team(currentTeamId, user.id),
+          exact: true,
+          type: 'active',
+        }),
+      );
+    }
+
+    await Promise.all(refreshes);
   }, [
-    refetchMemberProgress,
-    refetchMyGoals,
-    refetchTeamGoals,
-    refetchTodayCheckins,
-    refetchWeeklyDoneCounts,
+    currentTeamId,
+    queryClient,
+    todayStr,
     user,
   ]);
 
@@ -303,13 +338,13 @@ export default function HomeScreen() {
     useCallback(() => {
       setIsStampFinished(false);
       updateTime();
-      loadData();
-    }, [loadData, updateTime]),
+      void refreshHomeQueries();
+    }, [refreshHomeQueries, updateTime]),
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await refreshHomeQueries();
     setRefreshing(false);
   };
 
