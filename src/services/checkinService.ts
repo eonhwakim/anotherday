@@ -79,35 +79,41 @@ export async function takePhoto(): Promise<string | null> {
   }
 }
 
-/** Supabase Storage에 이미지 업로드 후 public URL 반환 */
-export async function uploadCheckinPhoto(userId: string, imageUri: string): Promise<string | null> {
-  try {
-    const actorUserId = await requireAuthenticatedUserId(userId);
-    const { arrayBuffer, contentType, extension } = await prepareImageUpload(imageUri);
-    const fileName = buildUploadObjectPath(actorUserId, `${Date.now()}.${extension}`);
+const UPLOAD_TIMEOUT_MS = 30_000;
 
-    const { error } = await supabase.storage
-      .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
-      .upload(fileName, arrayBuffer, {
-        contentType,
-        cacheControl: STORAGE_CACHE_CONTROL,
-        upsert: false,
-      });
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`사진 업로드 시간이 초과되었습니다. (${ms / 1000}초)`)), ms),
+    ),
+  ]);
+}
 
-    if (error) {
-      console.error('[Checkin] Upload error:', error.message);
-      return null;
-    }
+/** Supabase Storage에 이미지 업로드 후 public URL 반환 — 실패 시 throw */
+export async function uploadCheckinPhoto(userId: string, imageUri: string): Promise<string> {
+  const actorUserId = await requireAuthenticatedUserId(userId);
+  const { arrayBuffer, contentType, extension } = await prepareImageUpload(imageUri);
+  const fileName = buildUploadObjectPath(actorUserId, `${Date.now()}.${extension}`);
 
-    const { data: urlData } = supabase.storage
-      .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
-      .getPublicUrl(fileName);
+  const { error } = await withTimeout(
+    supabase.storage.from(STORAGE_BUCKETS.CHECKIN_PHOTOS).upload(fileName, arrayBuffer, {
+      contentType,
+      cacheControl: STORAGE_CACHE_CONTROL,
+      upsert: false,
+    }),
+    UPLOAD_TIMEOUT_MS,
+  );
 
-    return urlData.publicUrl;
-  } catch (e) {
-    console.error('[Checkin] Upload failed:', e);
-    return null;
+  if (error) {
+    throw new Error(error.message);
   }
+
+  const { data: urlData } = supabase.storage
+    .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
+    .getPublicUrl(fileName);
+
+  return urlData.publicUrl;
 }
 
 // ─── 체크인/PASS DB 로직 ───────────────────────────────────────
