@@ -54,19 +54,9 @@ export default function HomeScreen() {
   const todayStr = dayjs().format('YYYY-MM-DD');
 
   const { data: myGoals = [] } = useMyGoalsQuery(user?.id);
-  const { data: teamGoals = [] } = useTeamGoalsQuery(
-    currentTeamId ?? '',
-    user?.id,
-  );
-  const { data: todayCheckins = [] } = useTodayCheckinsQuery(
-    user?.id,
-    todayStr,
-  );
-  const { data: memberProgress = [] } = useMemberProgressQuery(
-    currentTeamId,
-    user?.id,
-    todayStr,
-  );
+  const { data: teamGoals = [] } = useTeamGoalsQuery(currentTeamId ?? '', user?.id);
+  const { data: todayCheckins = [] } = useTodayCheckinsQuery(user?.id, todayStr);
+  const { data: memberProgress = [] } = useMemberProgressQuery(currentTeamId, user?.id, todayStr);
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
@@ -102,7 +92,9 @@ export default function HomeScreen() {
       return [];
     }
 
-    const myOwnedGoalIds = new Set(teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id));
+    const myOwnedGoalIds = new Set(
+      teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
+    );
     return myGoals
       .filter((ug) => ug.frequency === 'weekly_count')
       .filter((ug) => myOwnedGoalIds.has(ug.goal_id))
@@ -266,7 +258,7 @@ export default function HomeScreen() {
   React.useEffect(() => {
     updateTime();
     const timer = setInterval(updateTime, 60000);
-    
+
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         updateTime();
@@ -327,12 +319,7 @@ export default function HomeScreen() {
     }
 
     await Promise.all(refreshes);
-  }, [
-    currentTeamId,
-    queryClient,
-    todayStr,
-    user,
-  ]);
+  }, [currentTeamId, queryClient, todayStr, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -579,7 +566,7 @@ const styles = StyleSheet.create({
   },
   goalSection: {
     paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingTop: 42,
     width: '100%',
     alignItems: 'stretch',
   },

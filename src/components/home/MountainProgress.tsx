@@ -12,7 +12,7 @@ const DEFAULT_CONTAINER_WIDTH = Dimensions.get('window').width;
 const SVG_W = 310;
 const SVG_H = 400;
 /** 산 영역 세로 높이(이미지·SVG·캐릭터 Y 스케일 공통). 너비는 100% 유지, 산 PNG만 세로로 늘리려면 `mountainImage.resizeMode: 'stretch'` 유지 */
-const CONTAINER_HEIGHT = 400;
+const CONTAINER_HEIGHT = 390;
 
 const TRAIL_POINTS = [
   { x: 230, y: 310 },
@@ -514,13 +514,13 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   mountainScene: {
-    width: '95%',
+    width: '96%',
     height: '100%',
     alignSelf: 'center',
     alignItems: 'center',
   },
   mountainImage: {
-    width: '100%',
+    width: '96%',
     height: '100%',
     resizeMode: 'stretch', // 'stretch',
     position: 'absolute',
