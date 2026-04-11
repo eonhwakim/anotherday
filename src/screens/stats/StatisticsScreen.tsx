@@ -9,7 +9,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { AppTabParamList } from '../../types/navigation';
@@ -20,12 +19,11 @@ import dayjs from '../../lib/dayjs';
 import BaseCard from '../../components/ui/BaseCard';
 import ReviewModal from '../../components/stats/ReviewModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { saveMonthlyRetrospective } from '../../services/monthlyService';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import ScreenBackground from '../../components/ui/ScreenBackground';
 import { colors, ds, radius, spacing, typography } from '../../design/recipes';
 import { useTeamGoalsQuery } from '../../queries/goalQueries';
-import { queryKeys } from '../../queries/queryKeys';
+import { useSaveMonthlyRetrospectiveMutation } from '../../queries/monthlyMutations';
 import {
   useMonthlyStatisticsSummaryQuery,
   useWeeklyStatisticsBundleQuery,
@@ -42,7 +40,7 @@ export default function StatisticsScreen() {
   const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const { user } = useAuthStore();
   const { currentTeam } = useTeamStore();
-  const queryClient = useQueryClient();
+  const saveMonthlyRetrospectiveMutation = useSaveMonthlyRetrospectiveMutation();
   const { data: teamGoals = [], refetch: refetchTeamGoals } = useTeamGoalsQuery(
     currentTeam?.id ?? '',
     user?.id,
@@ -162,7 +160,7 @@ export default function StatisticsScreen() {
     if (!user || !currentTeam) return;
 
     try {
-      const ok = await saveMonthlyRetrospective({
+      const ok = await saveMonthlyRetrospectiveMutation.mutateAsync({
         userId: user.id,
         teamId: currentTeam.id,
         yearMonth,
@@ -171,9 +169,6 @@ export default function StatisticsScreen() {
 
       if (!ok) throw new Error('save failed');
 
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.stats.monthlySummary(user.id, yearMonth, currentTeam.id),
-      });
       setEditReviewModalVisible(false);
     } catch (e) {
       handleServiceError(e);

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -30,9 +30,9 @@ import {
 } from '../../queries/monthlyQueries';
 import { queryKeys } from '../../queries/queryKeys';
 import {
-  saveMonthlyResolution,
-  saveMonthlyRetrospective,
-} from '../../services/monthlyService';
+  useSaveMonthlyResolutionMutation,
+  useSaveMonthlyRetrospectiveMutation,
+} from '../../queries/monthlyMutations';
 import { fetchCalendarMarkings } from '../../services/statsService';
 import dayjs from '../../lib/dayjs';
 import { getCalendarWeekRanges, computeConsecutiveAchievementDays } from '../../lib/statsUtils';
@@ -68,7 +68,6 @@ function getOwningMonthForDate(dateStr: string): string {
 export default function GoalScreen() {
   const { user } = useAuthStore();
   const { currentTeam } = useTeamStore();
-  const queryClient = useQueryClient();
   const endTeamGoalMutation = useEndTeamGoalMutation({
     userId: user?.id,
     teamId: currentTeam?.id,
@@ -77,6 +76,8 @@ export default function GoalScreen() {
     userId: user?.id,
     teamId: currentTeam?.id,
   });
+  const saveMonthlyResolutionMutation = useSaveMonthlyResolutionMutation();
+  const saveMonthlyRetrospectiveMutation = useSaveMonthlyRetrospectiveMutation();
   const todayOwnedMonth = React.useMemo(
     () => getOwningMonthForDate(dayjs().format('YYYY-MM-DD')),
     [],
@@ -130,7 +131,7 @@ export default function GoalScreen() {
     [],
   );
 
-  const streakQueries = useQueries({
+  const [currentMonthStreakQuery, previousMonthStreakQuery, twoMonthsAgoStreakQuery] = useQueries({
     queries: streakMonths.map((month) => ({
       queryKey: user?.id
         ? queryKeys.stats.calendar(user.id, month)
@@ -139,6 +140,15 @@ export default function GoalScreen() {
       enabled: !!user?.id,
     })),
   });
+  const currentMonthStreakData = currentMonthStreakQuery.data;
+  const previousMonthStreakData = previousMonthStreakQuery.data;
+  const twoMonthsAgoStreakData = twoMonthsAgoStreakQuery.data;
+  const isCurrentMonthStreakLoading = currentMonthStreakQuery.isLoading;
+  const isPreviousMonthStreakLoading = previousMonthStreakQuery.isLoading;
+  const isTwoMonthsAgoStreakLoading = twoMonthsAgoStreakQuery.isLoading;
+  const refetchCurrentMonthStreak = currentMonthStreakQuery.refetch;
+  const refetchPreviousMonthStreak = previousMonthStreakQuery.refetch;
+  const refetchTwoMonthsAgoStreak = twoMonthsAgoStreakQuery.refetch;
 
   const currentTeamUserGoals = useMemo(() => {
     if (!teamGoals || teamGoals.length === 0) return [];
@@ -197,13 +207,23 @@ export default function GoalScreen() {
         : (me.doneGoals ?? 0);
     const ratePct = totalTodayNonPass > 0 ? Math.round((doneToday / totalTodayNonPass) * 100) : 0;
 
-    const mergedMarkings = streakQueries.reduce<Record<string, unknown>>((acc, query) => {
-      return query.data ? { ...acc, ...query.data } : acc;
+    const mergedMarkings = [
+      currentMonthStreakData,
+      previousMonthStreakData,
+      twoMonthsAgoStreakData,
+    ].reduce<Record<string, unknown>>((acc, queryData) => {
+      return queryData ? { ...acc, ...queryData } : acc;
     }, {});
     const streak = computeConsecutiveAchievementDays(mergedMarkings as Parameters<typeof computeConsecutiveAchievementDays>[0]);
 
     return { ratePct, streak, doneToday, totalToday: totalTodayNonPass, passToday };
-  }, [memberProgress, streakQueries, user]);
+  }, [
+    currentMonthStreakData,
+    memberProgress,
+    previousMonthStreakData,
+    twoMonthsAgoStreakData,
+    user,
+  ]);
 
   const isLoading =
     !user ||
@@ -213,7 +233,9 @@ export default function GoalScreen() {
     weeklyDoneCountsQuery.isLoading ||
     monthlyResolutionQuery.isLoading ||
     (Boolean(currentTeam?.id) && monthlyRetrospectiveQuery.isLoading) ||
-    streakQueries.some((query) => query.isLoading);
+    isCurrentMonthStreakLoading ||
+    isPreviousMonthStreakLoading ||
+    isTwoMonthsAgoStreakLoading;
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -223,7 +245,9 @@ export default function GoalScreen() {
       memberProgressQuery.refetch(),
       weeklyDoneCountsQuery.refetch(),
       monthlyResolutionQuery.refetch(),
-      ...streakQueries.map((query) => query.refetch()),
+      refetchCurrentMonthStreak(),
+      refetchPreviousMonthStreak(),
+      refetchTwoMonthsAgoStreak(),
     ];
 
     if (currentTeam?.id) {
@@ -237,8 +261,10 @@ export default function GoalScreen() {
     monthGoalsQuery,
     monthlyResolutionQuery,
     monthlyRetrospectiveQuery,
-    streakQueries,
+    refetchCurrentMonthStreak,
+    refetchPreviousMonthStreak,
     teamGoalsQuery,
+    refetchTwoMonthsAgoStreak,
     user,
     weeklyDoneCountsQuery,
   ]);
@@ -247,7 +273,7 @@ export default function GoalScreen() {
     async (text: string): Promise<boolean> => {
       if (!user) return false;
       try {
-        const ok = await saveMonthlyResolution({
+        const ok = await saveMonthlyResolutionMutation.mutateAsync({
           userId: user.id,
           yearMonth,
           content: text,
@@ -255,23 +281,20 @@ export default function GoalScreen() {
         });
         if (!ok) throw new Error('save failed');
         setResolutionInput(text);
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.monthly.resolution(user.id, yearMonth, currentTeam?.id ?? null),
-        });
         return true;
       } catch (e) {
         handleServiceError(e);
         return false;
       }
     },
-    [currentTeam?.id, queryClient, user, yearMonth],
+    [currentTeam?.id, saveMonthlyResolutionMutation, user, yearMonth],
   );
 
   const handleUpdateRetrospective = useCallback(
     async (text: string): Promise<boolean> => {
       if (!user || !currentTeam?.id) return false;
       try {
-        const ok = await saveMonthlyRetrospective({
+        const ok = await saveMonthlyRetrospectiveMutation.mutateAsync({
           userId: user.id,
           yearMonth,
           content: text,
@@ -279,16 +302,13 @@ export default function GoalScreen() {
         });
         if (!ok) throw new Error('save failed');
         setRetrospectiveInput(text);
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.monthly.retrospective(user.id, yearMonth, currentTeam.id),
-        });
         return true;
       } catch (e) {
         handleServiceError(e);
         return false;
       }
     },
-    [currentTeam?.id, queryClient, user, yearMonth],
+    [currentTeam?.id, saveMonthlyRetrospectiveMutation, user, yearMonth],
   );
 
   const openResolutionModal = useCallback(() => {
