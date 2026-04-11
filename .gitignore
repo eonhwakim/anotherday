@@ -42,4 +42,6 @@ yarn-error.*
 
 .env
 
-.env
+# docs — README.md 제외한 모든 마크다운 파일
+*.md
+!README.md
