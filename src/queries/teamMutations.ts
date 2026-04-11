@@ -64,7 +64,6 @@ export function useJoinTeamMutation(userId?: string) {
 
       useTeamStore.setState({
         currentTeam: team,
-        members: [],
       });
 
       await queryClient.invalidateQueries({
@@ -81,7 +80,6 @@ function removeTeamFromStore(teamId: string) {
       teams,
       currentTeam:
         state.currentTeam?.id === teamId ? (teams[0] ?? null) : state.currentTeam,
-      members: state.currentTeam?.id === teamId ? [] : state.members,
     };
   });
 }
