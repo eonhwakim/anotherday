@@ -13,21 +13,17 @@ export function useSaveMonthlyResolutionMutation() {
     onSuccess: async (_, variables) => {
       const { userId, yearMonth, teamId } = variables;
 
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.monthly.resolution(userId, yearMonth, teamId ?? null),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.stats.monthlySummary(userId, yearMonth, teamId ?? undefined),
-        }),
-        ...(teamId
-          ? [
-              queryClient.invalidateQueries({
-                queryKey: queryKeys.teams.detailMonth(teamId, yearMonth),
-              }),
-            ]
-          : []),
-      ]);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.monthly.resolution(userId, yearMonth, teamId ?? null),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.stats.monthlySummary(userId, yearMonth, teamId ?? undefined),
+      });
+      if (teamId) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.teams.detailMonth(teamId, yearMonth),
+        });
+      }
     },
   });
 }
@@ -40,17 +36,15 @@ export function useSaveMonthlyRetrospectiveMutation() {
     onSuccess: async (_, variables) => {
       const { userId, yearMonth, teamId } = variables;
 
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.monthly.retrospective(userId, yearMonth, teamId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.stats.monthlySummary(userId, yearMonth, teamId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.teams.detailMonth(teamId, yearMonth),
-        }),
-      ]);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.monthly.retrospective(userId, yearMonth, teamId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.stats.monthlySummary(userId, yearMonth, teamId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.teams.detailMonth(teamId, yearMonth),
+      });
     },
   });
 }

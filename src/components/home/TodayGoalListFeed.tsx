@@ -25,8 +25,10 @@ import DynamicBadge, {
   HOME_BADGE_POP_TRANSLATE_Y_PEAK_RATIO,
 } from '../ui/MissionBadge';
 import { useAuthStore } from '../../stores/authStore';
+import { useTeamStore } from '../../stores/teamStore';
 import { handleServiceError } from '../../lib/serviceError';
 import { useToggleReactionMutation } from '../../queries/statsMutations';
+import dayjs from '../../lib/dayjs';
 
 type BadgeState = 'START' | 'ALL_CLEAR' | 'FINISHER' | 'LEADER';
 
@@ -560,7 +562,13 @@ function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardP
   const animSlide = animVal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
   const { width: screenWidth } = useWindowDimensions();
   const user = useAuthStore((s) => s.user);
-  const toggleReactionMutation = useToggleReactionMutation();
+  const currentTeamId = useTeamStore((s) => s.currentTeam?.id);
+  const todayStr = dayjs().format('YYYY-MM-DD');
+  const toggleReactionMutation = useToggleReactionMutation({
+    teamId: currentTeamId,
+    userId: user?.id,
+    date: todayStr,
+  });
   const {
     cardWidth,
     carouselPanResponder,

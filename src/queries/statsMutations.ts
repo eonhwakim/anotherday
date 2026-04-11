@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { CheckinWithGoal, MemberProgress, ReactionWithUser, User } from '../types/domain';
 import { toggleReaction } from '../services/statsService';
+import { queryKeys } from './queryKeys';
 
 function patchCheckinReaction(
   checkin: CheckinWithGoal,
@@ -38,16 +39,17 @@ function patchMemberProgressCache(
   queryClient: QueryClient,
   currentUser: Pick<User, 'id' | 'nickname' | 'profile_image_url'>,
   checkinId: string,
+  queryKey: readonly unknown[],
 ) {
   const previous = queryClient.getQueriesData<MemberProgress[]>({
-    queryKey: ['stats', 'member-progress'],
-    exact: false,
+    queryKey,
+    exact: true,
   });
 
   queryClient.setQueriesData<MemberProgress[]>(
     {
-      queryKey: ['stats', 'member-progress'],
-      exact: false,
+      queryKey,
+      exact: true,
     },
     (existing) => {
       if (!existing) return existing;
@@ -64,8 +66,14 @@ function patchMemberProgressCache(
   return previous;
 }
 
-export function useToggleReactionMutation() {
+export function useToggleReactionMutation(params: {
+  teamId?: string;
+  userId?: string;
+  date: string;
+}) {
+  const { teamId, userId, date } = params;
   const queryClient = useQueryClient();
+  const memberProgressQueryKey = queryKeys.stats.memberProgress(teamId, userId, date);
 
   return useMutation({
     mutationFn: async ({
@@ -79,18 +87,25 @@ export function useToggleReactionMutation() {
       return toggleReaction(checkin.id, user.id, isReacted);
     },
     onMutate: async ({ checkin, user }) => {
-      const previousMemberProgress = patchMemberProgressCache(queryClient, user, checkin.id);
+      const previousMemberProgress = patchMemberProgressCache(
+        queryClient,
+        user,
+        checkin.id,
+        memberProgressQueryKey,
+      );
       return { previousMemberProgress };
+    },
+    onSuccess: async () => {
+      if (!userId) return;
+
+      await queryClient.invalidateQueries({
+        queryKey: memberProgressQueryKey,
+        exact: true,
+      });
     },
     onError: (_error, _variables, context) => {
       context?.previousMemberProgress?.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
-      });
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ['stats', 'member-progress'],
-        exact: false,
       });
     },
   });
