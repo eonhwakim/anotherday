@@ -8,6 +8,7 @@ import {
   extendGoalsForNewMonth,
   removeTeamGoal,
 } from '../services/goalService';
+import { uploadCheckinPhoto } from '../services/checkinService';
 import type { Goal } from '../types/domain';
 import { queryKeys } from './queryKeys';
 
@@ -67,6 +68,54 @@ export function useCreateCheckinMutation(params: {
         userId,
         teamId,
         date: variables.date ?? date,
+      });
+    },
+  });
+}
+
+export function useCreatePhotoCheckinMutation(params: {
+  userId?: string;
+  teamId?: string;
+  date?: string;
+}) {
+  const { teamId, date = dayjs().format('YYYY-MM-DD') } = params;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (variables: {
+      userId: string;
+      goalId: string;
+      imageUri: string;
+      date?: string;
+      shouldAbort?: () => boolean;
+    }) => {
+      const checkinDate = variables.date ?? date;
+      const photoUrl = await uploadCheckinPhoto(variables.userId, variables.imageUri);
+
+      if (variables.shouldAbort?.()) {
+        return { status: 'cancelled' as const, date: checkinDate };
+      }
+
+      const created = await createCheckin({
+        userId: variables.userId,
+        goalId: variables.goalId,
+        date: checkinDate,
+        photoUrl,
+      });
+
+      return {
+        status: created ? ('created' as const) : ('duplicate' as const),
+        date: checkinDate,
+      };
+    },
+    onSuccess: async (result, variables) => {
+      if (result.status !== 'created') return;
+
+      await invalidateCheckinRelatedQueries({
+        queryClient,
+        userId: variables.userId,
+        teamId,
+        date: result.date,
       });
     },
   });

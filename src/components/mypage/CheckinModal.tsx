@@ -3,11 +3,15 @@ import { View, Text, StyleSheet, Alert, ActivityIndicator, ScrollView } from 're
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, Checkin } from '../../types/domain';
 import { useAuthStore } from '../../stores/authStore';
-import { takePhoto, uploadCheckinPhoto } from '../../services/checkinService';
+import { takePhoto } from '../../services/checkinService';
 import { colors } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
 import { handleServiceError } from '../../lib/serviceError';
-import { useDeleteCheckinMutation, useCreateCheckinMutation } from '../../queries/goalMutations';
+import {
+  useDeleteCheckinMutation,
+  useCreateCheckinMutation,
+  useCreatePhotoCheckinMutation,
+} from '../../queries/goalMutations';
 import { useTeamStore } from '../../stores/teamStore';
 import Chip from '../ui/Chip';
 import BaseCard from '../ui/BaseCard';
@@ -38,6 +42,10 @@ export default function CheckinModal({
   const user = useAuthStore((s) => s.user);
   const currentTeamId = useTeamStore((s) => s.currentTeam?.id);
   const createCheckinMutation = useCreateCheckinMutation({
+    userId: user?.id,
+    teamId: currentTeamId,
+  });
+  const createPhotoCheckinMutation = useCreatePhotoCheckinMutation({
     userId: user?.id,
     teamId: currentTeamId,
   });
@@ -135,35 +143,26 @@ export default function CheckinModal({
 
     try {
       await runWithLoading(async () => {
-        // 1) 사진 업로드 — 실패 시 throw
-        let photoUrl: string;
-        try {
-          photoUrl = await uploadCheckinPhoto(user.id, imageUri);
-        } catch (uploadErr) {
-          console.error('[Checkin] 사진 업로드 실패:', uploadErr);
-          Alert.alert(
-            '사진 업로드 실패',
-            `사진을 서버에 저장하지 못했습니다.\n${uploadErr instanceof Error ? uploadErr.message : '네트워크 상태를 확인해주세요.'}`,
-          );
+        const result = await createPhotoCheckinMutation.mutateAsync({
+          userId: user.id,
+          goalId,
+          imageUri,
+          date: today,
+          shouldAbort: () => uploadCancelledRef.current,
+        });
+
+        if (result.status === 'cancelled') {
           return;
         }
 
-        // 2) 업로드 완료 전에 모달이 닫힌 경우 체크인 생성 중단
-        if (uploadCancelledRef.current) return;
-
-        // 3) 사진 URL이 확보된 경우에만 체크인 생성
-        const success = await createCheckinMutation.mutateAsync({
-          userId: user.id,
-          goalId,
-          date: today,
-          photoUrl,
-        });
-
-        if (success) {
+        if (result.status === 'created') {
           Alert.alert('인증 완료!', '사진 인증이 완료되었어요.');
           await refreshAfterMutation();
           onClose();
-        } else {
+          return;
+        }
+
+        if (result.status === 'duplicate') {
           Alert.alert('알림', '이미 인증이 완료된 목표입니다.');
         }
       });
