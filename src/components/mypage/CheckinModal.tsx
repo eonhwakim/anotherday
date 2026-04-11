@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, Checkin } from '../../types/domain';
@@ -38,10 +38,15 @@ export default function CheckinModal({
   const deleteCheckin = useGoalStore((s) => s.deleteCheckin);
 
   const [isLoading, setIsLoading] = useState(false);
+  // 모달이 닫히면 true — 업로드 완료 후 체크인 생성을 막기 위한 플래그
+  const uploadCancelledRef = useRef(false);
 
   useEffect(() => {
     if (visible) {
       setIsLoading(false);
+      uploadCancelledRef.current = false;
+    } else {
+      uploadCancelledRef.current = true;
     }
   }, [visible]);
 
@@ -113,15 +118,27 @@ export default function CheckinModal({
       return;
     }
 
+    uploadCancelledRef.current = false;
+
     try {
       await runWithLoading(async () => {
-        let photoUrl: string | null = null;
+        // 1) 사진 업로드 — 실패 시 throw
+        let photoUrl: string;
         try {
           photoUrl = await uploadCheckinPhoto(user.id, imageUri);
         } catch (uploadErr) {
-          console.warn('[Checkin] 사진 업로드 실패, 사진 없이 진행:', uploadErr);
+          console.error('[Checkin] 사진 업로드 실패:', uploadErr);
+          Alert.alert(
+            '사진 업로드 실패',
+            `사진을 서버에 저장하지 못했습니다.\n${uploadErr instanceof Error ? uploadErr.message : '네트워크 상태를 확인해주세요.'}`,
+          );
+          return;
         }
 
+        // 2) 업로드 완료 전에 모달이 닫힌 경우 체크인 생성 중단
+        if (uploadCancelledRef.current) return;
+
+        // 3) 사진 URL이 확보된 경우에만 체크인 생성
         const success = await createCheckin({
           userId: user.id,
           goalId,
@@ -130,10 +147,7 @@ export default function CheckinModal({
         });
 
         if (success) {
-          Alert.alert(
-            '인증 완료!',
-            photoUrl ? '사진 인증이 완료되었어요.' : '인증이 완료되었어요. (사진 업로드 실패)',
-          );
+          Alert.alert('인증 완료!', '사진 인증이 완료되었어요.');
           await refreshAfterMutation();
           onClose();
         } else {
