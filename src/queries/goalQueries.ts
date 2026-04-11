@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import dayjs from '../lib/dayjs';
 import {
+  fetchExtendableGoalsForMonth,
   fetchMyGoals,
   fetchMyGoalsForMonth,
   fetchTeamGoals,
@@ -44,6 +45,17 @@ export function useMyGoalsForMonthQuery(userId?: string, yearMonth?: string) {
   });
 }
 
+export function useExtendableGoalsForMonthQuery(userId?: string, yearMonth?: string) {
+  return useQuery({
+    queryKey:
+      userId && yearMonth
+        ? queryKeys.goals.extendableMonth(userId, yearMonth)
+        : ['goals', 'extendable-month', null, yearMonth ?? null],
+    queryFn: () => fetchExtendableGoalsForMonth(userId!, yearMonth!),
+    enabled: !!userId && !!yearMonth,
+  });
+}
+
 export function useWeeklyDoneCountsQuery(params: {
   userId?: string;
   goalIds: string[];
@@ -53,11 +65,12 @@ export function useWeeklyDoneCountsQuery(params: {
   const { userId, goalIds, weekStart, weekEnd } = params;
   const sortedGoalIds = [...goalIds].sort();
   const effectiveWeekStart = weekStart ?? dayjs().startOf('isoWeek').format('YYYY-MM-DD');
+  const effectiveWeekEnd = weekEnd ?? dayjs(effectiveWeekStart).endOf('isoWeek').format('YYYY-MM-DD');
 
   return useQuery({
     queryKey: userId
-      ? queryKeys.goals.weeklyDoneCounts(userId, effectiveWeekStart, sortedGoalIds)
-      : ['goals', 'weekly-done-counts', null, effectiveWeekStart],
+      ? queryKeys.goals.weeklyDoneCounts(userId, effectiveWeekStart, effectiveWeekEnd, sortedGoalIds)
+      : ['goals', 'weekly-done-counts', null, effectiveWeekStart, effectiveWeekEnd],
     queryFn: async () => {
       if (!userId || sortedGoalIds.length === 0) {
         return {} as Record<string, number>;
@@ -66,8 +79,8 @@ export function useWeeklyDoneCountsQuery(params: {
       return fetchWeeklyDoneCountsForGoals({
         userId,
         goalIds: sortedGoalIds,
-        weekStart,
-        weekEnd,
+        weekStart: effectiveWeekStart,
+        weekEnd: effectiveWeekEnd,
       });
     },
     enabled: !!userId,

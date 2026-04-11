@@ -26,9 +26,7 @@ import { scheduleGoalReminderNotification } from '../../utils/notifications';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import {
-  fetchExtendableGoalsForMonth,
-} from '../../services/goalService';
-import {
+  useExtendableGoalsForMonthQuery,
   useMyGoalsQuery,
   useTeamGoalsQuery,
   useTodayCheckinsQuery,
@@ -81,7 +79,6 @@ export default function HomeScreen() {
   // const [showGuideModal, setShowGuideModal] = React.useState(false);
   const [showMonthlyPrompt, setShowMonthlyPrompt] = React.useState(false);
   const [promptNewMonth, setPromptNewMonth] = React.useState<string>('');
-  const [extendableGoals, setExtendableGoals] = React.useState<typeof myGoals>([]);
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
   const [photoCarouselDragging, setPhotoCarouselDragging] = React.useState(false);
 
@@ -121,6 +118,8 @@ export default function HomeScreen() {
     userId: user?.id,
     goalIds: weeklyGoalIds,
   });
+  const { data: extendableGoals = [], isFetched: isExtendableGoalsFetched } =
+    useExtendableGoalsForMonthQuery(user?.id, promptNewMonth || undefined);
 
   // ── 인증 모달용: 활성+비활성 모두 포함 (패스 토글 가능)
   const goalsForCheckinModal = React.useMemo(() => {
@@ -199,12 +198,7 @@ export default function HomeScreen() {
         const alreadyShown = await AsyncStorage.getItem(storageKey);
         if (alreadyShown) return;
 
-        const targets = await fetchExtendableGoalsForMonth(user.id, matchedMonth);
-        if (targets.length === 0) return;
-
-        setExtendableGoals(targets);
         setPromptNewMonth(matchedMonth);
-        setTimeout(() => setShowMonthlyPrompt(true), 800);
       } catch (e) {
         console.error('[MonthlyPrompt] Error:', e);
       }
@@ -212,6 +206,18 @@ export default function HomeScreen() {
 
     checkMonthlyPrompt();
   }, [getMonthlyPromptStorageKey, user]);
+
+  React.useEffect(() => {
+    if (!promptNewMonth || showMonthlyPrompt || !isExtendableGoalsFetched) return;
+
+    if (extendableGoals.length === 0) {
+      setPromptNewMonth('');
+      return;
+    }
+
+    const timer = setTimeout(() => setShowMonthlyPrompt(true), 800);
+    return () => clearTimeout(timer);
+  }, [extendableGoals.length, isExtendableGoalsFetched, promptNewMonth, showMonthlyPrompt]);
 
   const handleMonthlyPromptContinue = async () => {
     if (!user || !promptNewMonth) return;
@@ -223,7 +229,7 @@ export default function HomeScreen() {
 
       await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
       setShowMonthlyPrompt(false);
-      setExtendableGoals([]);
+      setPromptNewMonth('');
     } catch (e) {
       handleServiceError(e);
     }
@@ -234,7 +240,7 @@ export default function HomeScreen() {
       await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
     }
     setShowMonthlyPrompt(false);
-    setExtendableGoals([]);
+    setPromptNewMonth('');
   };
 
   // const handleCloseGuide = async (savePreference: boolean) => {

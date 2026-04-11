@@ -14,11 +14,17 @@ export const queryKeys = {
     mine: (userId: string) => ['goals', 'mine', userId] as const,
     mineMonth: (userId: string, yearMonth: string) =>
       ['goals', 'mine-month', userId, yearMonth] as const,
+    extendableMonth: (userId: string, yearMonth: string) =>
+      ['goals', 'extendable-month', userId, yearMonth] as const,
     lastMonth: (userId: string) => ['goals', 'last-month', userId] as const,
     todayCheckins: (userId: string, date: string) =>
       ['goals', 'today-checkins', userId, date] as const,
-    weeklyDoneCounts: (userId: string, weekStart: string, goalIds: string[]) =>
-      ['goals', 'weekly-done-counts', userId, weekStart, ...goalIds] as const,
+    weeklyDoneCounts: (
+      userId: string,
+      weekStart: string,
+      weekEnd: string | null,
+      goalIds: string[],
+    ) => ['goals', 'weekly-done-counts', userId, weekStart, weekEnd, ...goalIds] as const,
   },
   stats: {
     memberProgress: (teamId: string | undefined, userId: string | undefined, date: string) =>
