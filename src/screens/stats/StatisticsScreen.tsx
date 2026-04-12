@@ -186,6 +186,7 @@ export default function StatisticsScreen() {
     <ScreenBackground>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
+          ref={scrollRef}
           style={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}

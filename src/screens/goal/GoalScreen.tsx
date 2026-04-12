@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import {
   View,
@@ -12,9 +12,11 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
+import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { handleServiceError } from '../../lib/serviceError';
@@ -45,6 +47,7 @@ import AddRoutineModal from '../../components/goal/AddRoutineModal';
 import TodayStatsCard from '../../components/goal/TodayStatsCard';
 import GlassModal from '../../components/ui/GlassModal';
 import Input from '../../components/common/Input';
+import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 
 function getOwningMonthForDate(dateStr: string): string {
   const date = dayjs(dateStr);
@@ -66,6 +69,9 @@ function getOwningMonthForDate(dateStr: string): string {
 }
 
 export default function GoalScreen() {
+  const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
+  const scrollRef = useRef<ScrollView>(null);
+  useTabDoubleTapScrollTop({ navigation, scrollRef });
   const { user } = useAuthStore();
   const { currentTeam } = useTeamStore();
   const endTeamGoalMutation = useEndTeamGoalMutation({
@@ -375,6 +381,7 @@ export default function GoalScreen() {
     <ScreenBackground>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
+          ref={scrollRef}
           style={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
