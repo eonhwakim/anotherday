@@ -7,6 +7,7 @@ import Badge from '../ui/Badge';
 import dayjs from '../../lib/dayjs';
 import { colors, radius, spacing, typography } from '../../design/recipes';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
+import CircularProgress from '../ui/CircularProgress';
 
 interface GoalSettingProps {
   teamGoals: Goal[];
@@ -62,6 +63,56 @@ function isMergedWeekGoalForMonth(ug: UserGoal, yearMonth?: string): boolean {
     (!goalEnd || !goalEnd.isBefore(monthStart, 'day'));
 
   return overlapsWindow && !overlapsCalendarMonth;
+}
+
+function getGoalProgress(params: {
+  userGoal?: UserGoal;
+  goalId: string;
+  weeklyDoneCounts: Record<string, number>;
+  todayCheckedInGoalIds: Set<string>;
+}): number {
+  const { userGoal, goalId, weeklyDoneCounts, todayCheckedInGoalIds } = params;
+  if (!userGoal) return 0;
+
+  if (userGoal.frequency === 'weekly_count') {
+    const targetCount = userGoal.target_count ?? 0;
+    if (targetCount <= 0) return 0;
+    const doneCount = weeklyDoneCounts[goalId] ?? 0;
+    return Math.min(100, Math.round((doneCount / targetCount) * 100));
+  }
+
+  return todayCheckedInGoalIds.has(goalId) ? 100 : 0;
+}
+
+function getGoalProgressColor(progress: number, isEnded: boolean): string {
+  if (isEnded) return colors.textMuted;
+  if (progress >= 100) return colors.successBright;
+  if (progress > 0) return colors.primary;
+  return colors.warning;
+}
+
+function getGoalProgressBadgeTextColor(progress: number, isEnded: boolean): string {
+  if (isEnded) return colors.white;
+  if (progress <= 0) return colors.text;
+  return colors.white;
+}
+
+function getGoalProgressLabel(params: {
+  userGoal?: UserGoal;
+  goalId: string;
+  weeklyDoneCounts: Record<string, number>;
+  todayCheckedInGoalIds: Set<string>;
+}): string {
+  const { userGoal, goalId, weeklyDoneCounts, todayCheckedInGoalIds } = params;
+  if (!userGoal) return '-';
+
+  if (userGoal.frequency === 'weekly_count') {
+    const doneCount = weeklyDoneCounts[goalId] ?? 0;
+    const targetCount = userGoal.target_count ?? 1;
+    return `${doneCount}/${targetCount}`;
+  }
+
+  return `${todayCheckedInGoalIds.has(goalId) ? 1 : 0}/1`;
 }
 
 export default function GoalSetting({
@@ -212,13 +263,13 @@ export default function GoalSetting({
         ) : (
           <>
             <View style={styles.goalSection}>
-              {/* <Ionicons name="barbell-outline" size={20} color={colors.primary} /> */}
+              <Ionicons name="barbell-outline" size={20} color={colors.primary} />
               <Text style={styles.sectionTitle}>등록된 루틴 </Text>
               <Text style={styles.sectionSubtitle}>(길게 누름: 종료/삭제)</Text>
             </View>
 
             <View style={styles.goalList}>
-              {sortedGoals.map((goal, index) => {
+              {sortedGoals.map((goal) => {
                 const userGoal = getMyGoal(goal.id);
                 const isEnded =
                   !!userGoal &&
@@ -226,6 +277,22 @@ export default function GoalSetting({
                     (!!userGoal.end_date && userGoal.end_date < todayStr));
                 const isMergedWeekGoal =
                   !!userGoal && isMergedWeekGoalForMonth(userGoal, yearMonth);
+                const progress = getGoalProgress({
+                  userGoal,
+                  goalId: goal.id,
+                  weeklyDoneCounts,
+                  todayCheckedInGoalIds,
+                });
+                const progressLabel = getGoalProgressLabel({
+                  userGoal,
+                  goalId: goal.id,
+                  weeklyDoneCounts,
+                  todayCheckedInGoalIds,
+                });
+                const progressPeriodLabel =
+                  userGoal?.frequency === 'weekly_count' ? '이번주' : '오늘';
+                const progressColor = getGoalProgressColor(progress, isEnded);
+                const progressBadgeTextColor = getGoalProgressBadgeTextColor(progress, isEnded);
 
                 return (
                   <TouchableOpacity
@@ -241,8 +308,22 @@ export default function GoalSetting({
                       style={styles.goalRowFrame}
                       contentStyle={styles.goalRowContentBox}
                     >
-                      <View style={styles.goalNumIcon}>
-                        <Text style={styles.goalNumText}>{index + 1}</Text>
+                      <View style={styles.goalLeading}>
+                        <View style={styles.goalBadge}>
+                          <Text style={styles.goalText}>{progressPeriodLabel}</Text>
+                        </View>
+                        <CircularProgress
+                          size={42}
+                          strokeWidth={4}
+                          progress={progress}
+                          color={progressColor}
+                          trackColor={isEnded ? 'rgba(26,26,26,0.08)' : '#F3F4F6'}
+                        />
+                        <View style={[styles.goalIndexBadge, { backgroundColor: progressColor }]}>
+                          <Text style={[styles.goalIndexText, { color: progressBadgeTextColor }]}>
+                            {progressLabel}
+                          </Text>
+                        </View>
                       </View>
                       <View style={styles.goalRowContent}>
                         <View style={styles.goalTextWrap}>
@@ -454,20 +535,40 @@ const styles = StyleSheet.create({
     gap: spacing[2] + 2,
     marginBottom: spacing[4],
   },
-  goalNumIcon: {
-    width: 18,
-    height: 18,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.brandMid,
+  goalLeading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  goalBadge: {
+    position: 'absolute',
+    top: -14,
+    minWidth: 16,
+    textAlign: 'center',
+    height: 16,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  goalNumText: {
-    fontSize: 14,
+  goalText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  goalIndexBadge: {
+    position: 'absolute',
+    bottom: -6,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goalIndexText: {
+    fontSize: 10,
     fontWeight: '700',
-    color: colors.white,
   },
   goalRowFrame: {
     marginTop: 0,
@@ -475,9 +576,11 @@ const styles = StyleSheet.create({
   goalRowContentBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
-    paddingVertical: spacing[3] + 2,
-    paddingHorizontal: spacing[4],
+    gap: spacing[4],
+    paddingTop: spacing[3],
+    paddingBottom: spacing[2],
+    paddingRight: spacing[3],
+    paddingLeft: spacing[2],
   },
   goalRowContent: {
     flexDirection: 'row',
