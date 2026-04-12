@@ -2,13 +2,17 @@ import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-q
 import dayjs from '../lib/dayjs';
 import {
   addGoal,
+  checkCheckinExists,
   createCheckin,
   deleteCheckin,
   endTeamGoal,
   extendGoalsForNewMonth,
   removeTeamGoal,
 } from '../services/goalService';
-import { uploadCheckinPhoto } from '../services/checkinService';
+import {
+  deleteCheckinPhoto,
+  uploadCheckinPhotoAsset,
+} from '../services/checkinService';
 import type { Goal } from '../types/domain';
 import { queryKeys } from './queryKeys';
 
@@ -85,26 +89,51 @@ export function useCreatePhotoCheckinMutation(params: {
       goalId: string;
       imageUri: string;
       date?: string;
-      shouldAbort?: () => boolean;
     }) => {
       const checkinDate = variables.date ?? date;
-      const photoUrl = await uploadCheckinPhoto(variables.userId, variables.imageUri);
-
-      if (variables.shouldAbort?.()) {
-        return { status: 'cancelled' as const, date: checkinDate };
-      }
-
-      const created = await createCheckin({
+      const alreadyExists = await checkCheckinExists({
         userId: variables.userId,
         goalId: variables.goalId,
         date: checkinDate,
-        photoUrl,
       });
 
-      return {
-        status: created ? ('created' as const) : ('duplicate' as const),
-        date: checkinDate,
+      if (alreadyExists) {
+        return { status: 'duplicate' as const, date: checkinDate };
+      }
+
+      const uploadedPhoto = await uploadCheckinPhotoAsset(variables.userId, variables.imageUri);
+
+      const cleanupUploadedPhoto = async () => {
+        try {
+          await deleteCheckinPhoto(uploadedPhoto.objectPath);
+        } catch (cleanupError) {
+          console.warn(
+            '[createPhotoCheckin] Failed to clean up uploaded photo:',
+            cleanupError instanceof Error ? cleanupError.message : cleanupError,
+          );
+        }
       };
+
+      try {
+        const created = await createCheckin({
+          userId: variables.userId,
+          goalId: variables.goalId,
+          date: checkinDate,
+          photoUrl: uploadedPhoto.publicUrl,
+        });
+
+        if (!created) {
+          await cleanupUploadedPhoto();
+        }
+
+        return {
+          status: created ? ('created' as const) : ('duplicate' as const),
+          date: checkinDate,
+        };
+      } catch (error) {
+        await cleanupUploadedPhoto();
+        throw error;
+      }
     },
     onSuccess: async (result, variables) => {
       if (result.status !== 'created') return;

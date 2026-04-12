@@ -25,6 +25,7 @@ export interface BottomSheetModalProps {
   blurIntensity?: number;
   maxHeight?: DimensionValue;
   showHandle?: boolean;
+  disableClose?: boolean;
 }
 
 export default function BottomSheetModal({
@@ -35,14 +36,20 @@ export default function BottomSheetModal({
   blurIntensity = 30,
   maxHeight = '75%',
   showHandle = true,
+  disableClose = false,
 }: BottomSheetModalProps) {
+  const handleClose = () => {
+    if (disableClose) return;
+    onClose();
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <TouchableWithoutFeedback onPress={onClose} accessible={false}>
+        <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
           <View style={styles.overlayBg} />
         </TouchableWithoutFeedback>
         <SafeBlurView intensity={blurIntensity} tint="light" style={[styles.sheet, { maxHeight }]}>
@@ -57,10 +64,11 @@ export default function BottomSheetModal({
               )}
             </View>
             <TouchableOpacity
-              onPress={onClose}
+              onPress={handleClose}
               style={styles.closeBtn}
               accessibilityRole="button"
               accessibilityLabel="닫기"
+              disabled={disableClose}
             >
               <Ionicons name="close" size={22} color={colors.textSecondary} />
             </TouchableOpacity>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, Checkin } from '../../types/domain';
@@ -55,17 +55,6 @@ export default function CheckinModal({
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  // 모달이 닫히면 true — 업로드 완료 후 체크인 생성을 막기 위한 플래그
-  const uploadCancelledRef = useRef(false);
-
-  useEffect(() => {
-    if (visible) {
-      setIsLoading(false);
-      uploadCancelledRef.current = false;
-    } else {
-      uploadCancelledRef.current = true;
-    }
-  }, [visible]);
 
   const today = dayjs().format('YYYY-MM-DD');
   const formattedDate = dayjs(today).format('M월 D일 (ddd)');
@@ -121,25 +110,17 @@ export default function CheckinModal({
   const handleSuccess = async (goalId: string) => {
     if (!user) return;
 
-    // 1) 카메라 촬영 (모달 외부에서 실행 — 카메라 UI가 먼저 나와야 함)
     let imageUri: string | null = null;
     try {
       imageUri = await takePhoto();
     } catch (cameraErr) {
-      console.error('[Checkin] 카메라 오류:', cameraErr);
-      Alert.alert(
-        '카메라 오류',
-        '카메라를 실행할 수 없습니다.\n앱 설정에서 카메라 권한을 확인해주세요.',
-      );
+      handleServiceError(cameraErr);
       return;
     }
 
     if (!imageUri) {
-      // 사용자가 취소했거나 권한 없음
       return;
     }
-
-    uploadCancelledRef.current = false;
 
     try {
       await runWithLoading(async () => {
@@ -148,12 +129,7 @@ export default function CheckinModal({
           goalId,
           imageUri,
           date: today,
-          shouldAbort: () => uploadCancelledRef.current,
         });
-
-        if (result.status === 'cancelled') {
-          return;
-        }
 
         if (result.status === 'created') {
           Alert.alert('인증 완료!', '사진 인증이 완료되었어요.');
@@ -172,7 +148,12 @@ export default function CheckinModal({
   };
 
   return (
-    <BottomSheetModal visible={visible} onClose={onClose} title={formattedDate}>
+    <BottomSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={formattedDate}
+      disableClose={isLoading}
+    >
       {isLoading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={colors.primaryLight} />

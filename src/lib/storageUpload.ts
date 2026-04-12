@@ -37,16 +37,36 @@ export async function prepareImageUpload(imageUri: string): Promise<{
   extension: string;
   size: number;
 }> {
-  const response = await fetch(imageUri);
-  if (!response.ok) {
+  let response: Response;
+  try {
+    response = await fetch(imageUri);
+  } catch (e) {
     throw new ServiceError(
       '이미지 파일을 읽지 못했습니다.',
       'prepareImageUpload',
-      `fetch failed for ${imageUri}`,
+      `fetch failed for ${imageUri}: ${e instanceof Error ? e.message : 'unknown error'}`,
+    );
+  }
+
+  // React Native에서 file:// URI를 fetch할 때 response.ok가 false(status 0)일 수 있으므로
+  // status가 0이 아닌 에러 상태(400, 500 등)일 때만 에러 처리
+  if (!response.ok && response.status !== 0) {
+    throw new ServiceError(
+      '이미지 파일을 읽지 못했습니다.',
+      'prepareImageUpload',
+      `fetch returned status ${response.status} for ${imageUri}`,
     );
   }
 
   const blob = await response.blob();
+  if (blob.size === 0) {
+    throw new ServiceError(
+      '이미지 파일을 읽지 못했습니다.',
+      'prepareImageUpload',
+      `file size is 0 for ${imageUri}`,
+    );
+  }
+
   const contentType = inferMimeType(imageUri, blob.type);
   if (!contentType) {
     throw new ServiceError(
@@ -64,8 +84,27 @@ export async function prepareImageUpload(imageUri: string): Promise<{
     );
   }
 
+  let arrayBuffer: ArrayBuffer;
+  if (typeof blob.arrayBuffer === 'function') {
+    arrayBuffer = await blob.arrayBuffer();
+  } else {
+    // React Native 환경에서 blob.arrayBuffer()가 없는 경우 FileReader 사용
+    arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result instanceof ArrayBuffer) {
+          resolve(reader.result);
+        } else {
+          reject(new Error('FileReader did not return an ArrayBuffer'));
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(blob);
+    });
+  }
+
   return {
-    arrayBuffer: await blob.arrayBuffer(),
+    arrayBuffer,
     contentType,
     extension: MIME_TO_EXTENSION[contentType],
     size: blob.size,

@@ -334,6 +334,30 @@ export async function fetchTodayCheckins(userId: string): Promise<Checkin[]> {
   return (data ?? []) as Checkin[];
 }
 
+export async function checkCheckinExists(params: {
+  userId: string;
+  goalId: string;
+  date?: string;
+}): Promise<boolean> {
+  const { userId, goalId, date } = params;
+  const actorUserId = await requireAuthenticatedUserId(userId);
+  const checkinDate = date ?? dayjs().format('YYYY-MM-DD');
+
+  const { data: existing, error } = await supabase
+    .from('checkins')
+    .select('id')
+    .eq('user_id', actorUserId)
+    .eq('goal_id', goalId)
+    .eq('date', checkinDate)
+    .maybeSingle();
+
+  if (error) {
+    throw new ServiceError('체크인 상태를 확인하지 못했습니다.', 'checkCheckinExists', error.message);
+  }
+
+  return !!existing;
+}
+
 export async function createCheckin(params: {
   userId: string;
   goalId: string;
@@ -345,20 +369,12 @@ export async function createCheckin(params: {
   const { userId, goalId, date, photoUrl, memo, status = 'done' } = params;
   const actorUserId = await requireAuthenticatedUserId(userId);
   const checkinDate = date ?? dayjs().format('YYYY-MM-DD');
-
-  const { data: existing, error: existingError } = await supabase
-    .from('checkins')
-    .select('id')
-    .eq('user_id', actorUserId)
-    .eq('goal_id', goalId)
-    .eq('date', checkinDate)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new ServiceError('체크인 처리에 실패했습니다.', 'createCheckin', existingError.message);
-  }
-
-  if (existing) return false;
+  const alreadyExists = await checkCheckinExists({
+    userId: actorUserId,
+    goalId,
+    date: checkinDate,
+  });
+  if (alreadyExists) return false;
 
   const { error } = await supabase.from('checkins').insert({
     user_id: actorUserId,

@@ -4,7 +4,6 @@ import { STORAGE_BUCKETS, STORAGE_CACHE_CONTROL } from '../constants/storage';
 import { requireAuthenticatedUserId } from '../lib/auth';
 import { buildUploadObjectPath, prepareImageUpload } from '../lib/storageUpload';
 import { ServiceError } from '../lib/serviceError';
-import { Alert } from 'react-native';
 
 // ─── 사진 인증 관련 서비스 ─────────────────────────────────────
 
@@ -12,8 +11,11 @@ import { Alert } from 'react-native';
 export async function pickImage(): Promise<string | null> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert('권한 필요', '사진 라이브러리 접근 권한이 필요합니다.');
-    return null;
+    throw new ServiceError(
+      '사진 라이브러리 권한이 필요합니다. 앱 설정에서 권한을 허용해주세요.',
+      'pickImage',
+      'media library permission denied',
+    );
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -30,37 +32,19 @@ export async function pickImage(): Promise<string | null> {
   return result.assets[0].uri;
 }
 
-/** 카메라로 사진 촬영 (카메라 불가 시 갤러리 fallback) */
+/** 카메라로 사진 촬영 */
 export async function takePhoto(): Promise<string | null> {
-  // 1) 카메라 먼저 시도
-  try {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status === 'granted') {
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-      });
-
-      if (result.canceled || !result.assets?.[0]) {
-        return null;
-      }
-      return result.assets[0].uri;
-    }
-  } catch (e) {
-    console.warn('[takePhoto] 카메라 사용 불가, 갤러리로 전환:', e instanceof Error ? e.message : e);
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') {
+    throw new ServiceError(
+      '카메라 권한이 필요합니다. 앱 설정에서 카메라 권한을 허용해주세요.',
+      'takePhoto',
+      'camera permission denied',
+    );
   }
 
-  // 2) 카메라 사용 불가 → 갤러리에서 사진 선택
   try {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('권한 필요', '사진 라이브러리 접근 권한이 필요합니다.');
-      return null;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+    const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
@@ -70,13 +54,12 @@ export async function takePhoto(): Promise<string | null> {
       return null;
     }
     return result.assets[0].uri;
-  } catch (e2) {
-    console.error('[takePhoto] 갤러리도 실행 실패:', e2);
-    Alert.alert(
-      '오류',
-      '카메라와 갤러리 모두 사용할 수 없습니다.\n앱 설정에서 권한을 확인해주세요.',
+  } catch (error) {
+    throw new ServiceError(
+      '카메라를 실행하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      'takePhoto',
+      error instanceof Error ? error.message : 'camera launch failed',
     );
-    return null;
   }
 }
 
@@ -91,15 +74,23 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
-/** Supabase Storage에 이미지 업로드 후 public URL 반환 — 실패 시 throw */
-export async function uploadCheckinPhoto(userId: string, imageUri: string): Promise<string> {
+export interface UploadedCheckinPhoto {
+  objectPath: string;
+  publicUrl: string;
+}
+
+/** Supabase Storage에 이미지 업로드 후 파일 경로와 public URL 반환 */
+export async function uploadCheckinPhotoAsset(
+  userId: string,
+  imageUri: string,
+): Promise<UploadedCheckinPhoto> {
   const actorUserId = await requireAuthenticatedUserId(userId);
   const { arrayBuffer, contentType, extension } = await prepareImageUpload(imageUri);
-  const fileName = buildUploadObjectPath(actorUserId, `${Date.now()}.${extension}`);
+  const objectPath = buildUploadObjectPath(actorUserId, `${Date.now()}.${extension}`);
 
   try {
     const { error } = await withTimeout(
-      supabase.storage.from(STORAGE_BUCKETS.CHECKIN_PHOTOS).upload(fileName, arrayBuffer, {
+      supabase.storage.from(STORAGE_BUCKETS.CHECKIN_PHOTOS).upload(objectPath, arrayBuffer, {
         contentType,
         cacheControl: STORAGE_CACHE_CONTROL,
         upsert: false,
@@ -117,9 +108,12 @@ export async function uploadCheckinPhoto(userId: string, imageUri: string): Prom
 
     const { data: urlData } = supabase.storage
       .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
-      .getPublicUrl(fileName);
+      .getPublicUrl(objectPath);
 
-    return urlData.publicUrl;
+    return {
+      objectPath,
+      publicUrl: urlData.publicUrl,
+    };
   } catch (error) {
     if (error instanceof ServiceError) {
       throw error;
@@ -129,6 +123,26 @@ export async function uploadCheckinPhoto(userId: string, imageUri: string): Prom
       '사진 업로드에 실패했습니다. 네트워크 상태를 확인해주세요.',
       'uploadCheckinPhoto',
       error instanceof Error ? error.message : 'unknown upload error',
+    );
+  }
+}
+
+/** 이전 호출부 호환용 */
+export async function uploadCheckinPhoto(userId: string, imageUri: string): Promise<string> {
+  const uploaded = await uploadCheckinPhotoAsset(userId, imageUri);
+  return uploaded.publicUrl;
+}
+
+export async function deleteCheckinPhoto(objectPath: string): Promise<void> {
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKETS.CHECKIN_PHOTOS)
+    .remove([objectPath]);
+
+  if (error) {
+    throw new ServiceError(
+      '업로드한 사진 정리에 실패했습니다.',
+      'deleteCheckinPhoto',
+      error.message,
     );
   }
 }

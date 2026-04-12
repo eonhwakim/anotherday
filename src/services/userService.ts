@@ -104,7 +104,6 @@ export async function pickProfileImage(): Promise<string | null> {
     allowsEditing: true,
     aspect: [1, 1],
     quality: 0.7,
-    base64: false, // base64 불필요
   });
 
   if (result.canceled || !result.assets[0]) {
