@@ -233,7 +233,7 @@ export default function GoalSetting({
         <View style={styles.indicatorRow}>
           <Ionicons name="warning" size={14} color={colors.warning} />
           <Text style={[styles.indicatorText, { color: colors.warning }]}>
-            패스권 소진, 남은 날 모두 인증해야 해요!
+            패스 불가능, 남은 날 모두 인증해야 해요!
           </Text>
         </View>
       );
@@ -243,7 +243,7 @@ export default function GoalSetting({
       <View style={styles.indicatorRow}>
         <Ionicons name="ticket-outline" size={14} color={colors.primary} />
         <Text style={[styles.indicatorText, { color: colors.primary }]}>
-          남은 패스권: {remainingPasses}/{totalPasses}
+          남은 패스: {remainingPasses}/{totalPasses}
         </Text>
       </View>
     );
