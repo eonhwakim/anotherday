@@ -53,8 +53,6 @@ export default function StatisticsScreen() {
   const [activeTab, setActiveTab] = useState<StatsPeriod>('weekly');
   const [yearMonth, setYearMonth] = useState(dayjs().format('YYYY-MM'));
   const [weekStart, setWeekStart] = useState(dayjs().startOf('isoWeek').format('YYYY-MM-DD'));
-  const [chartAnimationKey, setChartAnimationKey] = useState(0);
-  const prevWeeklyScopeRef = useRef<StatsScope>(activeScope);
   const isFocused = useIsFocused();
   const weekStartRef = useRef(weekStart);
 
@@ -135,7 +133,6 @@ export default function StatisticsScreen() {
     if (!isFocused) return;
 
     // 팀/나의 전환이나 탭 전환 중에는 유지되어야 하므로 focus 될 때만 강제 리셋
-    prevWeeklyScopeRef.current = 'my';
     setActiveScope('my');
     setActiveTab('weekly');
     const thisWeek = dayjs().startOf('isoWeek').format('YYYY-MM-DD');
@@ -143,18 +140,6 @@ export default function StatisticsScreen() {
       setWeekStart(thisWeek);
     }
   }, [isFocused]);
-
-  /** 나의 통계 ↔ 팀 통계 전환 시 같은 animationKey면 멤버 차트가 묻힌 느낌이 나서 키를 올려 재생 */
-  useEffect(() => {
-    if (activeTab !== 'weekly') {
-      prevWeeklyScopeRef.current = activeScope;
-      return;
-    }
-    if (prevWeeklyScopeRef.current !== activeScope) {
-      setChartAnimationKey((k) => k + 1);
-    }
-    prevWeeklyScopeRef.current = activeScope;
-  }, [activeScope, activeTab]);
 
   const saveReview = async () => {
     if (!user || !currentTeam) return;
@@ -257,7 +242,6 @@ export default function StatisticsScreen() {
                 weekStart={weekStart}
                 onPrevWeek={goToPrevWeek}
                 onNextWeek={goToNextWeek}
-                chartAnimationKey={chartAnimationKey}
                 weeklyCheckins={weeklyCheckins}
                 myWeeklyGoalPeriods={myWeeklyGoalPeriods}
                 goalNameMap={goalNameMap}
@@ -290,9 +274,7 @@ export default function StatisticsScreen() {
                 weekStart={weekStart}
                 onPrevWeek={goToPrevWeek}
                 onNextWeek={goToNextWeek}
-                chartAnimationKey={chartAnimationKey}
                 weeklyTeamData={weeklyTeamData}
-                weeklyCheckins={weeklyCheckins}
                 _myWeeklyGoalPeriods={myWeeklyGoalPeriods}
                 _goalNameMap={goalNameMap}
                 hasTeam={!!currentTeam}

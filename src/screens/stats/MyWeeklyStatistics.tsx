@@ -10,7 +10,6 @@ import type { UserGoal } from '../../types/domain';
 import { getWeekLabelParts, statisticsSharedStyles as sharedStyles } from './statisticsShared';
 
 import BaseCard from '../../components/ui/BaseCard';
-import WeeklyStatusChart, { buildWeeklyStatusDays } from '../../components/stats/WeeklyStatusChart';
 import RoutineStatusCard from '../../components/stats/RoutineStatusCard';
 
 interface Props {
@@ -18,7 +17,6 @@ interface Props {
   weekStart: string;
   onPrevWeek: () => void;
   onNextWeek: () => void;
-  chartAnimationKey: number;
   weeklyCheckins: WeeklyStatsResult['weeklyCheckins'];
   myWeeklyGoalPeriods: UserGoal[];
   goalNameMap: Map<string, string>;
@@ -29,7 +27,6 @@ export default function MyWeeklyStatistics({
   weekStart,
   onPrevWeek,
   onNextWeek,
-  chartAnimationKey,
   weeklyCheckins,
   myWeeklyGoalPeriods,
   goalNameMap,
@@ -87,19 +84,6 @@ export default function MyWeeklyStatistics({
   const myTotalGoals = myWeeklyGoals.length;
   const myFailedGoals = myWeeklyGoals.filter((goal) => !goal.isAchieved).length;
   const isWeekEnded = dayjs(weekStart).endOf('isoWeek').isBefore(dayjs(), 'day');
-  const myWeekdayStatus = useMemo(
-    () =>
-      buildWeeklyStatusDays({
-        weekStart,
-        goals: myWeeklyGoals.map((goal) => ({
-          goalId: goal.goalId,
-          startDate: goal.startDate,
-          endDate: goal.endDate,
-        })),
-        checkins: weeklyCheckins.filter((checkin) => checkin.user_id === userId),
-      }),
-    [myWeeklyGoals, userId, weekStart, weeklyCheckins],
-  );
 
   return (
     <View style={sharedStyles.container}>
@@ -116,20 +100,6 @@ export default function MyWeeklyStatistics({
           <Ionicons name="chevron-forward" size={22} color={colors.primaryLight} />
         </TouchableOpacity>
       </View>
-
-      {/* ── 이번 주 달성률 차트 ── */}
-      {myWeeklyGoals.length > 0 ? (
-        <View style={sharedStyles.section}>
-          <BaseCard glassOnly>
-            <WeeklyStatusChart
-              variant="columns"
-              title="이번 주 달성률"
-              days={myWeekdayStatus}
-              animationKey={chartAnimationKey}
-            />
-          </BaseCard>
-        </View>
-      ) : null}
 
       {/* ── 집계 한마디 카드 ── */}
       <View>

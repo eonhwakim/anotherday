@@ -91,11 +91,6 @@ function getGoalProgressColor(progress: number, isEnded: boolean): string {
   return colors.warning;
 }
 
-function getGoalProgressBadgeTextColor(progress: number, isEnded: boolean): string {
-  if (isEnded) return colors.white;
-  if (progress <= 0) return colors.text;
-  return colors.white;
-}
 
 function getGoalProgressLabel(params: {
   userGoal?: UserGoal;
@@ -186,64 +181,13 @@ export default function GoalSetting({
     if (userGoal.frequency !== 'weekly_count' || isEnded) return null;
     const targetCount = userGoal.target_count || 1;
 
-    const today = dayjs().startOf('day');
-    const weekEnd = dayjs().endOf('isoWeek').startOf('day');
-    const effEnd =
-      userGoal.end_date && dayjs(userGoal.end_date).isBefore(weekEnd)
-        ? dayjs(userGoal.end_date).startOf('day')
-        : weekEnd;
-
-    const remainingDays = Math.max(0, effEnd.diff(today, 'day') + 1);
-    const checkedInToday = todayCheckedInGoalIds.has(userGoal.goal_id);
-
-    // 오늘 이미 인증(완료 또는 패스)했다면 남은 요일에서 오늘을 제외
-    const availableDays = remainingDays - (checkedInToday ? 1 : 0);
-
-    // 앞으로 최대로 인증할 수 있는 횟수 = 현재까지 인증한 횟수 + 남은 인증 가능 요일
-    const maxTotalCheckins = doneCount + availableDays;
-
-    // 남은 패스권 = 최대로 인증할 수 있는 횟수 - 목표 횟수
-    const remainingPasses = maxTotalCheckins - targetCount;
-    const totalPasses = 7 - targetCount;
-
-    if (doneCount >= targetCount) {
-      return (
-        <View style={styles.indicatorRow}>
-          <Ionicons name="checkmark-circle" size={14} color={colors.successBright} />
-          <Text style={[styles.indicatorText, { color: colors.successBright }]}>
-            이번 주 목표 달성!
-          </Text>
-        </View>
-      );
-    }
-
-    if (remainingPasses < 0) {
-      return (
-        <View style={styles.indicatorRow}>
-          <Ionicons name="close-circle" size={14} color={colors.error} />
-          <Text style={[styles.indicatorText, { color: colors.error }]}>
-            이번 주 목표 달성 실패
-          </Text>
-        </View>
-      );
-    }
-
-    if (remainingPasses === 0) {
-      return (
-        <View style={styles.indicatorRow}>
-          <Ionicons name="warning" size={14} color={colors.warning} />
-          <Text style={[styles.indicatorText, { color: colors.warning }]}>
-            패스 불가능, 남은 날 모두 인증해야 해요!
-          </Text>
-        </View>
-      );
-    }
+    if (doneCount < targetCount) return null;
 
     return (
       <View style={styles.indicatorRow}>
-        <Ionicons name="ticket-outline" size={14} color={colors.primary} />
-        <Text style={[styles.indicatorText, { color: colors.primary }]}>
-          남은 패스: {remainingPasses}/{totalPasses}
+        <Ionicons name="checkmark-circle" size={14} color={colors.successBright} />
+        <Text style={[styles.indicatorText, { color: colors.successBright }]}>
+          이번 주 목표 달성!
         </Text>
       </View>
     );
@@ -292,7 +236,6 @@ export default function GoalSetting({
                 const progressPeriodLabel =
                   userGoal?.frequency === 'weekly_count' ? '이번주' : '오늘';
                 const progressColor = getGoalProgressColor(progress, isEnded);
-                const progressBadgeTextColor = getGoalProgressBadgeTextColor(progress, isEnded);
 
                 return (
                   <TouchableOpacity
@@ -318,12 +261,8 @@ export default function GoalSetting({
                           progress={progress}
                           color={progressColor}
                           trackColor={isEnded ? 'rgba(26,26,26,0.08)' : '#F3F4F6'}
+                          label={progressLabel}
                         />
-                        <View style={[styles.goalIndexBadge, { backgroundColor: progressColor }]}>
-                          <Text style={[styles.goalIndexText, { color: progressBadgeTextColor }]}>
-                            {progressLabel}
-                          </Text>
-                        </View>
                       </View>
                       <View style={styles.goalRowContent}>
                         <View style={styles.goalTextWrap}>
@@ -554,21 +493,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: colors.textSecondary,
-  },
-  goalIndexBadge: {
-    position: 'absolute',
-    bottom: -6,
-    right: -4,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 3,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  goalIndexText: {
-    fontSize: 10,
-    fontWeight: '700',
   },
   goalRowFrame: {
     marginTop: 0,

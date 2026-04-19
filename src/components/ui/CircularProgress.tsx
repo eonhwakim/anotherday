@@ -12,6 +12,7 @@ interface CircularProgressProps {
   color?: string;
   trackColor?: string;
   duration?: number;
+  label?: string;
 }
 
 export default function CircularProgress({
@@ -21,6 +22,7 @@ export default function CircularProgress({
   color: propColor,
   trackColor = '#F3F4F6',
   duration = 1000,
+  label,
 }: CircularProgressProps) {
   const clampedProgress = Math.min(100, Math.max(0, progress));
 
@@ -75,7 +77,7 @@ export default function CircularProgress({
         />
       </Svg>
       <View style={[StyleSheet.absoluteFill, styles.textContainer]}>
-        <Text style={[styles.text, { color }]}>{Math.round(clampedProgress)}%</Text>
+        <Text style={[styles.text, { color }]}>{label ?? `${Math.round(clampedProgress)}%`}</Text>
       </View>
     </View>
   );
