@@ -26,6 +26,9 @@ export const queryKeys = {
       goalIds: string[],
     ) => ['goals', 'weekly-done-counts', userId, weekStart, weekEnd, ...goalIds] as const,
   },
+  todos: {
+    daily: (userId: string, date: string) => ['todos', 'daily', userId, date] as const,
+  },
   stats: {
     memberProgress: (teamId: string | undefined, userId: string | undefined, date: string) =>
       ['stats', 'member-progress', teamId ?? null, userId ?? null, date] as const,

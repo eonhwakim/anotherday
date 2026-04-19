@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import BaseCard from '../ui/BaseCard';
 import type {
   CalendarDayMarking,
+  DailyTodo,
   MemberCheckinSummary,
 } from '../../types/domain';
 import { colors } from '../../design/tokens';
@@ -20,6 +21,7 @@ interface CalendarDateSummaryCardProps {
   statsGuideMessage: string | null;
   isFuture: boolean;
   myMember?: MemberCheckinSummary | null;
+  dailyTodos?: DailyTodo[];
   allMembers?: MemberCheckinSummary[];
   selectedDate: string;
   onOpenPhoto?: OpenPhotoHandler;
@@ -31,6 +33,7 @@ export default function CalendarDateSummaryCard({
   statsGuideMessage,
   isFuture,
   myMember,
+  dailyTodos = [],
   allMembers = [],
   selectedDate,
   onOpenPhoto,
@@ -81,6 +84,37 @@ export default function CalendarDateSummaryCard({
       ) : (
         <Text style={styles.noDataText}>{isFuture ? '아직 오지 않은 날이에요' : '기록 없음'}</Text>
       )}
+
+      {dailyTodos.length > 0 ? (
+        <View style={styles.todoSection}>
+          <Text style={styles.todoTitle}>TODO</Text>
+          <View style={styles.todoList}>
+            {dailyTodos.map((todo) => (
+              <View key={todo.id} style={styles.todoItem}>
+                <View
+                  style={[
+                    styles.todoCheck,
+                    todo.is_completed ? styles.todoCheckDone : null,
+                  ]}
+                />
+                <View style={styles.todoTextWrap}>
+                  <Text style={[styles.todoText, todo.is_completed ? styles.todoTextDone : null]}>
+                    {todo.title}
+                  </Text>
+                  {(todo.due_time || todo.reminder_minutes) && (
+                    <Text style={styles.todoMeta}>
+                      {todo.due_time ?? '시간 미정'}
+                      {todo.reminder_minutes
+                        ? ` · ${todo.reminder_minutes === 60 ? '1시간 전' : `${todo.reminder_minutes}분 전`} 알림`
+                        : ''}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       {myMember && myMember.goals.length > 0 ? (
         <View style={styles.myGoalsSection}>
@@ -175,6 +209,60 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1E40AF',
     fontWeight: '600',
+  },
+  todoSection: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 107, 61, 0.08)',
+  },
+  todoTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: 'rgba(26,26,26,0.58)',
+    marginBottom: 10,
+  },
+  todoList: {
+    gap: 8,
+  },
+  todoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 61, 0.08)',
+  },
+  todoCheck: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 5,
+    backgroundColor: 'rgba(26,26,26,0.18)',
+  },
+  todoCheckDone: {
+    backgroundColor: colors.success,
+  },
+  todoTextWrap: {
+    flex: 1,
+  },
+  todoText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  todoTextDone: {
+    color: colors.textSecondary,
+    textDecorationLine: 'line-through',
+  },
+  todoMeta: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    marginTop: 3,
   },
   myGoalsSection: {
     marginTop: 14,

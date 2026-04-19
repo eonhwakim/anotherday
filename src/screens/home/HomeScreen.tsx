@@ -25,6 +25,13 @@ import { colors } from '../../design/tokens';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
+import { useDailyTodosQuery } from '../../queries/todoQueries';
+import {
+  useCreateDailyTodoMutation,
+  useDeleteDailyTodoMutation,
+  useToggleDailyTodoMutation,
+  useUpdateDailyTodoMutation,
+} from '../../queries/todoMutations';
 import {
   useExtendableGoalsForMonthQuery,
   useMyGoalsQuery,
@@ -38,6 +45,7 @@ import { useMemberProgressQuery } from '../../queries/statsQueries';
 
 import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalListFeed';
+import TodayTodoSection from '../../components/home/TodayTodoSection';
 
 import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
@@ -56,7 +64,27 @@ export default function HomeScreen() {
   const { data: myGoals = [] } = useMyGoalsQuery(user?.id);
   const { data: teamGoals = [] } = useTeamGoalsQuery(currentTeamId ?? '', user?.id);
   const { data: todayCheckins = [] } = useTodayCheckinsQuery(user?.id, todayStr);
+  const { data: dailyTodos = [], isLoading: isDailyTodosLoading } = useDailyTodosQuery(
+    user?.id,
+    todayStr,
+  );
   const { data: memberProgress = [] } = useMemberProgressQuery(currentTeamId, user?.id, todayStr);
+  const createDailyTodoMutation = useCreateDailyTodoMutation({
+    userId: user?.id,
+    date: todayStr,
+  });
+  const toggleDailyTodoMutation = useToggleDailyTodoMutation({
+    userId: user?.id,
+    date: todayStr,
+  });
+  const updateDailyTodoMutation = useUpdateDailyTodoMutation({
+    userId: user?.id,
+    date: todayStr,
+  });
+  const deleteDailyTodoMutation = useDeleteDailyTodoMutation({
+    userId: user?.id,
+    date: todayStr,
+  });
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
@@ -287,6 +315,11 @@ export default function HomeScreen() {
 
     const refreshes = [
       queryClient.refetchQueries({
+        queryKey: queryKeys.todos.daily(user.id, todayStr),
+        exact: true,
+        type: 'active',
+      }),
+      queryClient.refetchQueries({
         queryKey: queryKeys.goals.mine(user.id),
         exact: true,
         type: 'active',
@@ -339,6 +372,69 @@ export default function HomeScreen() {
   const isDay = timePeriod === 'DAY';
   const isSunset = timePeriod === 'SUNSET';
   const isNight = timePeriod === 'NIGHT';
+
+  const handleAddDailyTodo = useCallback(
+    async (params: {
+      title: string;
+      dueTime: string;
+      reminderMinutes: 10 | 20 | 30 | 60 | null;
+    }) => {
+      if (!user?.id) return;
+      try {
+        await createDailyTodoMutation.mutateAsync({
+          userId: user.id,
+          date: todayStr,
+          title: params.title,
+          dueTime: params.dueTime,
+          reminderMinutes: params.reminderMinutes,
+        });
+      } catch (e) {
+        handleServiceError(e);
+      }
+    },
+    [createDailyTodoMutation, todayStr, user?.id],
+  );
+
+  const handleUpdateDailyTodo = useCallback(
+    async (params: {
+      todoId: string;
+      title: string;
+      dueTime: string;
+      reminderMinutes: 10 | 20 | 30 | 60 | null;
+    }) => {
+      try {
+        await updateDailyTodoMutation.mutateAsync(params);
+      } catch (e) {
+        handleServiceError(e);
+      }
+    },
+    [updateDailyTodoMutation],
+  );
+
+  const handleToggleDailyTodo = useCallback(
+    async (todo: { id: string; is_completed: boolean }) => {
+      try {
+        await toggleDailyTodoMutation.mutateAsync({
+          todoId: todo.id,
+          isCompleted: !todo.is_completed,
+        });
+      } catch (e) {
+        handleServiceError(e);
+      }
+    },
+    [toggleDailyTodoMutation],
+  );
+
+  const handleDeleteDailyTodo = useCallback(
+    async (todo: { id: string }) => {
+      try {
+        await deleteDailyTodoMutation.mutateAsync(todo.id);
+      } catch (e) {
+        handleServiceError(e);
+      }
+    },
+    [deleteDailyTodoMutation],
+  );
 
   return (
     <View style={styles.container}>
@@ -404,22 +500,39 @@ export default function HomeScreen() {
 
           {/* 헤더 */}
           <View style={styles.header}>
-            <Text
-              style={[
-                styles.greeting,
-                isDay && styles.greetingDay,
-                isSunset && styles.greetingSunset,
-              ]}
-            >
-              반가워요, {user?.nickname ?? ''}님
-            </Text>
-            <View style={styles.frameRow}>
-              <BaseCard glassOnly style={{ alignSelf: 'flex-start' }}>
-                <Text style={[styles.dateText, isNight && styles.dateTextLight]}>{today}</Text>
-                <Text style={[styles.teamName, isNight && styles.teamNameLight]}>
-                  {currentTeam?.name ? `${currentTeam?.name}` : '오늘의 목표'}
+            <View style={styles.heroTopRow}>
+              <View style={styles.greetingWrap}>
+                <Text
+                  style={[
+                    styles.greeting,
+                    isDay && styles.greetingDay,
+                    isSunset && styles.greetingSunset,
+                  ]}
+                >
+                  반가워요, {user?.nickname ?? ''}님
                 </Text>
-              </BaseCard>
+                <View style={styles.frameRow}>
+                  <BaseCard glassOnly padded={false} style={styles.teamCard}>
+                    <Text style={[styles.dateText, isNight && styles.dateTextLight]}>{today}</Text>
+                    <Text style={[styles.teamName, isNight && styles.teamNameLight]}>
+                      {currentTeam?.name ? `${currentTeam?.name}` : '오늘의 목표'}
+                    </Text>
+                  </BaseCard>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.rightColumn}>
+              <View style={styles.todoSection}>
+                <TodayTodoSection
+                  todos={dailyTodos}
+                  isLoading={isDailyTodosLoading}
+                  onAddTodo={handleAddDailyTodo}
+                  onUpdateTodo={handleUpdateDailyTodo}
+                  onToggleTodo={handleToggleDailyTodo}
+                  onDeleteTodo={handleDeleteDailyTodo}
+                />
+              </View>
             </View>
           </View>
 
@@ -515,21 +628,46 @@ const styles = StyleSheet.create({
   },
 
   header: {
+    position: 'relative',
     paddingHorizontal: 20,
-    paddingTop: 12,
-    // paddingBottom: 12,
+    paddingTop: 16,
+    minHeight: 132,
   },
-  frameRow: {
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 6,
+  },
+  greetingWrap: {
+    flex: 1,
+    minHeight: 120,
+    paddingRight: '58%',
+  },
+  frameRow: {
+    width: '100%',
+  },
+  rightColumn: {
+    position: 'absolute',
+    top: 10,
+    right: 20,
+    maxWidth: '55%',
+    width: '55%',
+    gap: 10,
+    zIndex: 30,
+  },
+  teamCard: {
+    alignSelf: 'flex-start',
+    maxWidth: 158,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 6,
   },
   greeting: {
-    fontSize: 18,
+    fontSize: 20,
     color: '#FFFFFF',
-    fontWeight: '600',
-    marginBottom: 2,
-    marginLeft: 10,
+    fontWeight: '700',
+    marginBottom: 6,
+    marginLeft: 6,
+    lineHeight: 28,
   },
   greetingDay: {
     color: colors.text,
@@ -538,10 +676,10 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   dateText: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.textSecondary,
     fontWeight: '700',
-    letterSpacing: 2.5,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
@@ -549,24 +687,28 @@ const styles = StyleSheet.create({
     color: '#E0E0E0',
   },
   teamName: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800',
     color: '#282828',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
   teamNameLight: {
     color: '#FFFAF7',
   },
   mountainSection: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 18,
     zIndex: 10,
     position: 'relative',
-    top: 6,
+    top: 16,
+  },
+  todoSection: {
+    width: '100%',
   },
   goalSection: {
     paddingHorizontal: 20,
-    paddingTop: 42,
+    paddingTop: 0,
     width: '100%',
     alignItems: 'stretch',
   },

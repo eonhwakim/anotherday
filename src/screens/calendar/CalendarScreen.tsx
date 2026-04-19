@@ -22,6 +22,7 @@ import { colors } from '../../design/tokens';
 import { ds, typography } from '../../design/recipes';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
+import { useDailyTodosQuery } from '../../queries/todoQueries';
 import { useTeamMembersQuery } from '../../queries/teamQueries';
 import {
   useCalendarMarkingsQuery,
@@ -47,6 +48,7 @@ export default function CalendarScreen() {
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
   const [photoModal, setPhotoModal] = useState<{ url: string; checkinId: string } | null>(null);
   const { data: members = [] } = useTeamMembersQuery(currentTeam?.id);
+  const { data: dailyTodos = [] } = useDailyTodosQuery(user?.id, selectedDate);
   const { data: calendarMarkings = {} } = useCalendarMarkingsQuery(user?.id, currentMonth);
   const { data: memberDateCheckins = [] } = useMemberDateCheckinsQuery(
     currentTeam?.id,
@@ -329,6 +331,7 @@ export default function CalendarScreen() {
               statsGuideMessage={statsGuideMessage}
               isFuture={isFuture}
               myMember={myMember}
+              dailyTodos={dailyTodos}
               allMembers={memberDateCheckins}
               selectedDate={selectedDate}
               onOpenPhoto={setPhotoModal}

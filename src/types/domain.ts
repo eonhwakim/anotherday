@@ -121,6 +121,20 @@ export interface MonthlyRetrospective {
   created_at: string;
 }
 
+/** 오늘만 처리하는 일회성 할 일 */
+export type DailyTodoReminderMinutes = 10 | 20 | 30 | 60;
+
+export interface DailyTodo {
+  id: string;
+  user_id: string;
+  date: string; // 'YYYY-MM-DD'
+  title: string;
+  due_time: string | null; // 'HH:mm'
+  reminder_minutes: DailyTodoReminderMinutes | null;
+  is_completed: boolean;
+  created_at: string;
+}
+
 // ─── DTO / Insert Types ────────────────────────────────────────
 // Supabase insert 시 사용할 타입 (id, created_at 제외)
 
@@ -131,6 +145,7 @@ export type GoalInsert = Omit<Goal, 'id' | 'created_at'>;
 
 export type UserGoalInsert = Omit<UserGoal, 'id' | 'created_at'>;
 export type CheckinInsert = Omit<Checkin, 'id' | 'created_at'>;
+export type DailyTodoInsert = Omit<DailyTodo, 'id' | 'created_at'>;
 
 // ─── Helper Types ───────────────────────────────────────────────
 

@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../design/tokens';
+import type { DailyTodo } from '../types/domain';
 
 const STORAGE_KEY = 'notification_daily_enabled';
 const GOAL_REMINDER_STORAGE_KEY = 'notification_goal_reminder_enabled';
@@ -24,31 +25,31 @@ const DAILY_MESSAGES: Record<number, string[]> = {
     // 월요일
     '새로운 한 주가 시작됐어요! 정상을 향해 한 걸음씩 올라가볼까요?',
     '월요일 시작! 이번 주도 함께 올라가봐요.',
-    '"도전이 없으면 성취도 없다"',
+    // '"도전이 없으면 성취도 없다"',
   ],
   3: [
     // 화요일
-    '어제의 한 걸음이 오늘의 발판이에요. 계속 올라가볼까요?',
+    // '어제의 한 걸음이 오늘의 발판이에요. 계속 올라가볼까요?',
     '화요일, 페이스를 잡아가는 날! 오늘도 한 발짝 더.',
-    '"성공은 수많은 실패를 견뎌낸 결과이다"',
+    // '"성공은 수많은 실패를 견뎌낸 결과이다"',
   ],
   4: [
     // 수요일
-    '"도전은 사람을 강하게 만든다"',
+    // '"도전은 사람을 강하게 만든다"',
     '수요일 도착! 절반을 넘었어요, 힘내봐요.',
     '오늘도 잊지말고 인증해서 목표를 채워가봐요!',
   ],
   5: [
     // 목요일
     '목요일, 정상이 보이기 시작해요! 조금만 더 힘내볼까요?',
-    '거의 다 왔어요! 오늘도 꾸준히 한 걸음.',
-    '"내일로 미루는 것은 옳지 않으며, 오늘 하지 못하면 내일도 할 수 없다."',
+    // '거의 다 왔어요! 오늘도 꾸준히 한 걸음.',
+    // '"내일로 미루는 것은 옳지 않으며, 오늘 하지 못하면 내일도 할 수 없다."',
   ],
   6: [
     // 금요일
     '금요일이에요! 이번 주 마지막 스퍼트, 한번 달려볼까요?',
-    '"산다는것 그것은 치열한 전투이다."',
-    '오늘도 잊지말고 인증해서 목표를 채워가봐요!',
+    // '"산다는것 그것은 치열한 전투이다."',
+    // '오늘도 잊지말고 인증해서 목표를 채워가봐요!',
   ],
   7: [
     // 토요일
@@ -60,7 +61,7 @@ const DAILY_MESSAGES: Record<number, string[]> = {
     // 일요일
     '일요일, 한 주의 마지막 날! 이번 주를 멋지게 마무리해봐요.',
     '오늘까지 달성하면 완벽한 한 주! 마지막 힘을 내봐요.',
-    '"세상은 고통으로 가득하지만 그것을 극복하는 사람들로도 가득하다"',
+    // '"세상은 고통으로 가득하지만 그것을 극복하는 사람들로도 가득하다"',
   ],
 };
 
@@ -69,6 +70,10 @@ const GOAL_REMINDER_MESSAGES = [
   '자정 전에 인증을 완료해볼까요?',
   '목표 달성까지 조금만 더 힘내봐요!',
 ];
+
+function getTodoReminderIdentifier(todoId: string) {
+  return `todo-reminder-${todoId}`;
+}
 
 function pickMessage(weekday: number): string {
   const pool = DAILY_MESSAGES[weekday] ?? DAILY_MESSAGES[2];
@@ -161,6 +166,54 @@ export async function setGoalReminderEnabled(enabled: boolean): Promise<void> {
 
 export async function cancelGoalReminderNotification(): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync('goal-reminder').catch(() => {});
+}
+
+export async function cancelTodoReminderNotification(todoId: string): Promise<void> {
+  await Notifications.cancelScheduledNotificationAsync(getTodoReminderIdentifier(todoId)).catch(() => {});
+}
+
+export async function scheduleTodoReminderNotification(todo: DailyTodo): Promise<void> {
+  await cancelTodoReminderNotification(todo.id);
+
+  if (todo.is_completed || !todo.due_time || !todo.reminder_minutes) {
+    return;
+  }
+
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+
+  const [hourRaw, minuteRaw] = todo.due_time.split(':');
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+
+  if (Number.isNaN(hour) || Number.isNaN(minute)) {
+    return;
+  }
+
+  const triggerAt = new Date(`${todo.date}T00:00:00`);
+  triggerAt.setHours(hour, minute, 0, 0);
+  triggerAt.setMinutes(triggerAt.getMinutes() - todo.reminder_minutes);
+
+  const now = new Date();
+  const secondsUntil = Math.floor((triggerAt.getTime() - now.getTime()) / 1000);
+  if (secondsUntil <= 0) return;
+
+  const dueLabel = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const body = `${todo.title} · ${dueLabel} ${todo.reminder_minutes}분 전이에요.`;
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: getTodoReminderIdentifier(todo.id),
+    content: {
+      title: '오늘 할 일 알림',
+      body,
+      sound: true,
+      color: colors.primary,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: secondsUntil,
+    },
+  });
 }
 
 /**
