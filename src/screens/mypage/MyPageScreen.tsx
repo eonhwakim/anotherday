@@ -9,6 +9,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -114,15 +115,25 @@ export default function MyPageScreen() {
         name: teamInputValue.trim(),
       });
       if (team) {
-        Alert.alert('성공', '팀이 생성되었습니다!', [
-          {
-            text: '확인',
-            onPress: () => {
-              setTeamModalType(null);
-              setTeamInputValue('');
+        const close = () => {
+          setTeamModalType(null);
+          setTeamInputValue('');
+        };
+        Alert.alert(
+          '팀 생성 완료!',
+          `참여 코드: ${team.invite_code}\n\n팀원들에게 이 코드를 공유해주세요.`,
+          [
+            {
+              text: '코드 복사',
+              onPress: async () => {
+                await Clipboard.setStringAsync(team.invite_code);
+                Alert.alert('복사 완료', '참여 코드가 클립보드에 복사되었습니다.');
+                close();
+              },
             },
-          },
-        ]);
+            { text: '확인', onPress: close },
+          ],
+        );
       } else {
         Alert.alert('실패', '팀 생성 중 오류가 발생했습니다.');
       }

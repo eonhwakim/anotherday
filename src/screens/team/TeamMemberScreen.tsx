@@ -10,6 +10,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -152,6 +153,28 @@ export default function TeamMemberScreen() {
               </BaseCard>
             </TouchableOpacity>
 
+            {currentTeamInfo?.invite_code && (
+              <BaseCard glassOnly style={styles.inviteCardFrame} padded={false}>
+                <View style={styles.inviteCardContent}>
+                  <View style={styles.inviteTextBlock}>
+                    <Text style={styles.inviteLabel}>참여 코드</Text>
+                    <Text style={styles.inviteCode}>{currentTeamInfo.invite_code}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.inviteCopyBtn}
+                    onPress={async () => {
+                      await Clipboard.setStringAsync(currentTeamInfo.invite_code);
+                      Alert.alert('복사 완료', '참여 코드가 클립보드에 복사되었습니다.');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="copy-outline" size={18} color={colors.primary} />
+                    <Text style={styles.inviteCopyText}>복사</Text>
+                  </TouchableOpacity>
+                </View>
+              </BaseCard>
+            )}
+
             <View style={styles.section as ViewStyle}>
               <SectionHeader title={`팀 멤버 (${sortedMembers.length})`} />
               {sortedMembers.map((member) => (
@@ -258,6 +281,44 @@ const styles = StyleSheet.create({
   teamProfileHint: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  inviteCardFrame: {
+    marginBottom: spacing[4],
+    borderRadius: radius.md,
+  },
+  inviteCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[3] + 2,
+    paddingHorizontal: spacing[4],
+  },
+  inviteTextBlock: {
+    flex: 1,
+  },
+  inviteLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  inviteCode: {
+    ...typography.titleSm,
+    color: colors.text,
+    letterSpacing: 3,
+    fontVariant: ['tabular-nums'],
+  },
+  inviteCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: spacing[3],
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+  },
+  inviteCopyText: {
+    ...typography.label,
+    color: colors.primary,
   },
   section: ds.section as ViewStyle,
   memberCardFrame: {
