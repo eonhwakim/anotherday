@@ -275,10 +275,10 @@ export default function CheckinModal({
                         <Chip
                           label={
                             <Text style={{ textAlign: 'center' }}>
-                              패스{'\n'}
-                              <Text style={{ fontSize: 10, fontWeight: '500' }}>
+                              패스
+                              {/* <Text style={{ fontSize: 10, fontWeight: '500' }}>
                                 ({totalPasses - Math.max(0, remainingPasses)}/{totalPasses})
-                              </Text>
+                              </Text> */}
                             </Text>
                           }
                           numberOfLines={2}
