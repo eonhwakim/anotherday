@@ -509,7 +509,12 @@ export default function HomeScreen() {
                     isSunset && styles.greetingSunset,
                   ]}
                 >
-                  반가워요, {user?.nickname ?? ''}님
+                  반가워요,
+                  {user?.nickname
+                    ? `${user?.nickname}님`
+                    : currentTeam?.name
+                      ? `${currentTeam?.name} 팀원`
+                      : ''}
                 </Text>
                 <View style={styles.frameRow}>
                   <BaseCard glassOnly padded={false} style={styles.teamCard}>
@@ -662,7 +667,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   greeting: {
-    fontSize: 20,
+    fontSize: 16,
     color: '#FFFFFF',
     fontWeight: '700',
     marginBottom: 6,
