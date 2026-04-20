@@ -125,7 +125,7 @@ export default function StatisticsScreen() {
         monthlySummaryQuery.refetch(),
         weeklyBundleQuery.refetch(),
       ]);
-    }, [monthlySummaryQuery, refetchTeamGoals, weeklyBundleQuery]),
+    }, [monthlySummaryQuery.refetch, refetchTeamGoals, weeklyBundleQuery.refetch]),
   );
 
   /** 통계 페이지 “진입 순간”에만 나의통계/주간/오늘 주차로 초기화 */

@@ -95,19 +95,9 @@ export default function GoalScreen() {
   const [retrospectiveModalVisible, setRetrospectiveModalVisible] = useState(false);
   const [resolutionInput, setResolutionInput] = useState('');
   const [retrospectiveInput, setRetrospectiveInput] = useState('');
-  const teamGoalsQuery = useTeamGoalsQuery(
-    currentTeam?.id ?? '',
-    user?.id,
-  );
-  const monthGoalsQuery = useMyGoalsForMonthQuery(
-    user?.id,
-    yearMonth,
-  );
-  const memberProgressQuery = useMemberProgressQuery(
-    currentTeam?.id,
-    user?.id,
-    todayStr,
-  );
+  const teamGoalsQuery = useTeamGoalsQuery(currentTeam?.id ?? '', user?.id);
+  const monthGoalsQuery = useMyGoalsForMonthQuery(user?.id, yearMonth);
+  const memberProgressQuery = useMemberProgressQuery(currentTeam?.id, user?.id, todayStr);
   const monthlyResolutionQuery = useMonthlyResolutionQuery({
     userId: user?.id,
     yearMonth,
@@ -121,10 +111,7 @@ export default function GoalScreen() {
 
   const teamGoals = useMemo(() => teamGoalsQuery.data ?? [], [teamGoalsQuery.data]);
   const monthGoals = useMemo(() => monthGoalsQuery.data ?? [], [monthGoalsQuery.data]);
-  const memberProgress = useMemo(
-    () => memberProgressQuery.data ?? [],
-    [memberProgressQuery.data],
-  );
+  const memberProgress = useMemo(() => memberProgressQuery.data ?? [], [memberProgressQuery.data]);
   const monthlyResolution = monthlyResolutionQuery.data ?? '';
   const monthlyRetrospective = monthlyRetrospectiveQuery.data ?? '';
 
@@ -182,9 +169,7 @@ export default function GoalScreen() {
   const todayCheckedInGoalIds = useMemo(
     () =>
       new Set(
-        (
-          memberProgress.find((progress) => progress.userId === user?.id)?.goalDetails ?? []
-        )
+        (memberProgress.find((progress) => progress.userId === user?.id)?.goalDetails ?? [])
           .filter((goal) => goal.isDone || goal.isPass)
           .map((goal) => goal.goalId),
       ),
@@ -220,7 +205,9 @@ export default function GoalScreen() {
     ].reduce<Record<string, unknown>>((acc, queryData) => {
       return queryData ? { ...acc, ...queryData } : acc;
     }, {});
-    const streak = computeConsecutiveAchievementDays(mergedMarkings as Parameters<typeof computeConsecutiveAchievementDays>[0]);
+    const streak = computeConsecutiveAchievementDays(
+      mergedMarkings as Parameters<typeof computeConsecutiveAchievementDays>[0],
+    );
 
     return { ratePct, streak, doneToday, totalToday: totalTodayNonPass, passToday };
   }, [
@@ -263,16 +250,16 @@ export default function GoalScreen() {
     await Promise.all(refetches);
   }, [
     currentTeam?.id,
-    memberProgressQuery,
-    monthGoalsQuery,
-    monthlyResolutionQuery,
-    monthlyRetrospectiveQuery,
+    memberProgressQuery.refetch,
+    monthGoalsQuery.refetch,
+    monthlyResolutionQuery.refetch,
+    monthlyRetrospectiveQuery.refetch,
     refetchCurrentMonthStreak,
     refetchPreviousMonthStreak,
-    teamGoalsQuery,
+    teamGoalsQuery.refetch,
     refetchTwoMonthsAgoStreak,
     user,
-    weeklyDoneCountsQuery,
+    weeklyDoneCountsQuery.refetch,
   ]);
 
   const handleUpdateResolution = useCallback(
@@ -462,10 +449,7 @@ export default function GoalScreen() {
           />
         </TouchableOpacity>
 
-        <AddRoutineModal
-          visible={addRoutineVisible}
-          onClose={() => setAddRoutineVisible(false)}
-        />
+        <AddRoutineModal visible={addRoutineVisible} onClose={() => setAddRoutineVisible(false)} />
 
         <GlassModal
           visible={resolutionModalVisible}

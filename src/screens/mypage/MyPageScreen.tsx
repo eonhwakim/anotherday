@@ -85,7 +85,7 @@ export default function MyPageScreen() {
   useFocusEffect(
     useCallback(() => {
       void teamsQuery.refetch();
-    }, [teamsQuery]),
+    }, [teamsQuery.refetch]),
   );
 
   const handleOpenTeamModal = (type: 'create' | 'join') => {
