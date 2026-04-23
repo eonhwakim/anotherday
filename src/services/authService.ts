@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { requireAuthenticatedUserId } from '../lib/auth';
+import { runSingleFlight } from '../lib/requestCache';
 import type { User } from '../types/domain';
 
 const SESSION_TIMEOUT_MS = 3000;
@@ -9,21 +10,23 @@ export async function ensureProfile(
   email: string,
   nickname?: string,
 ): Promise<User | null> {
-  const actorUserId = await requireAuthenticatedUserId(userId);
-  const displayName = nickname || email.split('@')[0];
+  return runSingleFlight(`ensureProfile:${userId}`, async () => {
+    const actorUserId = await requireAuthenticatedUserId(userId);
+    const displayName = nickname || email.split('@')[0];
 
-  const { data, error } = await supabase.rpc('create_user_profile', {
-    user_id: actorUserId,
-    user_email: email,
-    user_nickname: displayName,
+    const { data, error } = await supabase.rpc('create_user_profile', {
+      user_id: actorUserId,
+      user_email: email,
+      user_nickname: displayName,
+    });
+
+    if (error) {
+      console.error('[Auth] RPC create_user_profile error:', error.message);
+      return null;
+    }
+
+    return data as User;
   });
-
-  if (error) {
-    console.error('[Auth] RPC create_user_profile error:', error.message);
-    return null;
-  }
-
-  return data as User;
 }
 
 export async function getCurrentSessionUser() {
