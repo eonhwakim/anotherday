@@ -177,6 +177,7 @@ export default function CheckinModal({
               let totalPasses = 0;
               let isPassDisabled = false;
 
+              // 주간 패스 가능 여부 계산 로직(7일 중 남은 패스 가능 일수 계산)
               if (isWeekly && targetCount != null) {
                 totalPasses = 7 - targetCount;
                 // 이번 주 남은 요일 계산

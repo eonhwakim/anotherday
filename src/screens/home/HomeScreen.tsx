@@ -7,11 +7,8 @@ import {
   RefreshControl,
   TouchableOpacity,
   Image,
-  AppState,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -20,27 +17,15 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import BaseCard from '../../components/ui/BaseCard';
 import dayjs from '../../lib/dayjs';
-import { handleServiceError } from '../../lib/serviceError';
 import { colors } from '../../design/tokens';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
-import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import { useDailyTodosQuery } from '../../queries/todoQueries';
 import {
-  useCreateDailyTodoMutation,
-  useDeleteDailyTodoMutation,
-  useToggleDailyTodoMutation,
-  useUpdateDailyTodoMutation,
-} from '../../queries/todoMutations';
-import {
-  useExtendableGoalsForMonthQuery,
   useMyGoalsQuery,
   useTeamGoalsQuery,
   useTodayCheckinsQuery,
-  useWeeklyDoneCountsQuery,
 } from '../../queries/goalQueries';
-import { useExtendGoalsForNewMonthMutation } from '../../queries/goalMutations';
-import { queryKeys } from '../../queries/queryKeys';
 import { useMemberProgressQuery } from '../../queries/statsQueries';
 
 import MountainProgress from '../../components/home/MountainProgress';
@@ -49,42 +34,27 @@ import TodayTodoSection from '../../components/home/TodayTodoSection';
 
 import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
+import { useCheckinGoals } from './hooks/useCheckinGoals';
+import { useDailyTodoActions } from './hooks/useDailyTodoActions';
+import { useHomeRefresh } from './hooks/useHomeRefresh';
+import { useHomeTimePeriod } from './hooks/useHomeTimePeriod';
+import { useMonthlyGoalPrompt } from './hooks/useMonthlyGoalPrompt';
 
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentTeam } = useTeamStore();
   const currentTeamId = currentTeam?.id;
-  const queryClient = useQueryClient();
-  const extendGoalsForNewMonthMutation = useExtendGoalsForNewMonthMutation({
-    userId: user?.id,
-    teamId: currentTeamId,
-  });
+  const userId = user?.id;
   const todayStr = dayjs().format('YYYY-MM-DD');
 
-  const { data: myGoals = [] } = useMyGoalsQuery(user?.id);
-  const { data: teamGoals = [] } = useTeamGoalsQuery(currentTeamId ?? '', user?.id);
-  const { data: todayCheckins = [] } = useTodayCheckinsQuery(user?.id, todayStr);
+  const { data: myGoals = [] } = useMyGoalsQuery(userId);
+  const { data: teamGoals = [] } = useTeamGoalsQuery(currentTeamId ?? '', userId);
+  const { data: todayCheckins = [] } = useTodayCheckinsQuery(userId, todayStr);
   const { data: dailyTodos = [], isLoading: isDailyTodosLoading } = useDailyTodosQuery(
-    user?.id,
+    userId,
     todayStr,
   );
-  const { data: memberProgress = [] } = useMemberProgressQuery(currentTeamId, user?.id, todayStr);
-  const createDailyTodoMutation = useCreateDailyTodoMutation({
-    userId: user?.id,
-    date: todayStr,
-  });
-  const toggleDailyTodoMutation = useToggleDailyTodoMutation({
-    userId: user?.id,
-    date: todayStr,
-  });
-  const updateDailyTodoMutation = useUpdateDailyTodoMutation({
-    userId: user?.id,
-    date: todayStr,
-  });
-  const deleteDailyTodoMutation = useDeleteDailyTodoMutation({
-    userId: user?.id,
-    date: todayStr,
-  });
+  const { data: memberProgress = [] } = useMemberProgressQuery(currentTeamId, userId, todayStr);
 
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
@@ -92,212 +62,25 @@ export default function HomeScreen() {
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [isStampFinished, setIsStampFinished] = React.useState(false);
-  const [timePeriod, setTimePeriod] = React.useState<'DAY' | 'SUNSET' | 'NIGHT'>('DAY');
-  const [isManualOverride] = React.useState(false);
-  // const [showGuideModal, setShowGuideModal] = React.useState(false);
-  const [showMonthlyPrompt, setShowMonthlyPrompt] = React.useState(false);
-  const [promptNewMonth, setPromptNewMonth] = React.useState<string>('');
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
   const [photoCarouselDragging, setPhotoCarouselDragging] = React.useState(false);
 
-  const getMonthlyPromptStorageKey = useCallback(
-    (monthStr: string) => `monthly_goal_prompt_v1_${monthStr}`,
-    [],
-  );
-
-  // ── 현재 팀에 해당하는 나의 목표만 필터링 (인증 모달용) ──
-  const currentTeamUserGoals = React.useMemo(() => {
-    if (!teamGoals || teamGoals.length === 0) return [];
-    if (!myGoals || !user) return [];
-    const myOwnedGoalIds = new Set(
-      teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
-    );
-    return myGoals.filter((ug) => myOwnedGoalIds.has(ug.goal_id));
-  }, [teamGoals, myGoals, user]);
-
-  const weeklyGoalIds = React.useMemo(() => {
-    if (!user || teamGoals.length === 0 || myGoals.length === 0) {
-      return [];
-    }
-
-    const myOwnedGoalIds = new Set(
-      teamGoals.filter((g) => g.owner_id === user.id).map((g) => g.id),
-    );
-    return myGoals
-      .filter((ug) => ug.frequency === 'weekly_count')
-      .filter((ug) => myOwnedGoalIds.has(ug.goal_id))
-      .filter((ug) => {
-        if (ug.start_date && todayStr < ug.start_date) return false;
-        if (ug.end_date && todayStr > ug.end_date) return false;
-        return true;
-      })
-      .map((ug) => ug.goal_id);
-  }, [myGoals, teamGoals, todayStr, user]);
-
-  const { data: weeklyDoneCounts = {} } = useWeeklyDoneCountsQuery({
-    userId: user?.id,
-    goalIds: weeklyGoalIds,
-  });
-  const { data: extendableGoals = [], isFetched: isExtendableGoalsFetched } =
-    useExtendableGoalsForMonthQuery(user?.id, promptNewMonth || undefined);
-
-  // ── 인증 모달용: 활성+비활성 모두 포함 (패스 토글 가능)
-  const goalsForCheckinModal = React.useMemo(() => {
-    const ugSource = currentTeamUserGoals;
-    const myOwnedGoalIds = new Set(
-      teamGoals.filter((g) => g.owner_id === user?.id).map((g) => g.id),
-    );
-
-    return teamGoals
-      .filter((g) => myOwnedGoalIds.has(g.id))
-      .filter((g) => {
-        const ug = ugSource.find((u) => u.goal_id === g.id);
-        if (!ug) return false;
-        if (ug.start_date && todayStr < ug.start_date) return false;
-        if (ug.end_date && todayStr > ug.end_date) return false;
-        return true;
-      })
-      .map((g) => {
-        const ug = ugSource.find((u) => u.goal_id === g.id);
-        return {
-          goal: g,
-          frequency: (ug?.frequency ?? 'daily') as 'daily' | 'weekly_count',
-          targetCount: ug?.target_count ?? null,
-          weeklyDoneCount: weeklyDoneCounts[g.id] ?? 0,
-        };
-      });
-  }, [currentTeamUserGoals, teamGoals, todayStr, user, weeklyDoneCounts]);
-
-  // ── 안내 모달 체크 (유저 정보 로드 완료 시) ──
-  // React.useEffect(() => {
-  //   if (!user) return;
-
-  //   const checkGuide = async () => {
-  //     try {
-  //       const key = 'hasSeenDevGuide_v2';
-  //       const hasSeen = await AsyncStorage.getItem(key);
-
-  //       if (!hasSeen) {
-  //         // 약간의 지연을 주어 화면 전환 후 뜨게 함
-  //         setTimeout(() => {
-  //           setShowGuideModal(true);
-  //         }, 500);
-  //       }
-  //     } catch (e) {
-  //       console.error('[GuideCheck] Error:', e);
-  //     }
-  //   };
-
-  //   checkGuide();
-  // }, [user]);
-
-  // ── 새 달 1주차 시작일 감지 ──
-  React.useEffect(() => {
-    if (!user) return;
-
-    const checkMonthlyPrompt = async () => {
-      try {
-        const today = dayjs();
-        const todayStr = today.format('YYYY-MM-DD');
-
-        // 이번 달과 다음 달의 1주차 시작일 확인 (주차 편입 규칙 적용)
-        const candidates = [today.format('YYYY-MM'), today.add(1, 'month').format('YYYY-MM')];
-
-        let matchedMonth: string | null = null;
-        for (const monthStr of candidates) {
-          const { ranges } = getCalendarWeekRanges(monthStr);
-          if (ranges.length > 0 && ranges[0].s.format('YYYY-MM-DD') === todayStr) {
-            matchedMonth = monthStr;
-            break;
-          }
-        }
-
-        if (!matchedMonth) return;
-
-        const storageKey = getMonthlyPromptStorageKey(matchedMonth);
-        const alreadyShown = await AsyncStorage.getItem(storageKey);
-        if (alreadyShown) return;
-
-        setPromptNewMonth(matchedMonth);
-      } catch (e) {
-        console.error('[MonthlyPrompt] Error:', e);
-      }
-    };
-
-    checkMonthlyPrompt();
-  }, [getMonthlyPromptStorageKey, user]);
-
-  React.useEffect(() => {
-    if (!promptNewMonth || showMonthlyPrompt || !isExtendableGoalsFetched) return;
-
-    if (extendableGoals.length === 0) {
-      setPromptNewMonth('');
-      return;
-    }
-
-    const timer = setTimeout(() => setShowMonthlyPrompt(true), 800);
-    return () => clearTimeout(timer);
-  }, [extendableGoals.length, isExtendableGoalsFetched, promptNewMonth, showMonthlyPrompt]);
-
-  const handleMonthlyPromptContinue = async () => {
-    if (!user || !promptNewMonth) return;
-    try {
-      const ok = await extendGoalsForNewMonthMutation.mutateAsync({
-        newMonthStr: promptNewMonth,
-      });
-      if (!ok) return;
-
-      await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
-      setShowMonthlyPrompt(false);
-      setPromptNewMonth('');
-    } catch (e) {
-      handleServiceError(e);
-    }
-  };
-
-  const handleMonthlyPromptNewPlan = async () => {
-    if (promptNewMonth) {
-      await AsyncStorage.setItem(getMonthlyPromptStorageKey(promptNewMonth), 'shown');
-    }
-    setShowMonthlyPrompt(false);
-    setPromptNewMonth('');
-  };
-
-  // const handleCloseGuide = async (savePreference: boolean) => {
-  //   try {
-  //     if (savePreference) {
-  //       await AsyncStorage.setItem('hasSeenDevGuide_v1', 'true');
-  //     }
-  //   } catch (e) {
-  //     console.error(e);
-  //   } finally {
-  //     setShowGuideModal(false);
-  //   }
-  // };
-
-  const updateTime = useCallback(() => {
-    if (isManualOverride) return;
-    const hour = dayjs().hour();
-    if (hour >= 5 && hour < 16) setTimePeriod('DAY');
-    else if (hour >= 16 && hour < 19) setTimePeriod('SUNSET');
-    else setTimePeriod('NIGHT');
-  }, [isManualOverride]);
-
-  React.useEffect(() => {
-    updateTime();
-    const timer = setInterval(updateTime, 60000);
-
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        updateTime();
-      }
-    });
-
-    return () => {
-      clearInterval(timer);
-      subscription.remove();
-    };
-  }, [updateTime]);
+  const { isDay, isNight, isSunset, timePeriod, updateTime } = useHomeTimePeriod();
+  const refreshHomeQueries = useHomeRefresh({ currentTeamId, todayStr, userId });
+  const {
+    extendableGoals,
+    handleMonthlyPromptContinue,
+    handleMonthlyPromptNewPlan,
+    promptNewMonth,
+    showMonthlyPrompt,
+  } = useMonthlyGoalPrompt({ currentTeamId, userId });
+  const goalsForCheckinModal = useCheckinGoals({ myGoals, teamGoals, todayStr, userId });
+  const {
+    handleAddDailyTodo,
+    handleDeleteDailyTodo,
+    handleToggleDailyTodo,
+    handleUpdateDailyTodo,
+  } = useDailyTodoActions({ todayStr, userId });
 
   React.useEffect(() => {
     if (!user) return;
@@ -310,56 +93,12 @@ export default function HomeScreen() {
     }
   }, [memberProgress, user]);
 
-  const refreshHomeQueries = useCallback(async () => {
-    if (!user) return;
-
-    const refreshes = [
-      queryClient.refetchQueries({
-        queryKey: queryKeys.todos.daily(user.id, todayStr),
-        exact: true,
-        type: 'active',
-      }),
-      queryClient.refetchQueries({
-        queryKey: queryKeys.goals.mine(user.id),
-        exact: true,
-        type: 'active',
-      }),
-      queryClient.refetchQueries({
-        queryKey: queryKeys.goals.todayCheckins(user.id, todayStr),
-        exact: true,
-        type: 'active',
-      }),
-      queryClient.refetchQueries({
-        queryKey: queryKeys.stats.memberProgress(currentTeamId, user.id, todayStr),
-        exact: true,
-        type: 'active',
-      }),
-      queryClient.refetchQueries({
-        queryKey: ['goals', 'weekly-done-counts', user.id],
-        exact: false,
-        type: 'active',
-      }),
-    ];
-
-    if (currentTeamId) {
-      refreshes.unshift(
-        queryClient.refetchQueries({
-          queryKey: queryKeys.goals.team(currentTeamId, user.id),
-          exact: true,
-          type: 'active',
-        }),
-      );
-    }
-
-    await Promise.all(refreshes);
-  }, [currentTeamId, queryClient, todayStr, user]);
-
   useFocusEffect(
     useCallback(() => {
       setIsStampFinished(false);
       updateTime();
       void refreshHomeQueries();
-    }, [refreshHomeQueries, updateTime]),
+    }, [refreshHomeQueries, setIsStampFinished, updateTime]),
   );
 
   const onRefresh = async () => {
@@ -369,80 +108,9 @@ export default function HomeScreen() {
   };
 
   const today = dayjs().format('YY년 M월 D일');
-  const isDay = timePeriod === 'DAY';
-  const isSunset = timePeriod === 'SUNSET';
-  const isNight = timePeriod === 'NIGHT';
-
-  const handleAddDailyTodo = useCallback(
-    async (params: {
-      title: string;
-      dueTime: string;
-      reminderMinutes: 10 | 20 | 30 | 60 | null;
-    }) => {
-      if (!user?.id) return;
-      try {
-        await createDailyTodoMutation.mutateAsync({
-          userId: user.id,
-          date: todayStr,
-          title: params.title,
-          dueTime: params.dueTime,
-          reminderMinutes: params.reminderMinutes,
-        });
-      } catch (e) {
-        handleServiceError(e);
-      }
-    },
-    [createDailyTodoMutation, todayStr, user?.id],
-  );
-
-  const handleUpdateDailyTodo = useCallback(
-    async (params: {
-      todoId: string;
-      title: string;
-      dueTime: string;
-      reminderMinutes: 10 | 20 | 30 | 60 | null;
-    }) => {
-      try {
-        await updateDailyTodoMutation.mutateAsync(params);
-      } catch (e) {
-        handleServiceError(e);
-      }
-    },
-    [updateDailyTodoMutation],
-  );
-
-  const handleToggleDailyTodo = useCallback(
-    async (todo: { id: string; is_completed: boolean }) => {
-      try {
-        await toggleDailyTodoMutation.mutateAsync({
-          todoId: todo.id,
-          isCompleted: !todo.is_completed,
-        });
-      } catch (e) {
-        handleServiceError(e);
-      }
-    },
-    [toggleDailyTodoMutation],
-  );
-
-  const handleDeleteDailyTodo = useCallback(
-    async (todo: { id: string }) => {
-      try {
-        await deleteDailyTodoMutation.mutateAsync(todo.id);
-      } catch (e) {
-        handleServiceError(e);
-      }
-    },
-    [deleteDailyTodoMutation],
-  );
 
   return (
     <View style={styles.container}>
-      {/* <DevGuideModal
-        visible={showGuideModal}
-        onClose={handleCloseGuide}
-      /> */}
-
       <MonthlyGoalPromptModal
         visible={showMonthlyPrompt}
         newMonthStr={promptNewMonth}
@@ -452,7 +120,6 @@ export default function HomeScreen() {
         onNewPlan={handleMonthlyPromptNewPlan}
       />
 
-      {/* ── 배경 ── */}
       <View style={styles.bgLayer}>
         <Image
           source={
@@ -465,7 +132,6 @@ export default function HomeScreen() {
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
-        {/* 밤: 전체 어둠 오버레이 */}
         {timePeriod === 'NIGHT' && <View style={styles.nightOverlay} pointerEvents="none" />}
       </View>
 
@@ -483,22 +149,6 @@ export default function HomeScreen() {
             />
           }
         >
-          {/* 시간대 테스트 */}
-          {/* <View style={styles.testRow}>
-            {(['DAY', 'SUNSET', 'NIGHT'] as const).map((p) => (
-              <TouchableOpacity
-                key={p}
-                onPress={() => handleManualTimeChange(p)}
-                style={[styles.testBtn, timePeriod === p && styles.testBtnActive]}
-              >
-                <Text style={styles.testBtnText}>
-                  {p === 'DAY' ? '☀️' : p === 'SUNSET' ? '🌅' : '🌙'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View> */}
-
-          {/* 헤더 */}
           <View style={styles.header}>
             <View style={styles.heroTopRow}>
               <View style={styles.greetingWrap}>
@@ -541,7 +191,6 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* 산 */}
           <View style={styles.mountainSection}>
             <MountainProgress
               members={memberProgress}
@@ -550,7 +199,6 @@ export default function HomeScreen() {
             />
           </View>
 
-          {/* 목표 — 사이버 프레임 카드 */}
           <View style={styles.goalSection}>
             <TodayGoalList
               members={memberProgress}
@@ -563,7 +211,6 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
 
-        {/* ── 플로팅 인증하기 버튼 ── */}
         <TouchableOpacity
           style={styles.floatingButtonWrapper}
           onPress={() => setCheckinModalVisible(true)}
@@ -577,7 +224,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </SafeAreaView>
 
-      {/* ── 인증 체크인 모달 ── */}
       <CheckinModal
         visible={checkinModalVisible}
         goalsWithFrequency={goalsForCheckinModal}
@@ -597,40 +243,10 @@ const styles = StyleSheet.create({
   },
   nightOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)', // 밤일 때 화면을 충분히 어둡게 덮어주는 오버레이
-  },
-  decorLayer: {
-    ...StyleSheet.absoluteFillObject,
-    pointerEvents: 'none',
-  },
-  decorItem: {
-    position: 'absolute',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
   },
   safe: { flex: 1 },
   scroll: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
-
-  testRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 8,
-  },
-  testBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  testBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.20)',
-  },
-  testBtnText: {
-    fontSize: 14,
-  },
 
   header: {
     position: 'relative',
@@ -718,7 +334,6 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
 
-  // ── 플로팅 버튼 (이미지) ──
   floatingButtonWrapper: {
     position: 'absolute',
     right: 16,

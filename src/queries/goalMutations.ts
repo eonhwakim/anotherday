@@ -9,13 +9,11 @@ import {
   extendGoalsForNewMonth,
   removeTeamGoal,
 } from '../services/goalService';
-import {
-  deleteCheckinPhoto,
-  uploadCheckinPhotoAsset,
-} from '../services/checkinService';
+import { deleteCheckinPhoto, uploadCheckinPhotoAsset } from '../services/checkinService';
 import type { Goal } from '../types/domain';
 import { queryKeys } from './queryKeys';
 
+// 이 함수는 체크인 관련 데이터가 바뀐 뒤, 앱 안의 여러 캐시를 낡은 것으로 표시합니다.
 async function invalidateCheckinRelatedQueries(params: {
   queryClient: QueryClient;
   userId: string;
@@ -171,10 +169,7 @@ export function useDeleteCheckinMutation(params: {
   });
 }
 
-export function useExtendGoalsForNewMonthMutation(params: {
-  userId?: string;
-  teamId?: string;
-}) {
+export function useExtendGoalsForNewMonthMutation(params: { userId?: string; teamId?: string }) {
   const { userId, teamId } = params;
   const queryClient = useQueryClient();
   const today = dayjs().format('YYYY-MM-DD');
@@ -251,10 +246,7 @@ export function useAddGoalMutation(params: {
   });
 }
 
-export function useEndTeamGoalMutation(params: {
-  userId?: string;
-  teamId?: string;
-}) {
+export function useEndTeamGoalMutation(params: { userId?: string; teamId?: string }) {
   const { userId, teamId } = params;
   const queryClient = useQueryClient();
   const today = dayjs().format('YYYY-MM-DD');
@@ -295,10 +287,7 @@ export function useEndTeamGoalMutation(params: {
   });
 }
 
-export function useRemoveTeamGoalMutation(params: {
-  userId?: string;
-  teamId?: string;
-}) {
+export function useRemoveTeamGoalMutation(params: { userId?: string; teamId?: string }) {
   const { userId, teamId } = params;
   const queryClient = useQueryClient();
   const today = dayjs().format('YYYY-MM-DD');
