@@ -12,7 +12,6 @@ import type { TodayGoalListFeedProps } from './todayGoalListFeed/types';
 import { styles } from './todayGoalListFeed/styles';
 
 import { FeedBadgePanel } from './todayGoalListFeed/FeedBadgePanel';
-import { FeedHeader } from './todayGoalListFeed/FeedHeader';
 import { MemberCard } from './todayGoalListFeed/MemberCard';
 import { FeedReactionAvatars } from './todayGoalListFeed/FeedReactionAvatars';
 
@@ -25,10 +24,18 @@ export default function TodayGoalListFeed({
   isNight = false,
   onPhotoCarouselDragChange,
 }: TodayGoalListFeedProps) {
+  // ===========================================================================
+  // 1. Context & Derived Data
   const isFocused = useIsFocused();
   const { progress } = React.useMemo(() => getMissionProgress(members), [members]);
   const { badgeState, badgeMembers } = React.useMemo(() => getBadgeMeta(members), [members]);
+  const sortedMembers = React.useMemo(
+    () => sortMembersForDisplay(members, currentUserId),
+    [members, currentUserId],
+  );
 
+  // ===========================================================================
+  // 2. Animation Values & Refs
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;
   const badgeOpacityAnim = useRef(new Animated.Value(0)).current;
@@ -39,6 +46,28 @@ export default function TodayGoalListFeed({
   const sequenceAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const staggerAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
+  // ===========================================================================
+  // 3. Interpolated Animation Styles
+  const scale = scaleAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [0.92, 1.04, 1] });
+  const translateY = translateYAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [8, 0],
+  });
+  const glowOpacity = scaleAnim.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: [0, 0.9, 0],
+  });
+
+  // ===========================================================================
+  // 4. Callbacks & Handlers
+  const carouselDragParentRef = useRef(onPhotoCarouselDragChange);
+  carouselDragParentRef.current = onPhotoCarouselDragChange;
+
+  const notifyCarouselDragToParent = useCallback((active: boolean) => {
+    carouselDragParentRef.current?.(active);
+  }, []);
+
+  //멤버 카드들이 0.15초(150ms) 간격으로 차례대로 나타나게 하는 애니메이션
   const startMemberCardStagger = useCallback(() => {
     if (memberAnims.length === 0) {
       staggeredMemberCountRef.current = 0;
@@ -63,6 +92,9 @@ export default function TodayGoalListFeed({
     staggeredMemberCountRef.current = memberAnims.length;
   }, [memberAnims]);
 
+  // ===========================================================================
+  // 5. Lifecycle Effects (Animation Orchestration)
+  // 5.1. 멤버 수 변경 시 애니메이션 배열 동기화
   useEffect(() => {
     if (members.length !== memberAnims.length) {
       const wasEmpty = memberAnims.length === 0;
@@ -71,6 +103,7 @@ export default function TodayGoalListFeed({
     }
   }, [members, memberAnims]);
 
+  // 5.2. 배지 등장 및 리스트 스태거 애니메이션 시작 (화면 포커스 시 1회)
   useEffect(() => {
     if (!isFocused) {
       hasBadgeAnimatedRef.current = false;
@@ -146,6 +179,7 @@ export default function TodayGoalListFeed({
     startMemberCardStagger,
   ]);
 
+  // 5.3. 멤버가 추가되었을 때 스태거 애니메이션 재시작 보정
   useEffect(() => {
     if (!isFocused || members.length === 0) return;
     if (!hasBadgeAnimatedRef.current) return;
@@ -161,30 +195,23 @@ export default function TodayGoalListFeed({
     startMemberCardStagger();
   }, [isFocused, members, members.length, memberAnims.length, startMemberCardStagger]);
 
-  const scale = scaleAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [0.92, 1.04, 1] });
-  const translateY = translateYAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [8, 0],
-  });
-  const glowOpacity = scaleAnim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [0, 0.9, 0],
-  });
-
-  const sortedMembers = React.useMemo(
-    () => sortMembersForDisplay(members, currentUserId),
-    [members, currentUserId],
-  );
-
-  const carouselDragParentRef = useRef(onPhotoCarouselDragChange);
-  carouselDragParentRef.current = onPhotoCarouselDragChange;
-  const notifyCarouselDragToParent = useCallback((active: boolean) => {
-    carouselDragParentRef.current?.(active);
-  }, []);
-
+  // ===========================================================================
+  // 6. Render
   return (
     <View>
-      <FeedHeader isNight={isNight} memberCount={sortedMembers.length} />
+      {/*헤더 */}
+      <View style={styles.headerBlock}>
+        <View style={styles.headerTextBlock}>
+          <Text style={[styles.title, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
+          <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
+            오늘 해야 할 목표와 팀 진행 상황을 한눈에 확인하세요.
+          </Text>
+          <Text style={[styles.metaText, isNight && styles.metaTextNight]}>
+            참여 멤버 {sortedMembers.length}명
+          </Text>
+        </View>
+      </View>
+      {/*도장 배찌*/}
       <FeedBadgePanel
         badgeMembers={badgeMembers}
         badgeOpacityAnim={badgeOpacityAnim}
@@ -194,7 +221,7 @@ export default function TodayGoalListFeed({
         scale={scale}
         translateY={translateY}
       />
-
+      {/*목표 리스트 */}
       <View style={styles.trailContainer}>
         <View style={styles.listHeaderRow}>
           <Text style={[styles.listHeaderTitle, isNight && styles.listHeaderTitleNight]}>
