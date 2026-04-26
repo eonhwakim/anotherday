@@ -76,20 +76,34 @@ export default function TodayTodoSection({
   onToggleTodo,
   onDeleteTodo,
 }: TodayTodoSectionProps) {
+  // ===========================================================================
+  // 1. UI & Interaction State
+  const [isComposerOpen, setIsComposerOpen] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [busyTodoId, setBusyTodoId] = React.useState<string | null>(null);
+
+  // ===========================================================================
+  // 2. Form State (Drafting Todo)
+  const [editingTodoId, setEditingTodoId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState('');
   const [hour, setHour] = React.useState(9);
   const [minute, setMinute] = React.useState(0);
   const [isReminderEnabled, setIsReminderEnabled] = React.useState(true);
   const [reminderMinutes, setReminderMinutes] = React.useState<DailyTodoReminderMinutes | null>(10);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [busyTodoId, setBusyTodoId] = React.useState<string | null>(null);
-  const [isComposerOpen, setIsComposerOpen] = React.useState(false);
-  const [editingTodoId, setEditingTodoId] = React.useState<string | null>(null);
 
+  // ===========================================================================
+  // 3. Derived State & Validation Logic
   const editingTodo = React.useMemo(
     () => todos.find((todo) => todo.id === editingTodoId) ?? null,
     [editingTodoId, todos],
   );
+
+  const selectedDueTime = React.useMemo(() => buildCandidateTime(hour, minute), [hour, minute]);
+
+  const isDueTimeInvalid = React.useMemo(() => {
+    if (!isReminderEnabled) return false;
+    return !selectedDueTime.isAfter(dayjs());
+  }, [isReminderEnabled, selectedDueTime]);
 
   const reminderTrigger = React.useMemo(() => {
     if (!isReminderEnabled || !reminderMinutes) return null;
@@ -107,13 +121,8 @@ export default function TodayTodoSection({
     return !reminderTrigger.isAfter(dayjs());
   }, [isReminderEnabled, reminderTrigger]);
 
-  const selectedDueTime = React.useMemo(() => buildCandidateTime(hour, minute), [hour, minute]);
-
-  const isDueTimeInvalid = React.useMemo(() => {
-    if (!isReminderEnabled) return false;
-    return !selectedDueTime.isAfter(dayjs());
-  }, [isReminderEnabled, selectedDueTime]);
-
+  // ===========================================================================
+  // 4. Form Control Handlers
   const resetForm = React.useCallback(() => {
     const nextHour = getNextHourDefault(10);
     setDraft('');
@@ -129,6 +138,17 @@ export default function TodayTodoSection({
     setIsComposerOpen(true);
   };
 
+  const openEditComposer = React.useCallback((todo: DailyTodo) => {
+    setEditingTodoId(todo.id);
+    setDraft(todo.title);
+    const [h = '09', m = '00'] = (todo.due_time ?? '09:00').split(':');
+    setHour(Number(h));
+    setMinute(Number(m));
+    setIsReminderEnabled(!!todo.due_time || !!todo.reminder_minutes);
+    setReminderMinutes(todo.reminder_minutes ?? 10);
+    setIsComposerOpen(true);
+  }, []);
+
   const handleReminderToggle = React.useCallback(() => {
     setIsReminderEnabled((prev) => {
       const next = !prev;
@@ -141,17 +161,28 @@ export default function TodayTodoSection({
     });
   }, [editingTodo?.due_time, reminderMinutes]);
 
-  const openEditComposer = React.useCallback((todo: DailyTodo) => {
-    setEditingTodoId(todo.id);
-    setDraft(todo.title);
-    const [h = '09', m = '00'] = (todo.due_time ?? '09:00').split(':');
-    setHour(Number(h));
-    setMinute(Number(m));
-    setIsReminderEnabled(!!todo.due_time || !!todo.reminder_minutes);
-    setReminderMinutes(todo.reminder_minutes ?? 10);
-    setIsComposerOpen(true);
-  }, []);
+  const adjustHour = React.useCallback(
+    (delta: number) => {
+      const nextHour = (hour + delta + 24) % 24;
+      const candidate = buildCandidateTime(nextHour, minute);
+      if (!candidate.isAfter(dayjs())) return;
+      setHour(nextHour);
+    },
+    [hour, minute],
+  );
 
+  const adjustMinute = React.useCallback(
+    (delta: number) => {
+      const nextMinute = (minute + delta + 60) % 60;
+      const candidate = buildCandidateTime(hour, nextMinute);
+      if (!candidate.isAfter(dayjs())) return;
+      setMinute(nextMinute);
+    },
+    [hour, minute],
+  );
+
+  // ===========================================================================
+  // 5. Data Mutation Actions (Create, Update, Delete, Toggle)
   const handleSubmit = async () => {
     const trimmed = draft.trim();
     if (!trimmed || isReminderScheduleInvalid || isDueTimeInvalid) return;
@@ -204,26 +235,8 @@ export default function TodayTodoSection({
     }
   };
 
-  const adjustHour = React.useCallback(
-    (delta: number) => {
-      const nextHour = (hour + delta + 24) % 24;
-      const candidate = buildCandidateTime(nextHour, minute);
-      if (!candidate.isAfter(dayjs())) return;
-      setHour(nextHour);
-    },
-    [hour, minute],
-  );
-
-  const adjustMinute = React.useCallback(
-    (delta: number) => {
-      const nextMinute = (minute + delta + 60) % 60;
-      const candidate = buildCandidateTime(hour, nextMinute);
-      if (!candidate.isAfter(dayjs())) return;
-      setMinute(nextMinute);
-    },
-    [hour, minute],
-  );
-
+  // ===========================================================================
+  // 6. Render
   return (
     <>
       <View style={styles.container}>
