@@ -212,7 +212,7 @@ export default function TodayGoalListFeed({
         </View>
       </View>
       {/*도장 배찌*/}
-      <FeedBadgePanel
+      {/* <FeedBadgePanel
         badgeMembers={badgeMembers}
         badgeOpacityAnim={badgeOpacityAnim}
         badgeState={badgeState}
@@ -220,17 +220,17 @@ export default function TodayGoalListFeed({
         isNight={isNight}
         scale={scale}
         translateY={translateY}
-      />
+      /> */}
       {/*목표 리스트 */}
       <View style={styles.trailContainer}>
-        <View style={styles.listHeaderRow}>
+        {/* <View style={styles.listHeaderRow}>
           <Text style={[styles.listHeaderTitle, isNight && styles.listHeaderTitleNight]}>
             GOAL LIST
           </Text>
           <Text style={[styles.listHeaderMeta, isNight && styles.listHeaderMetaNight]}>
             {sortedMembers.length}명
           </Text>
-        </View>
+        </View> */}
 
         {sortedMembers.length === 0 ? (
           <View style={styles.emptyTrail}>
