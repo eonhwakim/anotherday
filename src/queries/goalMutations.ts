@@ -9,12 +9,27 @@ import {
   extendGoalsForNewMonth,
   removeTeamGoal,
 } from '../services/goalService';
-import { deleteCheckinPhoto, uploadCheckinPhotoAsset } from '../services/checkinService';
-import type { Goal } from '../types/domain';
+import {
+  createCheckinWithTimeout,
+  deleteCheckinPhoto,
+  uploadCheckinPhotoAsset,
+} from '../services/checkinService';
+import type { Checkin, Goal } from '../types/domain';
 import { queryKeys } from './queryKeys';
 
-// 이 함수는 체크인 관련 데이터가 바뀐 뒤, 앱 안의 여러 캐시를 낡은 것으로 표시합니다.
-async function invalidateCheckinRelatedQueries(params: {
+function updateTodayCheckinsCache(
+  queryClient: QueryClient,
+  userId: string,
+  date: string,
+  updater: (current: Checkin[]) => Checkin[],
+) {
+  queryClient.setQueryData<Checkin[]>(queryKeys.goals.todayCheckins(userId, date), (current) =>
+    updater(current ?? []),
+  );
+}
+
+// 체크인 후 필요한 화면들을 새로고침하되, UI를 붙잡지 않도록 백그라운드에서 진행합니다.
+function invalidateCheckinRelatedQueries(params: {
   queryClient: QueryClient;
   userId: string;
   teamId?: string;
@@ -23,31 +38,33 @@ async function invalidateCheckinRelatedQueries(params: {
   const { queryClient, userId, teamId, date } = params;
   const yearMonth = dayjs(date).format('YYYY-MM');
 
-  await queryClient.invalidateQueries({
-    queryKey: queryKeys.goals.todayCheckins(userId, date),
-  });
-  await queryClient.invalidateQueries({
-    queryKey: queryKeys.goals.mine(userId),
-  });
-  await queryClient.invalidateQueries({
-    queryKey: ['goals', 'weekly-done-counts', userId],
-    exact: false,
-  });
-  await queryClient.invalidateQueries({
-    queryKey: queryKeys.stats.memberProgress(teamId, userId, date),
-  });
-  await queryClient.invalidateQueries({
-    queryKey: queryKeys.stats.calendar(userId, yearMonth),
-  });
-  await queryClient.invalidateQueries({
-    queryKey: queryKeys.stats.monthlyCheckins(userId, yearMonth),
-  });
-  await queryClient.invalidateQueries({
-    queryKey: queryKeys.stats.dateCheckins(userId, date),
-  });
-  await queryClient.invalidateQueries({
-    queryKey: queryKeys.stats.memberDateCheckins(teamId, userId, date),
-  });
+  void Promise.allSettled([
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.goals.todayCheckins(userId, date),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.goals.mine(userId),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: ['goals', 'weekly-done-counts', userId],
+      exact: false,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.stats.memberProgress(teamId, userId, date),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.stats.calendar(userId, yearMonth),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.stats.monthlyCheckins(userId, yearMonth),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.stats.dateCheckins(userId, date),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.stats.memberDateCheckins(teamId, userId, date),
+    }),
+  ]);
 }
 
 export function useCreateCheckinMutation(params: {
@@ -60,14 +77,56 @@ export function useCreateCheckinMutation(params: {
 
   return useMutation({
     mutationFn: createCheckin,
-    onSuccess: async (_, variables) => {
-      if (!userId) return;
+    onMutate: async (variables) => {
+      if (!userId) return undefined;
 
-      await invalidateCheckinRelatedQueries({
+      const checkinDate = variables.date ?? date;
+      const queryKey = queryKeys.goals.todayCheckins(userId, checkinDate);
+      const previousCheckins = queryClient.getQueryData<Checkin[]>(queryKey) ?? [];
+      const alreadyExists = previousCheckins.some((checkin) => checkin.goal_id === variables.goalId);
+
+      if (alreadyExists) {
+        return { previousCheckins, checkinDate, optimisticId: null };
+      }
+
+      const optimisticId = `optimistic-${variables.goalId}-${checkinDate}`;
+      updateTodayCheckinsCache(queryClient, userId, checkinDate, (current) => [
+        ...current,
+        {
+          id: optimisticId,
+          user_id: variables.userId,
+          goal_id: variables.goalId,
+          date: checkinDate,
+          photo_url: variables.photoUrl ?? null,
+          memo: variables.memo ?? null,
+          status: variables.status ?? 'done',
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      return { previousCheckins, checkinDate, optimisticId };
+    },
+    onError: (_error, _variables, context) => {
+      if (!userId || !context) return;
+      queryClient.setQueryData(queryKeys.goals.todayCheckins(userId, context.checkinDate), context.previousCheckins);
+    },
+    onSuccess: (created, variables, context) => {
+      if (!userId) return;
+      const checkinDate = variables.date ?? date;
+
+      if (!created && context) {
+        queryClient.setQueryData(
+          queryKeys.goals.todayCheckins(userId, context.checkinDate),
+          context.previousCheckins,
+        );
+        return;
+      }
+
+      invalidateCheckinRelatedQueries({
         queryClient,
         userId,
         teamId,
-        date: variables.date ?? date,
+        date: checkinDate,
       });
     },
   });
@@ -113,7 +172,7 @@ export function useCreatePhotoCheckinMutation(params: {
       };
 
       try {
-        const created = await createCheckin({
+        const created = await createCheckinWithTimeout({
           userId: variables.userId,
           goalId: variables.goalId,
           date: checkinDate,
@@ -127,16 +186,36 @@ export function useCreatePhotoCheckinMutation(params: {
         return {
           status: created ? ('created' as const) : ('duplicate' as const),
           date: checkinDate,
+          photoUrl: uploadedPhoto.publicUrl,
         };
       } catch (error) {
         await cleanupUploadedPhoto();
         throw error;
       }
     },
-    onSuccess: async (result, variables) => {
+    onSuccess: (result, variables) => {
       if (result.status !== 'created') return;
 
-      await invalidateCheckinRelatedQueries({
+      updateTodayCheckinsCache(queryClient, variables.userId, result.date, (current) => {
+        const alreadyExists = current.some((checkin) => checkin.goal_id === variables.goalId);
+        if (alreadyExists) return current;
+
+        return [
+          ...current,
+          {
+            id: `optimistic-photo-${variables.goalId}-${result.date}`,
+            user_id: variables.userId,
+            goal_id: variables.goalId,
+            date: result.date,
+            photo_url: result.photoUrl,
+            memo: null,
+            status: 'done',
+            created_at: new Date().toISOString(),
+          },
+        ];
+      });
+
+      invalidateCheckinRelatedQueries({
         queryClient,
         userId: variables.userId,
         teamId,
@@ -156,10 +235,26 @@ export function useDeleteCheckinMutation(params: {
 
   return useMutation({
     mutationFn: deleteCheckin,
-    onSuccess: async () => {
+    onMutate: async (checkinId) => {
+      if (!userId) return undefined;
+
+      const queryKey = queryKeys.goals.todayCheckins(userId, date);
+      const previousCheckins = queryClient.getQueryData<Checkin[]>(queryKey) ?? [];
+
+      updateTodayCheckinsCache(queryClient, userId, date, (current) =>
+        current.filter((checkin) => checkin.id !== checkinId),
+      );
+
+      return { previousCheckins };
+    },
+    onError: (_error, _checkinId, context) => {
+      if (!userId || !context) return;
+      queryClient.setQueryData(queryKeys.goals.todayCheckins(userId, date), context.previousCheckins);
+    },
+    onSuccess: () => {
       if (!userId) return;
 
-      await invalidateCheckinRelatedQueries({
+      invalidateCheckinRelatedQueries({
         queryClient,
         userId,
         teamId,

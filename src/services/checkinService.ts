@@ -64,7 +64,9 @@ export async function takePhoto(): Promise<string | null> {
   }
 }
 
+const IMAGE_READ_TIMEOUT_MS = 15_000;
 const UPLOAD_TIMEOUT_MS = 30_000;
+const CHECKIN_CREATE_TIMEOUT_MS = 15_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -88,7 +90,10 @@ export async function uploadCheckinPhotoAsset(
   // 더블탭·중복 클릭 방어: 같은 (userId, imageUri) 조합은 단일 업로드로 병합
   return runSingleFlight(`uploadCheckinPhoto:${userId}:${imageUri}`, async () => {
     const actorUserId = await requireAuthenticatedUserId(userId);
-    const { arrayBuffer, contentType, extension } = await prepareImageUpload(imageUri);
+    const { arrayBuffer, contentType, extension } = await withTimeout(
+      prepareImageUpload(imageUri),
+      IMAGE_READ_TIMEOUT_MS,
+    );
     const objectPath = buildUploadObjectPath(actorUserId, `${Date.now()}.${extension}`);
 
     try {
@@ -129,6 +134,31 @@ export async function uploadCheckinPhotoAsset(
       );
     }
   });
+}
+
+export async function createCheckinWithTimeout(params: {
+  userId: string;
+  goalId: string;
+  date?: string;
+  photoUrl?: string | null;
+  memo?: string | null;
+  status?: 'done' | 'pass';
+}): Promise<boolean> {
+  const { createCheckin } = await import('./goalService');
+
+  try {
+    return await withTimeout(createCheckin(params), CHECKIN_CREATE_TIMEOUT_MS);
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      throw error;
+    }
+
+    throw new ServiceError(
+      '체크인 저장에 실패했습니다. 네트워크 상태를 확인해주세요.',
+      'createCheckinWithTimeout',
+      error instanceof Error ? error.message : 'unknown create checkin error',
+    );
+  }
 }
 
 /** 이전 호출부 호환용 */
