@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { AppTabParamList } from '../../types/navigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { handleServiceError } from '../../lib/serviceError';
+import { hasKakaoIdentity } from '../../services/authService';
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { useCreateTeamMutation, useJoinTeamMutation } from '../../queries/teamMutations';
@@ -69,7 +70,41 @@ function SettingsRow({
 
 export default function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, linkKakaoAccount } = useAuthStore();
+  const [kakaoLinked, setKakaoLinked] = useState<boolean | null>(null);
+  const [isLinkingKakao, setIsLinkingKakao] = useState(false);
+
+  const refreshKakaoStatus = useCallback(async () => {
+    try {
+      const linked = await hasKakaoIdentity();
+      setKakaoLinked(linked);
+    } catch (e) {
+      console.warn('[MyPage] hasKakaoIdentity error:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshKakaoStatus();
+  }, [refreshKakaoStatus]);
+
+  const handleLinkKakao = async () => {
+    if (kakaoLinked) {
+      Alert.alert('알림', '이미 카카오 계정이 연결되어 있어요.');
+      return;
+    }
+    setIsLinkingKakao(true);
+    try {
+      const result = await linkKakaoAccount();
+      if (result.success) {
+        await refreshKakaoStatus();
+        Alert.alert('연결 완료', '다음부터 카카오로 간편하게 로그인할 수 있어요.');
+      } else if (result.error && !/취소/.test(result.error)) {
+        Alert.alert('연결 실패', result.error);
+      }
+    } finally {
+      setIsLinkingKakao(false);
+    }
+  };
   const { teams, currentTeam, selectTeam } = useTeamStore();
   const teamsQuery = useUserTeamsQuery(user?.id);
   const createTeamMutation = useCreateTeamMutation(user?.id);
@@ -208,6 +243,19 @@ export default function MyPageScreen() {
                 title="팀 관리"
                 subtitle="팀 생성 및 참가"
                 onPress={handleTeamManagement}
+                showDivider
+              />
+              <SettingsRow
+                icon="chatbubble-outline"
+                title={kakaoLinked ? '카카오 계정' : '카카오 계정 연결'}
+                subtitle={
+                  isLinkingKakao
+                    ? '연결 중...'
+                    : kakaoLinked
+                      ? '연결됨 — 카카오로 로그인 가능'
+                      : '다음부터 카카오로 간편하게 로그인'
+                }
+                onPress={handleLinkKakao}
                 showDivider
               />
               <SettingsRow

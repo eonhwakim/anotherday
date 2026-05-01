@@ -9,10 +9,17 @@ import {
   ensureProfile,
   fetchUserProfile,
   getCurrentSessionUser,
+  linkKakaoIdentity,
+  signInWithKakao as signInWithKakaoService,
   signInWithPassword,
   signOutAuth,
   signUpWithPassword,
 } from '../services/authService';
+
+export type KakaoSignInResult =
+  | { success: true; isNewUser: false }
+  | { success: true; isNewUser: true; pendingUserId: string; pendingEmail: string | null }
+  | { success: false };
 
 interface AuthState {
   user: User | null;
@@ -24,6 +31,10 @@ interface AuthState {
   setUser: (user: User) => void;
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (email: string, password: string, nickname: string) => Promise<boolean>;
+  signInWithKakao: () => Promise<KakaoSignInResult>;
+  finalizeKakaoSignup: (userId: string, email: string | null, nickname?: string) => Promise<boolean>;
+  cancelKakaoSignup: () => Promise<void>;
+  linkKakaoAccount: () => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<boolean>;
   clearError: () => void;
@@ -153,6 +164,97 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
       return false;
     }
+  },
+
+  signInWithKakao: async () => {
+    try {
+      set({ isLoading: true, error: null });
+
+      useGoalStore.getState().reset();
+      useTeamStore.getState().reset();
+      useStatsStore.getState().reset();
+
+      const { data, error } = await signInWithKakaoService();
+
+      if (error) {
+        set({ error: error.message, isLoading: false });
+        return { success: false };
+      }
+
+      if (!data.user) {
+        set({ isLoading: false });
+        return { success: false };
+      }
+
+      const existingProfile = await fetchUserProfile(data.user.id);
+
+      if (existingProfile) {
+        // 이미 프로필이 있는 user — 카카오 연결한 기존 회원 또는 카카오 재로그인
+        set({ user: existingProfile, isLoading: false });
+        return { success: true, isNewUser: false };
+      }
+
+      // 신규 카카오 user — 프로필 미생성. 사용자 선택 대기 상태로 전환
+      set({ isLoading: false });
+      return {
+        success: true,
+        isNewUser: true,
+        pendingUserId: data.user.id,
+        pendingEmail: data.user.email ?? null,
+      };
+    } catch (e) {
+      console.error('[Auth] signInWithKakao error:', e);
+      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
+      return { success: false };
+    }
+  },
+
+  finalizeKakaoSignup: async (userId, email, nickname) => {
+    try {
+      set({ isLoading: true, error: null });
+
+      // 카카오 신규 user는 비즈니스 인증 없으면 email이 null일 수 있음 — placeholder 사용
+      const profileEmail = email ?? `${userId}@kakao.local`;
+      const profile = await ensureProfile(userId, profileEmail, nickname);
+
+      if (!profile) {
+        set({ error: '프로필 생성에 실패했습니다.', isLoading: false });
+        return false;
+      }
+
+      set({ user: profile, isLoading: false });
+      return true;
+    } catch (e) {
+      console.error('[Auth] finalizeKakaoSignup error:', e);
+      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
+      return false;
+    }
+  },
+
+  cancelKakaoSignup: async () => {
+    try {
+      const sessionUser = await getCurrentSessionUser();
+      if (sessionUser) {
+        await deleteUserAccount(sessionUser.id);
+      }
+    } catch (e) {
+      console.warn('[Auth] cancelKakaoSignup delete error:', e);
+    }
+    await signOutAuth();
+    set({ user: null, error: null });
+  },
+
+  linkKakaoAccount: async () => {
+    const result = await linkKakaoIdentity();
+    if (result.success) {
+      // 세션이 갱신되었을 수 있으니 프로필도 다시 가져온다
+      const sessionUser = await getCurrentSessionUser();
+      if (sessionUser) {
+        const profile = await fetchUserProfile(sessionUser.id);
+        if (profile) set({ user: profile });
+      }
+    }
+    return result;
   },
 
   signOut: async () => {
