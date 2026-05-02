@@ -48,7 +48,7 @@ export async function takePhoto(): Promise<string | null> {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      quality: 0.6,
     });
 
     if (result.canceled || !result.assets?.[0]) {
@@ -89,11 +89,11 @@ export async function uploadCheckinPhotoAsset(
 ): Promise<UploadedCheckinPhoto> {
   // 더블탭·중복 클릭 방어: 같은 (userId, imageUri) 조합은 단일 업로드로 병합
   return runSingleFlight(`uploadCheckinPhoto:${userId}:${imageUri}`, async () => {
-    const actorUserId = await requireAuthenticatedUserId(userId);
-    const { arrayBuffer, contentType, extension } = await withTimeout(
-      prepareImageUpload(imageUri),
-      IMAGE_READ_TIMEOUT_MS,
-    );
+    const [actorUserId, preparedImage] = await Promise.all([
+      requireAuthenticatedUserId(userId),
+      withTimeout(prepareImageUpload(imageUri), IMAGE_READ_TIMEOUT_MS),
+    ]);
+    const { arrayBuffer, contentType, extension } = preparedImage;
     const objectPath = buildUploadObjectPath(actorUserId, `${Date.now()}.${extension}`);
 
     try {

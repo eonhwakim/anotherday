@@ -132,9 +132,9 @@ export default function CheckinModal({
         });
 
         if (result.status === 'created') {
-          Alert.alert('인증 완료!', '사진 인증이 완료되었어요.');
-          await refreshAfterMutation();
           onClose();
+          Alert.alert('인증 완료!', '사진 인증이 완료되었어요.');
+          void refreshAfterMutation();
           return;
         }
 
