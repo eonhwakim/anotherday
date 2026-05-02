@@ -2,7 +2,6 @@ import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-q
 import dayjs from '../lib/dayjs';
 import {
   addGoal,
-  checkCheckinExists,
   createCheckin,
   deleteCheckin,
   endTeamGoal,
@@ -148,16 +147,6 @@ export function useCreatePhotoCheckinMutation(params: {
       date?: string;
     }) => {
       const checkinDate = variables.date ?? date;
-      const alreadyExists = await checkCheckinExists({
-        userId: variables.userId,
-        goalId: variables.goalId,
-        date: checkinDate,
-      });
-
-      if (alreadyExists) {
-        return { status: 'duplicate' as const, date: checkinDate };
-      }
-
       const uploadedPhoto = await uploadCheckinPhotoAsset(variables.userId, variables.imageUri);
 
       const cleanupUploadedPhoto = async () => {
@@ -193,27 +182,63 @@ export function useCreatePhotoCheckinMutation(params: {
         throw error;
       }
     },
-    onSuccess: (result, variables) => {
-      if (result.status !== 'created') return;
+    onMutate: async (variables) => {
+      const checkinDate = variables.date ?? date;
+      const queryKey = queryKeys.goals.todayCheckins(variables.userId, checkinDate);
+      const previousCheckins = queryClient.getQueryData<Checkin[]>(queryKey) ?? [];
+      const alreadyExists = previousCheckins.some((checkin) => checkin.goal_id === variables.goalId);
 
-      updateTodayCheckinsCache(queryClient, variables.userId, result.date, (current) => {
-        const alreadyExists = current.some((checkin) => checkin.goal_id === variables.goalId);
-        if (alreadyExists) return current;
+      if (alreadyExists) {
+        return { previousCheckins, checkinDate, optimisticId: null };
+      }
 
-        return [
-          ...current,
-          {
-            id: `optimistic-photo-${variables.goalId}-${result.date}`,
-            user_id: variables.userId,
-            goal_id: variables.goalId,
-            date: result.date,
-            photo_url: result.photoUrl,
-            memo: null,
-            status: 'done',
-            created_at: new Date().toISOString(),
-          },
-        ];
-      });
+      const optimisticId = `optimistic-photo-${variables.goalId}-${checkinDate}`;
+      updateTodayCheckinsCache(queryClient, variables.userId, checkinDate, (current) => [
+        ...current,
+        {
+          id: optimisticId,
+          user_id: variables.userId,
+          goal_id: variables.goalId,
+          date: checkinDate,
+          photo_url: variables.imageUri,
+          memo: null,
+          status: 'done',
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      return { previousCheckins, checkinDate, optimisticId };
+    },
+    onError: (_error, variables, context) => {
+      if (!context) return;
+      queryClient.setQueryData(
+        queryKeys.goals.todayCheckins(variables.userId, context.checkinDate),
+        context.previousCheckins,
+      );
+    },
+    onSuccess: (result, variables, context) => {
+      if (!context) return;
+
+      if (result.status !== 'created') {
+        queryClient.setQueryData(
+          queryKeys.goals.todayCheckins(variables.userId, context.checkinDate),
+          context.previousCheckins,
+        );
+        return;
+      }
+
+      if (context.optimisticId) {
+        updateTodayCheckinsCache(queryClient, variables.userId, result.date, (current) =>
+          current.map((checkin) =>
+            checkin.id === context.optimisticId
+              ? {
+                  ...checkin,
+                  photo_url: result.photoUrl,
+                }
+              : checkin,
+          ),
+        );
+      }
 
       invalidateCheckinRelatedQueries({
         queryClient,

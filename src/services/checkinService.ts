@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabaseClient';
 import { STORAGE_BUCKETS, STORAGE_CACHE_CONTROL } from '../constants/storage';
 import { requireAuthenticatedUserId } from '../lib/auth';
+import { optimizeImageForUpload } from '../lib/imageProcessing';
 import { buildUploadObjectPath, prepareImageUpload } from '../lib/storageUpload';
 import { runSingleFlight } from '../lib/requestCache';
 import { ServiceError } from '../lib/serviceError';
@@ -23,14 +24,14 @@ export async function pickImage(): Promise<string | null> {
     mediaTypes: ['images'],
     allowsEditing: true,
     aspect: [1, 1],
-    quality: 0.7,
+    quality: 1,
   });
 
   if (result.canceled || !result.assets[0]) {
     return null;
   }
 
-  return result.assets[0].uri;
+  return optimizeImageForUpload(result.assets[0]);
 }
 
 /** 카메라로 사진 촬영 */
@@ -48,13 +49,13 @@ export async function takePhoto(): Promise<string | null> {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.6,
+      quality: 1,
     });
 
     if (result.canceled || !result.assets?.[0]) {
       return null;
     }
-    return result.assets[0].uri;
+    return optimizeImageForUpload(result.assets[0]);
   } catch (error) {
     throw new ServiceError(
       '카메라를 실행하지 못했습니다. 잠시 후 다시 시도해주세요.',

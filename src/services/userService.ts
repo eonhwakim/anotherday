@@ -6,6 +6,7 @@ import {
   STORAGE_FOLDERS,
 } from '../constants/storage';
 import { requireAuthenticatedUserId } from '../lib/auth';
+import { optimizeImageForUpload } from '../lib/imageProcessing';
 import { buildUploadObjectPath, prepareImageUpload } from '../lib/storageUpload';
 import { ServiceError } from '../lib/serviceError';
 import type { User } from '../types/domain';
@@ -103,12 +104,12 @@ export async function pickProfileImage(): Promise<string | null> {
     mediaTypes: ['images'],
     allowsEditing: true,
     aspect: [1, 1],
-    quality: 0.7,
+    quality: 1,
   });
 
   if (result.canceled || !result.assets[0]) {
     return null;
   }
 
-  return result.assets[0].uri;
+  return optimizeImageForUpload(result.assets[0]);
 }

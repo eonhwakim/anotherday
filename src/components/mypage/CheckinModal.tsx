@@ -123,25 +123,22 @@ export default function CheckinModal({
     }
 
     try {
-      await runWithLoading(async () => {
-        const result = await createPhotoCheckinMutation.mutateAsync({
-          userId: user.id,
-          goalId,
-          imageUri,
-          date: today,
-        });
-
-        if (result.status === 'created') {
-          onClose();
-          Alert.alert('인증 완료!', '사진 인증이 완료되었어요.');
-          void refreshAfterMutation();
-          return;
-        }
-
-        if (result.status === 'duplicate') {
-          Alert.alert('알림', '이미 인증이 완료된 목표입니다.');
-        }
+      onClose();
+      const result = await createPhotoCheckinMutation.mutateAsync({
+        userId: user.id,
+        goalId,
+        imageUri,
+        date: today,
       });
+
+      if (result.status === 'created') {
+        void refreshAfterMutation();
+        return;
+      }
+
+      if (result.status === 'duplicate') {
+        Alert.alert('알림', '이미 인증이 완료된 목표입니다.');
+      }
     } catch (e) {
       handleServiceError(e);
     }
