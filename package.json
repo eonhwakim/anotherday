@@ -14,7 +14,8 @@
     "build:dev": "eas build --platform ios --profile development",
     "build:preview": "eas build --platform ios --profile preview",
     "build:production": "eas build --platform ios --profile production",
-    "submit:ios": "eas submit --platform ios --latest"
+    "submit:ios": "eas submit --platform ios --latest",
+    "release:notify": "node --env-file=.env.local scripts/notify-release.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "^55.0.7",
