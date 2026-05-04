@@ -150,16 +150,49 @@ export async function extendGoalsForNewMonth(
 
   if (!targets || targets.length === 0) return true;
 
-  const inserts = targets.map((goal) => ({
-    user_id: actorUserId,
-    goal_id: goal.goal_id,
-    is_active: true,
-    frequency: goal.frequency,
-    target_count: goal.target_count,
-    start_date: nextWindow.start,
-    end_date: nextWindow.end,
-    week_days: goal.week_days ?? null,
-  }));
+  const targetGoalIds = Array.from(new Set(targets.map((goal) => goal.goal_id)));
+  const { data: existingRows, error: existingRowsError } = await supabase
+    .from('user_goals')
+    .select('goal_id, start_date, end_date')
+    .eq('user_id', actorUserId)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .in('goal_id', targetGoalIds)
+    .lte('start_date', nextWindow.end)
+    .or(`end_date.is.null,end_date.gte.${nextWindow.start}`);
+
+  if (existingRowsError) {
+    throw new ServiceError(
+      '목표 연장에 실패했습니다.',
+      'extendGoalsForNewMonth',
+      existingRowsError.message,
+    );
+  }
+
+  const existingGoalIds = new Set(
+    ((existingRows ?? []) as Pick<UserGoal, 'goal_id'>[]).map((row) => row.goal_id),
+  );
+
+  const inserts = targets
+    .map((goal) => {
+      if (existingGoalIds.has(goal.goal_id)) return null;
+
+      return {
+        user_id: actorUserId,
+        goal_id: goal.goal_id,
+        is_active: true,
+        frequency: goal.frequency,
+        target_count: goal.target_count,
+        start_date: nextWindow.start,
+        end_date: nextWindow.end,
+        week_days: goal.week_days ?? null,
+      };
+    })
+    .filter((goal): goal is NonNullable<typeof goal> => goal !== null);
+
+  if (inserts.length === 0) {
+    return true;
+  }
 
   const { error } = await supabase.from('user_goals').insert(inserts);
 

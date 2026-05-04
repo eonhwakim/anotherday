@@ -10,6 +10,7 @@ interface Props {
   goalNames: Map<string, string>;
   onContinue: () => void;
   onNewPlan: () => void;
+  isSubmitting?: boolean;
 }
 
 export default function MonthlyGoalPromptModal({
@@ -19,6 +20,7 @@ export default function MonthlyGoalPromptModal({
   goalNames,
   onContinue,
   onNewPlan,
+  isSubmitting = false,
 }: Props) {
   const monthNum = parseInt(newMonthStr.split('-')[1], 10);
 
@@ -50,14 +52,26 @@ export default function MonthlyGoalPromptModal({
             </View>
           )}
 
-          <TouchableOpacity style={s.continueBtn} onPress={onContinue} activeOpacity={0.85}>
-            <Text style={s.continueBtnText}>이어서 하기</Text>
+          <TouchableOpacity
+            style={[s.continueBtn, isSubmitting && s.continueBtnDisabled]}
+            onPress={onContinue}
+            activeOpacity={0.85}
+            disabled={isSubmitting}
+          >
+            <Text style={s.continueBtnText}>
+              {isSubmitting ? '가져오는 중...' : '이어서 하기'}
+            </Text>
             <Text style={s.continueBtnSub}>
               지난달 루틴을 복사해서 {monthNum}월 루틴으로 새로 만들어요
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={s.newPlanBtn} onPress={onNewPlan} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[s.newPlanBtn, isSubmitting && s.newPlanBtnDisabled]}
+            onPress={onNewPlan}
+            activeOpacity={0.85}
+            disabled={isSubmitting}
+          >
             <Text style={s.newPlanBtnText}>새로 계획하기</Text>
             <Text style={s.newPlanBtnSub}>{monthNum}월은 새 목표로 새 출발해요</Text>
           </TouchableOpacity>
@@ -134,6 +148,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  continueBtnDisabled: {
+    opacity: 0.7,
+  },
   continueBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
   continueBtnSub: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
   newPlanBtn: {
@@ -143,6 +160,9 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     alignItems: 'center',
+  },
+  newPlanBtnDisabled: {
+    opacity: 0.55,
   },
   newPlanBtnText: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
   newPlanBtnSub: { fontSize: 11, color: '#999', marginTop: 3 },

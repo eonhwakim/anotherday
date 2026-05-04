@@ -92,6 +92,7 @@ export function useMonthlyGoalPrompt(params: { currentTeamId?: string; userId?: 
     extendableGoals,
     handleMonthlyPromptContinue,
     handleMonthlyPromptNewPlan,
+    isContinuingMonthlyPrompt: extendGoalsForNewMonthMutation.isPending,
     promptNewMonth,
     showMonthlyPrompt,
   };

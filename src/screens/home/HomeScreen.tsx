@@ -99,6 +99,7 @@ export default function HomeScreen() {
     extendableGoals,
     handleMonthlyPromptContinue,
     handleMonthlyPromptNewPlan,
+    isContinuingMonthlyPrompt,
     promptNewMonth,
     showMonthlyPrompt,
   } = useMonthlyGoalPrompt({ currentTeamId, userId });
@@ -142,6 +143,7 @@ export default function HomeScreen() {
         goalNames={new Map(teamGoals.map((g) => [g.id, g.name]))}
         onContinue={handleMonthlyPromptContinue}
         onNewPlan={handleMonthlyPromptNewPlan}
+        isSubmitting={isContinuingMonthlyPrompt}
       />
 
       <View style={styles.bgLayer}>
