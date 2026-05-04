@@ -131,7 +131,7 @@ export default function RoutineComposer({
       if (frequency === 'weekly_count') {
         Alert.alert(
           `주 ${targetCount ?? 'N'}회 루틴 등록 완료`,
-          '오늘 할 계획이 아니라면 패스 인증을 하면 산을 오를 수 있어요. (미달로 카운팅됩니다.)',
+          '오늘 할 계획이 아니라면 [패스] 인증을 해서 100%를 달성해요!',
           [{ text: '확인', onPress: finishSuccess }],
         );
         return;
