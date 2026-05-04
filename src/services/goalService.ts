@@ -50,7 +50,7 @@ async function findCurrentUserGoalPeriod(
       const startsOnOrBeforeReference = !row.start_date || row.start_date <= referenceDate;
       const endsOnOrAfterReference = !row.end_date || row.end_date >= referenceDate;
       return startsOnOrBeforeReference && endsOnOrAfterReference;
-    }) ?? rows[0] ?? null
+    }) ?? null
   );
 }
 
@@ -448,37 +448,27 @@ export async function addGoal(params: {
   );
 
   if (myExisting) {
-    const { data: myGoal, error: myGoalError } = await supabase
+    const { data: myGoalRows, error: myGoalError } = await supabase
       .from('user_goals')
-      .select('*')
+      .select('id, start_date, end_date')
       .eq('user_id', actorUserId)
       .eq('goal_id', myExisting.id)
-      .maybeSingle();
+      .eq('is_active', true)
+      .is('deleted_at', null)
+      .order('start_date', { ascending: false });
 
     if (myGoalError) {
       throw new ServiceError('루틴 추가에 실패했습니다.', 'addGoal', myGoalError.message);
     }
 
-    if (myGoal) {
-      if (myGoal.is_active && !myGoal.deleted_at) return false;
+    const hasActivePeriodToday = (myGoalRows ?? []).some((row: UserGoalPeriodRow) => {
+      const startsOnOrBeforeToday = !row.start_date || row.start_date <= today;
+      const endsOnOrAfterToday = !row.end_date || row.end_date >= today;
+      return startsOnOrBeforeToday && endsOnOrAfterToday;
+    });
 
-      const { error } = await supabase
-        .from('user_goals')
-        .update({
-          is_active: true,
-          deleted_at: null,
-          frequency,
-          target_count: targetCount,
-          start_date: today,
-          end_date: computedEndDate,
-        })
-        .eq('id', myGoal.id);
-
-      if (error) {
-        throw new ServiceError('루틴 추가에 실패했습니다.', 'addGoal', error.message);
-      }
-
-      return true;
+    if (hasActivePeriodToday) {
+      return false;
     }
 
     const { error } = await supabase.from('user_goals').insert({
