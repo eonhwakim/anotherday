@@ -41,7 +41,11 @@ async function findCurrentUserGoalPeriod(
     .order('start_date', { ascending: false });
 
   if (error) {
-    throw new ServiceError('목표 정보를 불러오지 못했습니다.', 'findCurrentUserGoalPeriod', error.message);
+    throw new ServiceError(
+      '목표 정보를 불러오지 못했습니다.',
+      'findCurrentUserGoalPeriod',
+      error.message,
+    );
   }
 
   const rows = (data ?? []) as UserGoalPeriodRow[];
@@ -71,7 +75,11 @@ export async function fetchExtendableGoalsForMonth(
     .eq('end_date', prevWindow.end);
 
   if (error) {
-    throw new ServiceError('연장 가능한 목표를 확인하지 못했습니다.', 'fetchExtendableGoalsForMonth', error.message);
+    throw new ServiceError(
+      '연장 가능한 목표를 확인하지 못했습니다.',
+      'fetchExtendableGoalsForMonth',
+      error.message,
+    );
   }
 
   const targets = (data ?? []) as UserGoal[];
@@ -87,10 +95,16 @@ export async function fetchExtendableGoalsForMonth(
     .or(`end_date.is.null,end_date.gte.${nextWindow.start}`);
 
   if (nextMonthError) {
-    throw new ServiceError('다음 달 목표를 확인하지 못했습니다.', 'fetchExtendableGoalsForMonth', nextMonthError.message);
+    throw new ServiceError(
+      '다음 달 목표를 확인하지 못했습니다.',
+      'fetchExtendableGoalsForMonth',
+      nextMonthError.message,
+    );
   }
 
-  const existingGoalIds = new Set((nextMonthGoals ?? []).map((row: { goal_id: string }) => row.goal_id));
+  const existingGoalIds = new Set(
+    (nextMonthGoals ?? []).map((row: { goal_id: string }) => row.goal_id),
+  );
   return targets.filter((goal) => !existingGoalIds.has(goal.goal_id));
 }
 
@@ -108,7 +122,11 @@ export async function fetchLastMonthGoals(userId: string): Promise<UserGoal[]> {
     .gte('end_date', lastMonthStart);
 
   if (error) {
-    throw new ServiceError('지난 달 목표를 불러오지 못했습니다.', 'fetchLastMonthGoals', error.message);
+    throw new ServiceError(
+      '지난 달 목표를 불러오지 못했습니다.',
+      'fetchLastMonthGoals',
+      error.message,
+    );
   }
 
   return (data ?? []) as UserGoal[];
@@ -118,21 +136,52 @@ export async function copyGoalsFromLastMonth(userId: string, goals: UserGoal[]):
   if (goals.length === 0) return true;
 
   const actorUserId = await requireAuthenticatedUserId(userId);
-  const today = dayjs().format('YYYY-MM-DD');
-  const endOfMonth = dayjs().endOf('month').format('YYYY-MM-DD');
+  const currentMonthStr = dayjs().format('YYYY-MM');
+  const currentWindow = getRoutineWindowForMonth(currentMonthStr);
+  const targetGoalIds = Array.from(new Set(goals.map((goal) => goal.goal_id)));
 
-  const updates = goals.map((g) => ({
-    id: g.id,
-    user_id: actorUserId,
-    goal_id: g.goal_id,
-    start_date: today,
-    end_date: endOfMonth,
-    is_active: true,
-    frequency: g.frequency,
-    target_count: g.target_count,
-  }));
+  const { data: existingRows, error: existingRowsError } = await supabase
+    .from('user_goals')
+    .select('goal_id')
+    .eq('user_id', actorUserId)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .in('goal_id', targetGoalIds)
+    .lte('start_date', currentWindow.end)
+    .or(`end_date.is.null,end_date.gte.${currentWindow.start}`);
 
-  const { error } = await supabase.from('user_goals').upsert(updates);
+  if (existingRowsError) {
+    throw new ServiceError(
+      '목표 복사에 실패했습니다.',
+      'copyGoalsFromLastMonth',
+      existingRowsError.message,
+    );
+  }
+
+  const existingGoalIds = new Set(
+    ((existingRows ?? []) as Pick<UserGoal, 'goal_id'>[]).map((row) => row.goal_id),
+  );
+
+  const inserts = goals
+    .map((goal) => {
+      if (existingGoalIds.has(goal.goal_id)) return null;
+
+      return {
+        user_id: actorUserId,
+        goal_id: goal.goal_id,
+        start_date: dayjs().format('YYYY-MM-DD'),
+        end_date: currentWindow.end,
+        is_active: true,
+        frequency: goal.frequency,
+        target_count: goal.target_count,
+        week_days: goal.week_days ?? null,
+      };
+    })
+    .filter((goal): goal is NonNullable<typeof goal> => goal !== null);
+
+  if (inserts.length === 0) return true;
+
+  const { error } = await supabase.from('user_goals').insert(inserts);
   if (error) {
     throw new ServiceError('목표 복사에 실패했습니다.', 'copyGoalsFromLastMonth', error.message);
   }
@@ -254,7 +303,11 @@ export async function fetchMyGoalsForMonth(userId: string, yearMonth: string): P
     .order('start_date', { ascending: false });
 
   if (error) {
-    throw new ServiceError('월간 목표를 불러오지 못했습니다.', 'fetchMyGoalsForMonth', error.message);
+    throw new ServiceError(
+      '월간 목표를 불러오지 못했습니다.',
+      'fetchMyGoalsForMonth',
+      error.message,
+    );
   }
 
   return (data ?? []) as UserGoal[];
@@ -282,7 +335,11 @@ export async function fetchWeeklyDoneCountsForGoals(params: {
     .lte('date', end);
 
   if (error) {
-    throw new ServiceError('주간 완료 횟수를 불러오지 못했습니다.', 'fetchWeeklyDoneCountsForGoals', error.message);
+    throw new ServiceError(
+      '주간 완료 횟수를 불러오지 못했습니다.',
+      'fetchWeeklyDoneCountsForGoals',
+      error.message,
+    );
   }
 
   return (data ?? []).reduce<Record<string, number>>((acc, row: { goal_id: string }) => {
@@ -328,7 +385,11 @@ export async function endTeamGoal(userId: string, goalId: string): Promise<boole
     .eq('date', today);
 
   if (todayCheckinError) {
-    throw new ServiceError('루틴 종료 처리에 실패했습니다.', 'endTeamGoal', todayCheckinError.message);
+    throw new ServiceError(
+      '루틴 종료 처리에 실패했습니다.',
+      'endTeamGoal',
+      todayCheckinError.message,
+    );
   }
 
   const requestedEndDate =
@@ -361,7 +422,11 @@ export async function fetchTodayCheckins(userId: string): Promise<Checkin[]> {
     .eq('date', today);
 
   if (error) {
-    throw new ServiceError('오늘의 체크인을 불러오지 못했습니다.', 'fetchTodayCheckins', error.message);
+    throw new ServiceError(
+      '오늘의 체크인을 불러오지 못했습니다.',
+      'fetchTodayCheckins',
+      error.message,
+    );
   }
 
   return (data ?? []) as Checkin[];
@@ -549,7 +614,11 @@ export async function addGoal(params: {
   return true;
 }
 
-export async function removeTeamGoal(teamId: string, userId: string, goalId: string): Promise<boolean> {
+export async function removeTeamGoal(
+  teamId: string,
+  userId: string,
+  goalId: string,
+): Promise<boolean> {
   const actorUserId = await requireAuthenticatedUserId(userId);
   const today = dayjs().format('YYYY-MM-DD');
   const currentGoalRow = await findCurrentUserGoalPeriod(actorUserId, goalId, today);
@@ -568,7 +637,11 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
     .lte('date', activeEnd);
 
   if (checkinDeleteError) {
-    throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', checkinDeleteError.message);
+    throw new ServiceError(
+      '루틴 삭제에 실패했습니다.',
+      'removeTeamGoal',
+      checkinDeleteError.message,
+    );
   }
 
   const { error: userGoalDeleteError } = await supabase
@@ -577,7 +650,11 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
     .eq('id', currentGoalRow.id);
 
   if (userGoalDeleteError) {
-    throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', userGoalDeleteError.message);
+    throw new ServiceError(
+      '루틴 삭제에 실패했습니다.',
+      'removeTeamGoal',
+      userGoalDeleteError.message,
+    );
   }
 
   const { count: totalCheckinsCount, error: totalCheckinsError } = await supabase
@@ -585,7 +662,11 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
     .select('*', { count: 'exact', head: true })
     .eq('goal_id', goalId);
   if (totalCheckinsError) {
-    throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', totalCheckinsError.message);
+    throw new ServiceError(
+      '루틴 삭제에 실패했습니다.',
+      'removeTeamGoal',
+      totalCheckinsError.message,
+    );
   }
 
   const { count: otherUsersCount, error: otherUsersError } = await supabase
@@ -597,7 +678,10 @@ export async function removeTeamGoal(teamId: string, userId: string, goalId: str
     throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', otherUsersError.message);
   }
 
-  if ((!totalCheckinsCount || totalCheckinsCount === 0) && (!otherUsersCount || otherUsersCount === 0)) {
+  if (
+    (!totalCheckinsCount || totalCheckinsCount === 0) &&
+    (!otherUsersCount || otherUsersCount === 0)
+  ) {
     const { error: goalError } = await supabase.from('goals').delete().eq('id', goalId);
     if (goalError) {
       throw new ServiceError('루틴 삭제에 실패했습니다.', 'removeTeamGoal', goalError.message);
