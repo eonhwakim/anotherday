@@ -36,6 +36,35 @@ export const dayjsMin = (a: dayjs.Dayjs, b: dayjs.Dayjs) => (a.isBefore(b) ? a :
 export const isPassCheckin = (c: any) => c.status === 'pass';
 export const isDoneCheckin = (c: any) => c.status === 'done';
 
+export interface WeeklyGoalLike {
+  goal_id: string;
+  frequency: string;
+  target_count: number | null;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+export interface WeeklyCheckinLike {
+  goal_id: string;
+  status: string;
+  date: string;
+}
+
+export interface WeeklyGoalProgress {
+  weekStart: string;
+  weekEnd: string;
+  activeStart: string | null;
+  activeEnd: string | null;
+  activeDays: number;
+  target: number;
+  doneCount: number;
+  passCount: number;
+  creditedCount: number;
+  isActive: boolean;
+  isDaily: boolean;
+  isAchieved: boolean;
+}
+
 // ─── Calendar-style week ranges for a given month ───────────
 // 월요일 기준 Mon-Sun 주 단위.
 // 월초/월말 부분주가 4일 미만이면 인접 월에 편입 (해당 월에서 제외).
@@ -155,6 +184,43 @@ export function getGoalWeekRanges(
   }));
 }
 
+export function getWeeklyGoalProgress(
+  goal: WeeklyGoalLike,
+  weekStart: string,
+  checkins: WeeklyCheckinLike[],
+): WeeklyGoalProgress {
+  const weekEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
+  const effectiveStart = dayjsMax(dayjs(weekStart), dayjs(goal.start_date || weekStart));
+  const effectiveEnd = dayjsMin(dayjs(weekEnd), dayjs(goal.end_date || weekEnd));
+  const isActive = !effectiveStart.isAfter(effectiveEnd);
+  const activeDays = isActive ? effectiveEnd.diff(effectiveStart, 'day') + 1 : 0;
+  const isDaily = goal.frequency === 'daily';
+  const baseWeeklyTarget = goal.target_count || 1;
+  const target = isActive ? (isDaily ? activeDays : Math.min(baseWeeklyTarget, activeDays)) : 0;
+  const relevantCheckins = checkins.filter(
+    (checkin) =>
+      checkin.goal_id === goal.goal_id && checkin.date >= weekStart && checkin.date <= weekEnd,
+  );
+  const doneCount = relevantCheckins.filter((checkin) => checkin.status === 'done').length;
+  const passCount = relevantCheckins.filter((checkin) => checkin.status === 'pass').length;
+  const creditedCount = doneCount;
+
+  return {
+    weekStart,
+    weekEnd,
+    activeStart: isActive ? effectiveStart.format('YYYY-MM-DD') : null,
+    activeEnd: isActive ? effectiveEnd.format('YYYY-MM-DD') : null,
+    activeDays,
+    target,
+    doneCount,
+    passCount,
+    creditedCount,
+    isActive,
+    isDaily,
+    isAchieved: target > 0 && creditedCount >= target,
+  };
+}
+
 export interface WeekAchievement {
   totalGoals: number;
   failedGoals: number;
@@ -165,48 +231,22 @@ export interface WeekAchievement {
 
 export function calcWeekAchievement(
   weekStart: string,
-  checkins: { goal_id: string; status: string; date: string }[],
-  userGoals: {
-    goal_id: string;
-    frequency: string;
-    target_count: number | null;
-    start_date: string | null;
-    end_date: string | null;
-  }[],
+  checkins: WeeklyCheckinLike[],
+  userGoals: WeeklyGoalLike[],
 ): WeekAchievement {
   const wEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
   const today = dayjs().format('YYYY-MM-DD');
   const isEnded = wEnd < today;
   const isFuture = weekStart > today;
 
-  const weekDoneCheckins = checkins.filter(
-    (c) => c.status === 'done' && c.date >= weekStart && c.date <= wEnd,
-  );
-
-  const activeGoals = userGoals.filter((ug) => {
-    if (ug.start_date && ug.start_date > wEnd) return false;
-    if (ug.end_date && ug.end_date < weekStart) return false;
-    return true;
-  });
-
   let totalGoals = 0;
   let failedGoals = 0;
 
-  activeGoals.forEach((ug) => {
-    const isDaily = ug.frequency === 'daily';
-    let target = isDaily ? 7 : ug.target_count || 1;
-
-    if (isDaily) {
-      const effS = dayjsMax(dayjs(weekStart), dayjs(ug.start_date || weekStart));
-      const effE = dayjsMin(dayjs(wEnd), dayjs(ug.end_date || wEnd));
-      if (effS.isAfter(effE)) target = 0;
-      else target = effE.diff(effS, 'day') + 1;
-    }
-
-    if (target > 0) {
+  userGoals.forEach((goal) => {
+    const progress = getWeeklyGoalProgress(goal, weekStart, checkins);
+    if (progress.target > 0) {
       totalGoals++;
-      const doneCount = weekDoneCheckins.filter((c) => c.goal_id === ug.goal_id).length;
-      if (doneCount < target) failedGoals++;
+      if (!progress.isAchieved) failedGoals++;
     }
   });
 

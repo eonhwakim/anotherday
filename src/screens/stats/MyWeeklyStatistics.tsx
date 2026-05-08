@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
-import { dayjsMax, dayjsMin } from '../../lib/statsUtils';
+import { getWeeklyGoalProgress } from '../../lib/statsUtils';
 
 import type { WeeklyStatsResult } from '../../services/statsService';
 import type { UserGoal } from '../../types/domain';
@@ -47,31 +47,15 @@ export default function MyWeeklyStatistics({
 
     return activeGoals
       .map((goal) => {
-        const isDaily = goal.frequency === 'daily';
-        let target = isDaily ? 7 : goal.target_count || 1;
-
-        if (isDaily) {
-          const effectiveStart = dayjsMax(dayjs(weekStart), dayjs(goal.start_date || weekStart));
-          const effectiveEnd = dayjsMin(dayjs(weekEnd), dayjs(goal.end_date || weekEnd));
-          if (effectiveStart.isAfter(effectiveEnd)) {
-            target = 0;
-          } else {
-            target = effectiveEnd.diff(effectiveStart, 'day') + 1;
-          }
-        }
-
-        const doneCount = myCheckins.filter(
-          (checkin) => checkin.goal_id === goal.goal_id && checkin.status === 'done',
-        ).length;
-        const isAchieved = target > 0 && doneCount >= target;
+        const progress = getWeeklyGoalProgress(goal, weekStart, myCheckins);
 
         return {
           goalId: goal.goal_id,
           name: goalNameMap.get(goal.goal_id) ?? '루틴',
-          target,
-          doneCount,
-          isAchieved,
-          isDaily,
+          target: progress.target,
+          doneCount: progress.doneCount,
+          isAchieved: progress.isAchieved,
+          isDaily: progress.isDaily,
           isEnded: goal.is_active === false || (!!goal.end_date && goal.end_date <= weekEnd),
           startDate: goal.start_date ?? null,
           endDate: goal.end_date ?? null,
