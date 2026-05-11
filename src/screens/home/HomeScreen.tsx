@@ -185,9 +185,9 @@ export default function HomeScreen() {
                     isSunset && styles.greetingSunset,
                   ]}
                 >
-                  반가워요,
+                  Hello,
                   {user?.nickname
-                    ? `${user?.nickname}님`
+                    ? `${user?.nickname}`
                     : currentTeam?.name
                       ? `${currentTeam?.name} 팀원`
                       : ''}
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   greeting: {
-    fontSize: 16,
+    fontSize: 26,
     color: '#FFFFFF',
     fontWeight: '700',
     marginBottom: 6,
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   floatingButtonWrapper: {
     position: 'absolute',
     right: 16,
-    bottom: 24,
+    bottom: 116,
     width: 80,
     height: 80,
     alignItems: 'center',

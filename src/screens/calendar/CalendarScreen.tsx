@@ -24,10 +24,7 @@ import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import { useDailyTodosQuery } from '../../queries/todoQueries';
 import { useTeamMembersQuery } from '../../queries/teamQueries';
-import {
-  useCalendarMarkingsQuery,
-  useMemberDateCheckinsQuery,
-} from '../../queries/statsQueries';
+import { useCalendarMarkingsQuery, useMemberDateCheckinsQuery } from '../../queries/statsQueries';
 import { queryKeys } from '../../queries/queryKeys';
 
 import CalendarDateSummaryCard from '../../components/calendar/CalendarDateSummaryCard';
@@ -90,27 +87,17 @@ export default function CalendarScreen() {
           });
         }
       }
-    }, [
-      currentTeam,
-      queryClient,
-      user,
-    ]),
+    }, [currentTeam, queryClient, user]),
   );
 
-  const handleDayPress = useCallback(
-    (day: DateData) => {
-      setSelectedDate(day.dateString);
-    },
-    [],
-  );
+  const handleDayPress = useCallback((day: DateData) => {
+    setSelectedDate(day.dateString);
+  }, []);
 
-  const handleMonthChange = useCallback(
-    (month: DateData) => {
-      const ym = `${month.year}-${String(month.month).padStart(2, '0')}`;
-      setCurrentMonth(ym);
-    },
-    [],
-  );
+  const handleMonthChange = useCallback((month: DateData) => {
+    const ym = `${month.year}-${String(month.month).padStart(2, '0')}`;
+    setCurrentMonth(ym);
+  }, []);
 
   const { dataStart, dataEnd } = React.useMemo(
     () => getCalendarWeekRanges(currentMonth),
@@ -295,7 +282,7 @@ export default function CalendarScreen() {
           <View style={ds.pagePadding as ViewStyle}>
             {teamWithCaption ? (
               <View style={styles.header}>
-                <Text style={ds.headerTitle as TextStyle}>캘린더</Text>
+                <Text style={ds.headerTitle as TextStyle}>Calendar</Text>
                 <Text style={styles.subtitle}>{teamWithCaption}</Text>
               </View>
             ) : null}

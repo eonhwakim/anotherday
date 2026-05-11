@@ -225,7 +225,7 @@ export default function MyPageScreen() {
         >
           <View style={ds.pagePadding as ViewStyle}>
             <View style={styles.header}>
-              <Text style={ds.headerTitle as TextStyle}>마이페이지</Text>
+              <Text style={ds.headerTitle as TextStyle}>Profile</Text>
             </View>
 
             <MyPageProfileCard user={user} onPress={() => navigation.navigate('ProfileEdit')} />
