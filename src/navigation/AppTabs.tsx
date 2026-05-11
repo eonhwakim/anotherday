@@ -1,7 +1,17 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Animated,
+  useWindowDimensions,
+  Platform,
+} from 'react-native';
 import { createBottomTabNavigator, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppTabParamList } from '../types/navigation';
 import HomeScreen from '../screens/home/HomeScreen';
 import GoalScreen from '../screens/goal/GoalScreen';
@@ -11,21 +21,26 @@ import MyPageScreen from '../screens/mypage/MyPageScreen';
 import { colors } from '../design/tokens';
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
+const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
 
 const TAB_META: Record<
   keyof AppTabParamList,
   { label: string; icon: keyof typeof Ionicons.glyphMap }
 > = {
-  HomeTab: { label: '오늘', icon: 'home' },
-  GoalTab: { label: '내목표', icon: 'list' },
-  CalendarTab: { label: '캘린더', icon: 'calendar' },
-  StatsTab: { label: '통계', icon: 'bar-chart' },
-  MyPageTab: { label: '마이', icon: 'person' },
+  HomeTab: { label: 'Today', icon: 'sunny' },
+  GoalTab: { label: 'Habits', icon: 'list' },
+  CalendarTab: { label: 'Calendar', icon: 'calendar' },
+  StatsTab: { label: 'Stats', icon: 'bar-chart' },
+  MyPageTab: { label: 'Profile', icon: 'person' },
 };
 
 function SlidingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { width } = useWindowDimensions();
-  const tabWidth = width / state.routes.length;
+  const insets = useSafeAreaInsets();
+  const horizontalInset = styles.tabBarWrap.paddingHorizontal;
+  const availableWidth =
+    width - (typeof horizontalInset === 'number' ? horizontalInset * 2 : 24);
+  const tabWidth = availableWidth / state.routes.length;
   const indicatorWidth = 42;
   const indicatorTranslateX = React.useRef(new Animated.Value(0)).current;
 
@@ -40,60 +55,73 @@ function SlidingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   }, [indicatorTranslateX, state.index, tabWidth]);
 
   return (
-    <View style={styles.tabBarWrap}>
-      <Animated.View
-        style={[
-          styles.activeIndicator,
-          {
-            width: indicatorWidth,
-            transform: [{ translateX: indicatorTranslateX }],
-          },
-        ]}
-      />
+    <View style={[styles.tabBarWrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+      <SafeBlurView intensity={50} tint="light" style={styles.glassShell}>
+        <View style={styles.edgeHighlight} />
+        <Animated.View
+          style={[
+            styles.activeIndicator,
+            {
+              width: indicatorWidth,
+              transform: [{ translateX: indicatorTranslateX }],
+            },
+          ]}
+        />
 
-      <View style={styles.tabRow}>
-        {state.routes.map((route, index) => {
-          const descriptor = descriptors[route.key];
-          const isFocused = state.index === index;
-          const meta = TAB_META[route.name as keyof AppTabParamList];
-          const color = isFocused ? colors.primary : 'rgba(26,26,26,0.35)';
+        <View style={styles.tabRow}>
+          {state.routes.map((route, index) => {
+            const descriptor = descriptors[route.key];
+            const isFocused = state.index === index;
+            const meta = TAB_META[route.name as keyof AppTabParamList];
+            const color = isFocused ? colors.primary : 'rgba(26,26,26,0.35)';
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
+            const onPress = () => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name);
+              }
+            };
 
-          const onLongPress = () => {
-            navigation.emit({
-              type: 'tabLongPress',
-              target: route.key,
-            });
-          };
+            const onLongPress = () => {
+              navigation.emit({
+                type: 'tabLongPress',
+                target: route.key,
+              });
+            };
 
-          return (
-            <Pressable
-              key={route.key}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={descriptor.options.tabBarAccessibilityLabel}
-              testID={descriptor.options.tabBarButtonTestID}
-              onPress={onPress}
-              onLongPress={onLongPress}
-              style={styles.tabButton}
-            >
-              <Ionicons name={meta.icon} size={22} color={color} />
-              <Text style={[styles.tabLabel, { color }]}>{meta.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+            return (
+              <Pressable
+                key={route.key}
+                accessibilityRole="button"
+                accessibilityState={isFocused ? { selected: true } : {}}
+                accessibilityLabel={descriptor.options.tabBarAccessibilityLabel}
+                testID={descriptor.options.tabBarButtonTestID}
+                onPress={onPress}
+                onLongPress={onLongPress}
+                style={styles.tabButton}
+              >
+                <View style={styles.iconWrap}>
+                  {isFocused ? <View style={styles.activeGlow} /> : null}
+                  <Ionicons
+                    name={meta.icon}
+                    size={22}
+                    color={color}
+                    style={isFocused ? styles.activeIcon : styles.inactiveIcon}
+                  />
+                </View>
+                <Text style={[styles.tabLabel, isFocused && styles.tabLabelFocused, { color }]}>
+                  {meta.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </SafeBlurView>
     </View>
   );
 }
@@ -104,6 +132,7 @@ export default function AppTabs() {
       tabBar={(props) => <SlidingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: 'transparent' },
       }}
     >
       <Tab.Screen name="HomeTab" component={HomeScreen} />
@@ -117,17 +146,34 @@ export default function AppTabs() {
 
 const styles = StyleSheet.create({
   tabBarWrap: {
-    position: 'relative',
-    backgroundColor: colors.white,
-    borderTopColor: colors.white,
-    borderTopWidth: 1,
-    height: 88,
-    paddingBottom: 18,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
+  },
+  glassShell: {
+    overflow: 'hidden',
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: 'rgba(255,255,255,0.42)',
+    minHeight: 76,
+    paddingTop: 10,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  edgeHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 18,
+    right: 18,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.85)',
   },
   activeIndicator: {
     position: 'absolute',
@@ -136,20 +182,59 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 999,
     borderBottomRightRadius: 999,
     backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
   },
   tabRow: {
-    flex: 1,
     flexDirection: 'row',
+    alignItems: 'center',
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 6,
+    paddingTop: 2,
+    paddingBottom: 8,
+  },
+  iconWrap: {
+    width: 46,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeGlow: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 107, 61, 0.1)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.42,
+    shadowRadius: 12,
+  },
+  activeIcon: {
+    textShadowColor: 'rgba(255, 107, 61, 0.55)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
+  inactiveIcon: {
+    textShadowColor: 'transparent',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 0,
   },
   tabLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
     letterSpacing: 0.3,
+  },
+  tabLabelFocused: {
+    fontWeight: '700',
+    textShadowColor: 'rgba(255, 107, 61, 0.22)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
 });

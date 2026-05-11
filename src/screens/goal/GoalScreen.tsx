@@ -3,18 +3,15 @@ import { useQueries } from '@tanstack/react-query';
 import {
   View,
   Text,
+  TextStyle,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  Image,
   ActivityIndicator,
-  type TextStyle,
-  type ViewStyle,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
 
 import { AppTabParamList } from '../../types/navigation';
 import { useAuthStore } from '../../stores/authStore';
@@ -37,36 +34,18 @@ import {
 } from '../../queries/monthlyMutations';
 import { fetchCalendarMarkings } from '../../services/statsService';
 import dayjs from '../../lib/dayjs';
-import { getCalendarWeekRanges, computeConsecutiveAchievementDays } from '../../lib/statsUtils';
+import { getCalendarWeekRanges, getOwningMonthForDate } from '../../lib/statsUtils';
 import { useMemberProgressQuery } from '../../queries/statsQueries';
-import { colors, ds, radius, spacing, typography } from '../../design/recipes';
+import { colors, ds, spacing } from '../../design/recipes';
 
-import ScreenBackground from '../../components/ui/ScreenBackground';
+import GradientScreen from '../../components/ui/GradientScreen';
 import GoalSetting from '../../components/goal/GoalSetting';
 import AddRoutineModal from '../../components/goal/AddRoutineModal';
-import TodayStatsCard from '../../components/goal/TodayStatsCard';
+import DaySummaryCard from '../../components/goal/DaySummaryCard';
 import GlassModal from '../../components/ui/GlassModal';
-import Input from '../../components/common/Input';
+import WeeklyCalendarCard from '../../components/goal/WeeklyCalendarCard';
+import MonthPickerModal from '../../components/common/MonthPickerModal';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
-
-function getOwningMonthForDate(dateStr: string): string {
-  const date = dayjs(dateStr);
-  const candidates = [
-    date.subtract(1, 'month').format('YYYY-MM'),
-    date.format('YYYY-MM'),
-    date.add(1, 'month').format('YYYY-MM'),
-  ];
-
-  for (const monthStr of candidates) {
-    const { ranges } = getCalendarWeekRanges(monthStr);
-    const isInOwnedRange = ranges.some(
-      (range) => range.s.format('YYYY-MM-DD') <= dateStr && range.e.format('YYYY-MM-DD') >= dateStr,
-    );
-    if (isInOwnedRange) return monthStr;
-  }
-
-  return date.format('YYYY-MM');
-}
 
 export default function GoalScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
@@ -84,28 +63,39 @@ export default function GoalScreen() {
   });
   const saveMonthlyResolutionMutation = useSaveMonthlyResolutionMutation();
   const saveMonthlyRetrospectiveMutation = useSaveMonthlyRetrospectiveMutation();
-  const todayOwnedMonth = React.useMemo(
-    () => getOwningMonthForDate(dayjs().format('YYYY-MM-DD')),
-    [],
-  );
   const todayStr = dayjs().format('YYYY-MM-DD');
-  const [yearMonth, setYearMonth] = useState(todayOwnedMonth);
+  const [selectedDate, setSelectedDate] = useState(todayStr);
   const [addRoutineVisible, setAddRoutineVisible] = useState(false);
   const [resolutionModalVisible, setResolutionModalVisible] = useState(false);
   const [retrospectiveModalVisible, setRetrospectiveModalVisible] = useState(false);
+  const [monthPickerVisible, setMonthPickerVisible] = useState(false);
   const [resolutionInput, setResolutionInput] = useState('');
   const [retrospectiveInput, setRetrospectiveInput] = useState('');
+  const selectedYearMonth = useMemo(() => getOwningMonthForDate(selectedDate), [selectedDate]);
+  const selectedWeekStart = useMemo(
+    () => dayjs(selectedDate).startOf('isoWeek').format('YYYY-MM-DD'),
+    [selectedDate],
+  );
+  const selectedWeekEnd = useMemo(
+    () => dayjs(selectedDate).endOf('isoWeek').format('YYYY-MM-DD'),
+    [selectedDate],
+  );
+  const selectedWeekLabel = useMemo(
+    () =>
+      `${dayjs(selectedWeekStart).format('M월 D일')} - ${dayjs(selectedWeekEnd).format('M월 D일')}`,
+    [selectedWeekEnd, selectedWeekStart],
+  );
   const teamGoalsQuery = useTeamGoalsQuery(currentTeam?.id ?? '', user?.id);
-  const monthGoalsQuery = useMyGoalsForMonthQuery(user?.id, yearMonth);
-  const memberProgressQuery = useMemberProgressQuery(currentTeam?.id, user?.id, todayStr);
+  const monthGoalsQuery = useMyGoalsForMonthQuery(user?.id, selectedYearMonth);
+  const memberProgressQuery = useMemberProgressQuery(currentTeam?.id, user?.id, selectedDate);
   const monthlyResolutionQuery = useMonthlyResolutionQuery({
     userId: user?.id,
-    yearMonth,
+    yearMonth: selectedYearMonth,
     teamId: currentTeam?.id ?? null,
   });
   const monthlyRetrospectiveQuery = useMonthlyRetrospectiveQuery({
     userId: user?.id,
-    yearMonth,
+    yearMonth: selectedYearMonth,
     teamId: currentTeam?.id ?? null,
   });
 
@@ -163,6 +153,8 @@ export default function GoalScreen() {
   const weeklyDoneCountsQuery = useWeeklyDoneCountsQuery({
     userId: user?.id,
     goalIds: weeklyGoalIds,
+    weekStart: selectedWeekStart,
+    weekEnd: selectedWeekEnd,
   });
   const weeklyDoneCounts = weeklyDoneCountsQuery.data ?? {};
 
@@ -175,47 +167,52 @@ export default function GoalScreen() {
       ),
     [memberProgress, user?.id],
   );
+  const selectedDayGoalStatusById = useMemo(() => {
+    if (!user) return {};
 
-  const heroStats = useMemo(() => {
+    const me = memberProgress.find((progress) => progress.userId === user.id);
+    if (!me) return {};
+
+    return Object.fromEntries(
+      (me.goalDetails ?? []).map((goal) => [
+        goal.goalId,
+        goal.isPass ? 'pass' : goal.isDone ? 'done' : 'pending',
+      ]),
+    );
+  }, [memberProgress, user]);
+
+  const daySummaryStats = useMemo(() => {
     if (!user) return null;
 
     const me = memberProgress.find((progress) => progress.userId === user.id);
     if (!me) return null;
 
-    const totalTodayAll = me.totalGoals ?? 0;
+    const totalGoals = me.totalGoals ?? 0;
     const goalDetails = me.goalDetails ?? [];
-    const passToday =
-      goalDetails.length > 0
-        ? goalDetails.filter((goal) => !!goal.isPass).length
-        : (me.passGoals ?? 0);
-    const totalTodayNonPass =
-      goalDetails.length > 0
-        ? goalDetails.filter((goal) => !goal.isPass).length
-        : Math.max(0, totalTodayAll - (me.passGoals ?? 0));
-    const doneToday =
+    const doneCount =
       goalDetails.length > 0
         ? goalDetails.filter((goal) => !goal.isPass && !!goal.isDone).length
         : (me.doneGoals ?? 0);
-    const ratePct = totalTodayNonPass > 0 ? Math.round((doneToday / totalTodayNonPass) * 100) : 0;
+    const passCount =
+      goalDetails.length > 0
+        ? goalDetails.filter((goal) => !!goal.isPass).length
+        : (me.passGoals ?? 0);
+    const missedCount = Math.max(0, totalGoals - doneCount - passCount);
 
-    const mergedMarkings = [
-      currentMonthStreakData,
-      previousMonthStreakData,
-      twoMonthsAgoStreakData,
-    ].reduce<Record<string, unknown>>((acc, queryData) => {
-      return queryData ? { ...acc, ...queryData } : acc;
-    }, {});
-    const streak = computeConsecutiveAchievementDays(
-      mergedMarkings as Parameters<typeof computeConsecutiveAchievementDays>[0],
-    );
+    return { totalGoals, doneCount, passCount, missedCount };
+  }, [memberProgress, user]);
 
-    return { ratePct, streak, doneToday, totalToday: totalTodayNonPass, passToday };
+  const calendarMarkings = useMemo(() => {
+    if (selectedYearMonth === streakMonths[0]) return currentMonthStreakData ?? {};
+    if (selectedYearMonth === streakMonths[1]) return previousMonthStreakData ?? {};
+    if (selectedYearMonth === streakMonths[2]) return twoMonthsAgoStreakData ?? {};
+    return {};
   }, [
     currentMonthStreakData,
-    memberProgress,
     previousMonthStreakData,
+    selectedYearMonth,
+    streakMonths,
     twoMonthsAgoStreakData,
-    user,
   ]);
 
   const isLoading =
@@ -268,7 +265,7 @@ export default function GoalScreen() {
       try {
         const ok = await saveMonthlyResolutionMutation.mutateAsync({
           userId: user.id,
-          yearMonth,
+          yearMonth: selectedYearMonth,
           content: text,
           teamId: currentTeam?.id ?? null,
         });
@@ -280,7 +277,7 @@ export default function GoalScreen() {
         return false;
       }
     },
-    [currentTeam?.id, saveMonthlyResolutionMutation, user, yearMonth],
+    [currentTeam?.id, saveMonthlyResolutionMutation, selectedYearMonth, user],
   );
 
   const handleUpdateRetrospective = useCallback(
@@ -289,7 +286,7 @@ export default function GoalScreen() {
       try {
         const ok = await saveMonthlyRetrospectiveMutation.mutateAsync({
           userId: user.id,
-          yearMonth,
+          yearMonth: selectedYearMonth,
           content: text,
           teamId: currentTeam.id,
         });
@@ -301,7 +298,7 @@ export default function GoalScreen() {
         return false;
       }
     },
-    [currentTeam?.id, saveMonthlyRetrospectiveMutation, user, yearMonth],
+    [currentTeam?.id, saveMonthlyRetrospectiveMutation, selectedYearMonth, user],
   );
 
   const openResolutionModal = useCallback(() => {
@@ -351,68 +348,60 @@ export default function GoalScreen() {
     return teamGoals.filter((goal) => goal.owner_id === user.id && activeGoalIds.has(goal.id));
   }, [teamGoals, currentTeamUserGoals, user]);
 
-  const monthLabel = dayjs(`${yearMonth}-01`).format('YYYY년 M월');
-  const canNext = yearMonth < todayOwnedMonth;
-  const showCurrentChip = yearMonth === todayOwnedMonth;
+  const handleSelectYearMonthWeek = useCallback((yearMonth: string, weekNumber?: number) => {
+    const { ranges } = getCalendarWeekRanges(yearMonth);
+    if (ranges.length === 0) {
+      setSelectedDate(`${yearMonth}-01`);
+      return;
+    }
 
-  const goToPrevMonth = () => {
-    setYearMonth((prev) => dayjs(`${prev}-01`).subtract(1, 'month').format('YYYY-MM'));
-  };
+    const targetIndex = weekNumber ? Math.min(Math.max(weekNumber - 1, 0), ranges.length - 1) : 0;
+    const targetRange = ranges[targetIndex];
+    const today = dayjs();
+    const todayStr = today.format('YYYY-MM-DD');
 
-  const goToNextMonth = () => {
-    if (!canNext) return;
-    setYearMonth((prev) => dayjs(`${prev}-01`).add(1, 'month').format('YYYY-MM'));
-  };
+    if (
+      getOwningMonthForDate(todayStr) === yearMonth &&
+      targetRange.s.format('YYYY-MM-DD') <= todayStr &&
+      targetRange.e.format('YYYY-MM-DD') >= todayStr
+    ) {
+      setSelectedDate(todayStr);
+      return;
+    }
+
+    setSelectedDate(targetRange.s.format('YYYY-MM-DD'));
+  }, []);
 
   return (
-    <ScreenBackground>
+    <GradientScreen>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
           ref={scrollRef}
           style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={ds.pagePadding as ViewStyle}>
+          <View style={styles.pagePadding}>
             <View style={styles.header}>
-              <Text style={ds.headerTitle as TextStyle}>내 목표</Text>
-              <Text style={styles.subtitle}>매일 꾸준히, 작은 습관이 큰 변화를 만듭니다</Text>
-            </View>
-            {/* 오늘 통계 카드 */}
-            <View style={styles.section}>
-              <TodayStatsCard stats={user ? heroStats : null} />
+              <Text style={ds.headerTitle as TextStyle}>Routine</Text>
             </View>
 
-            {/* 달력컨트롤 */}
+            <WeeklyCalendarCard
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              markings={calendarMarkings}
+              setMonthPickerVisible={setMonthPickerVisible}
+              selectedYearMonth={selectedYearMonth}
+            />
+
+            {/* 선택한 날짜 통계 카드 */}
             <View style={styles.section}>
-              <View style={styles.monthSelectorWrap}>
-                <View style={styles.monthSelector}>
-                  <TouchableOpacity onPress={goToPrevMonth} activeOpacity={0.8}>
-                    <Ionicons name="chevron-back" size={24} color={colors.primaryLight} />
-                  </TouchableOpacity>
-
-                  <View style={styles.monthLabelWrap}>
-                    <Text style={styles.monthLabel}>{monthLabel}</Text>
-                    {showCurrentChip ? (
-                      <View style={styles.monthStatusChip}>
-                        <Text style={styles.monthStatusChipText}>진행중</Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  <TouchableOpacity onPress={goToNextMonth} activeOpacity={0.8} disabled={!canNext}>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={24}
-                      color={canNext ? colors.primaryLight : colors.textMuted}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <Text style={styles.helperText}>
-                * 월초와 월말의 부분주는 4일 미만이면 인접 월에 편입돼요.
-              </Text>
+              <DaySummaryCard
+                stats={user ? daySummaryStats : null}
+                isToday={selectedDate === todayStr}
+                isFuture={selectedDate > todayStr}
+              />
             </View>
 
             {isLoading ? (
@@ -421,46 +410,37 @@ export default function GoalScreen() {
               </View>
             ) : (
               <GoalSetting
-                yearMonth={yearMonth}
+                yearMonth={selectedYearMonth}
                 teamGoals={myVisibleGoals}
                 myGoals={currentTeamUserGoals}
                 weeklyDoneCounts={weeklyDoneCounts}
                 todayCheckedInGoalIds={todayCheckedInGoalIds}
+                selectedWeekLabel={selectedWeekLabel}
+                selectedDayGoalStatusById={selectedDayGoalStatusById}
                 onEnd={handleEndGoal}
                 onRemove={handleRemoveGoal}
                 monthlyResolution={monthlyResolution}
                 monthlyRetrospective={monthlyRetrospective}
                 onEditResolution={openResolutionModal}
                 onEditRetrospective={currentTeam ? openRetrospectiveModal : undefined}
+                onAddRoutine={() => setAddRoutineVisible(true)}
               />
             )}
           </View>
         </ScrollView>
 
-        <TouchableOpacity
-          style={styles.floatingButton}
-          onPress={() => setAddRoutineVisible(true)}
-          activeOpacity={0.8}
-        >
-          <Image
-            source={require('../../../assets/plus-btn.png')}
-            style={styles.floatingButtonImage}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-
         <AddRoutineModal visible={addRoutineVisible} onClose={() => setAddRoutineVisible(false)} />
 
         <GlassModal
           visible={resolutionModalVisible}
-          title={`${dayjs(`${yearMonth}-01`).format('YYYY년 M월')} 한마디`}
+          title={`${dayjs(`${selectedYearMonth}-01`).format('YYYY년 M월')} 한마디`}
           onClose={() => setResolutionModalVisible(false)}
           onConfirm={async () => {
             const ok = await handleUpdateResolution(resolutionInput);
             if (ok) setResolutionModalVisible(false);
           }}
         >
-          <Input
+          <TextInput
             placeholder="이번 달의 다짐이나 목표를 적어보세요"
             value={resolutionInput}
             onChangeText={setResolutionInput}
@@ -471,14 +451,14 @@ export default function GoalScreen() {
 
         <GlassModal
           visible={retrospectiveModalVisible}
-          title={`${dayjs(`${yearMonth}-01`).format('YYYY년 M월')} 회고`}
+          title={`${dayjs(`${selectedYearMonth}-01`).format('YYYY년 M월')} 회고`}
           onClose={() => setRetrospectiveModalVisible(false)}
           onConfirm={async () => {
             const ok = await handleUpdateRetrospective(retrospectiveInput);
             if (ok) setRetrospectiveModalVisible(false);
           }}
         >
-          <Input
+          <TextInput
             placeholder="이번 달은 어떠셨나요? 회고를 남겨보세요"
             value={retrospectiveInput}
             onChangeText={setRetrospectiveInput}
@@ -488,106 +468,42 @@ export default function GoalScreen() {
             style={{ minHeight: 100, textAlignVertical: 'top' }}
           />
         </GlassModal>
+        <MonthPickerModal
+          visible={monthPickerVisible}
+          onClose={() => setMonthPickerVisible(false)}
+          currentYearMonth={selectedYearMonth}
+          currentDate={selectedDate}
+          onSelect={handleSelectYearMonthWeek}
+        />
       </SafeAreaView>
-    </ScreenBackground>
+    </GradientScreen>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 132,
-  },
-  header: {
-    paddingTop: spacing[3],
-    paddingBottom: spacing[6],
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: 6,
+    paddingBottom: 148,
   },
   section: {
-    marginBottom: spacing[3],
+    marginBottom: spacing[6],
   },
-  monthSelectorWrap: {
-    marginVertical: spacing[3],
+  pagePadding: {
+    paddingHorizontal: spacing[4],
   },
-  monthSelector: {
-    ...(ds.rowCenter as ViewStyle),
-    justifyContent: 'center',
-    gap: spacing[4],
-  },
-  monthLabelWrap: {
-    minWidth: 140,
-    alignItems: 'center',
-    gap: spacing[1],
-  },
-  monthButtonFrame: {
-    width: 48,
-    minWidth: 48,
-    marginTop: 0,
-    borderRadius: radius.lg,
-  },
-  monthButtonFrameDisabled: {
-    opacity: 0.45,
-  },
-  monthButtonContent: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-  },
-  monthLabel: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.text,
-    minWidth: 140,
-    textAlign: 'center',
-  },
-  monthStatusChip: {
-    paddingHorizontal: spacing[2] + 2,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-    backgroundColor: colors.brandLight,
-    borderWidth: 1,
-    borderColor: colors.brandMid,
-  },
-  monthStatusChipText: {
-    ...typography.bodyStrong,
-    fontSize: 11,
-    color: colors.primary,
-  },
-  helperText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    alignSelf: 'stretch',
-    marginTop: spacing[1],
+  header: {
+    paddingTop: spacing[2],
+    paddingBottom: spacing[5],
   },
   loadingWrap: {
     minHeight: 280,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  floatingButton: {
-    position: 'absolute',
-    right: 16,
-    bottom: 24,
-    width: 80,
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  floatingButtonImage: {
-    width: '100%',
-    height: '100%',
   },
 });

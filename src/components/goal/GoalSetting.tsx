@@ -2,18 +2,23 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, UserGoal } from '../../types/domain';
-import BaseCard from '../ui/BaseCard';
+import GlassCard from '../ui/GlassCard';
 import Badge from '../ui/Badge';
 import dayjs from '../../lib/dayjs';
 import { colors, radius, spacing, typography } from '../../design/recipes';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import CircularProgress from '../ui/CircularProgress';
+import BaseCard from '../ui/BaseCard';
+
+type SelectedDayGoalStatus = 'done' | 'pass' | 'pending';
 
 interface GoalSettingProps {
   teamGoals: Goal[];
   myGoals: UserGoal[];
   weeklyDoneCounts?: Record<string, number>;
   todayCheckedInGoalIds?: Set<string>;
+  selectedWeekLabel?: string;
+  selectedDayGoalStatusById?: Record<string, SelectedDayGoalStatus>;
   onEnd: (goalId: string) => void;
   onRemove: (goalId: string) => void;
   monthlyResolution?: string;
@@ -21,6 +26,7 @@ interface GoalSettingProps {
   /** 오른쪽 편집 아이콘 탭 시 (예: 한마디 GlassModal) */
   onEditResolution?: () => void;
   onEditRetrospective?: () => void;
+  onAddRoutine?: () => void;
   title?: string;
   subtitle?: string;
   yearMonth?: string;
@@ -32,14 +38,14 @@ function freqLabel(ug: UserGoal): string {
   return '매일';
 }
 
-function periodLabel(ug: UserGoal): string | null {
-  if (!ug.start_date || !ug.end_date) return null;
-  return `${dayjs(ug.start_date).format('MM/DD')} ~ ${dayjs(ug.end_date).format('MM/DD')}`;
+function periodLabel(ug?: UserGoal): string | null {
+  if (!ug || !ug.start_date || !ug.end_date) return null;
+  return `${dayjs(ug.start_date).format('MM/DD')}~${dayjs(ug.end_date).format('MM/DD')}`;
 }
 
-function startLabel(ug: UserGoal): string | null {
-  if (!ug.start_date) return null;
-  return `시작일:  ${dayjs(ug.start_date).format('MM/DD')}`;
+function startLabel(ug?: UserGoal): string | null {
+  if (!ug || !ug.start_date) return null;
+  return `${dayjs(ug.start_date).format('MM/DD')}~`;
 }
 
 function isMergedWeekGoalForMonth(ug: UserGoal, yearMonth?: string): boolean {
@@ -84,14 +90,6 @@ function getGoalProgress(params: {
   return todayCheckedInGoalIds.has(goalId) ? 100 : 0;
 }
 
-function getGoalProgressColor(progress: number, isEnded: boolean): string {
-  if (isEnded) return colors.textMuted;
-  if (progress >= 100) return colors.successBright;
-  if (progress > 0) return colors.primary;
-  return colors.warning;
-}
-
-
 function getGoalProgressLabel(params: {
   userGoal?: UserGoal;
   goalId: string;
@@ -110,17 +108,50 @@ function getGoalProgressLabel(params: {
   return `${todayCheckedInGoalIds.has(goalId) ? 1 : 0}/1`;
 }
 
+function getSelectedDayStatusMeta(status: SelectedDayGoalStatus | undefined) {
+  if (status === 'done') {
+    return {
+      label: '완료',
+      color: colors.successBright,
+      iconName: 'checkmark-circle' as const,
+      backgroundColor: 'rgba(134, 239, 172, 0.18)',
+      borderColor: 'rgba(74, 222, 128, 0.34)',
+    };
+  }
+
+  if (status === 'pass') {
+    return {
+      label: '패스',
+      color: colors.warning,
+      iconName: 'play-forward-circle' as const,
+      backgroundColor: 'rgba(253, 230, 138, 0.2)',
+      borderColor: 'rgba(242, 201, 76, 0.34)',
+    };
+  }
+
+  return {
+    label: '미인증',
+    color: colors.primaryLight,
+    iconName: 'alert-circle' as const,
+    backgroundColor: 'rgba(252, 165, 165, 0.18)',
+    borderColor: 'rgba(255, 126, 179, 0.24)',
+  };
+}
+
 export default function GoalSetting({
   teamGoals = [],
   myGoals = [],
   weeklyDoneCounts = {},
   todayCheckedInGoalIds = new Set(),
+  selectedWeekLabel,
+  selectedDayGoalStatusById = {},
   onEnd,
   onRemove,
   monthlyResolution = '',
   monthlyRetrospective = '',
   onEditResolution,
   onEditRetrospective,
+  onAddRoutine,
   yearMonth,
 }: GoalSettingProps) {
   const todayStr = dayjs().format('YYYY-MM-DD');
@@ -194,22 +225,30 @@ export default function GoalSetting({
   };
 
   return (
-    <View style={{ marginBottom: 90 }}>
+    <View style={styles.container}>
       {/* 등록된 루틴 */}
-      <BaseCard glassOnly style={styles.section}>
+      <View style={styles.section}>
         {teamGoals.length === 0 ? (
           <View style={styles.emptyBox}>
             <Ionicons name="bulb-outline" size={24} color={colors.textSecondary} />
             <Text style={styles.emptyText}>
-              아직 등록된 목표가 없어요{'\n'}아래 플러스 버튼으로 루틴을 추가해보세요!
+              아직 등록된 목표가 없어요{'\n'}아래 버튼을 눌러 새로운 루틴을 추가해보세요!
             </Text>
           </View>
         ) : (
           <>
             <View style={styles.goalSection}>
-              <Ionicons name="barbell-outline" size={20} color={colors.primary} />
-              <Text style={styles.sectionTitle}>등록된 루틴 </Text>
-              <Text style={styles.sectionSubtitle}>(길게 누름: 종료/삭제)</Text>
+              <View style={styles.sectionHeading}>
+                <View style={styles.sectionTitleRow}>
+                  <Text style={styles.sectionTitle}>This week's routine</Text>
+                  {selectedWeekLabel ? (
+                    <View style={styles.weekBadge}>
+                      <Text style={styles.weekBadgeText}>{selectedWeekLabel}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.sectionHint}>길게 눌러 종료하거나 삭제할 수 있어요.</Text>
+              </View>
             </View>
 
             <View style={styles.goalList}>
@@ -233,9 +272,10 @@ export default function GoalSetting({
                   weeklyDoneCounts,
                   todayCheckedInGoalIds,
                 });
-                const progressPeriodLabel =
-                  userGoal?.frequency === 'weekly_count' ? '이번주' : '오늘';
-                const progressColor = getGoalProgressColor(progress, isEnded);
+                const progressColor = isEnded ? colors.textMuted : colors.primaryLight;
+                const selectedDayStatusMeta = getSelectedDayStatusMeta(
+                  selectedDayGoalStatusById[goal.id],
+                );
 
                 return (
                   <TouchableOpacity
@@ -245,65 +285,123 @@ export default function GoalSetting({
                     delayLongPress={500}
                     disabled={isEnded}
                   >
-                    <BaseCard
-                      glassOnly
-                      padded={false}
-                      style={styles.goalRowFrame}
-                      contentStyle={styles.goalRowContentBox}
-                    >
-                      <View style={styles.goalLeading}>
-                        <View style={styles.goalBadge}>
-                          <Text style={styles.goalText}>{progressPeriodLabel}</Text>
-                        </View>
-                        <CircularProgress
-                          size={42}
-                          strokeWidth={4}
-                          progress={progress}
-                          color={progressColor}
-                          trackColor={isEnded ? 'rgba(26,26,26,0.08)' : '#F3F4F6'}
-                          label={progressLabel}
-                        />
-                      </View>
-                      <View style={styles.goalRowContent}>
-                        <View style={styles.goalTextWrap}>
-                          <Text
-                            style={[styles.goalRowName, isEnded && styles.goalRowNameEnded]}
-                            numberOfLines={1}
-                          >
-                            {goal.name}
-                          </Text>
-                          {/* 패스권 표시 */}
-                          {userGoal
-                            ? renderPassIndicator(userGoal, weeklyDoneCounts[goal.id] || 0, isEnded)
-                            : null}
-                        </View>
-                        {userGoal ? (
-                          <View style={styles.goalMetaRight}>
-                            <Text style={[styles.goalRowFreq, isEnded && styles.goalRowFreqEnded]}>
-                              {freqLabel(userGoal)}
-                            </Text>
-                            {userGoal ? (
-                              <View style={styles.goalPeriodRow}>
-                                <Text style={styles.goalPeriod}>
-                                  {isEnded ? periodLabel(userGoal) : startLabel(userGoal)}
+                    <BaseCard glassOnly padded={false} style={styles.goalCard}>
+                      <View style={styles.goalRowContentBox}>
+                        <View style={styles.goalRowContent}>
+                          <View style={styles.goalMainInfo}>
+                            <View style={styles.goalLeading}>
+                              <CircularProgress
+                                size={52}
+                                strokeWidth={4}
+                                progress={progress}
+                                color={progressColor}
+                                trackColor={
+                                  isEnded ? 'rgba(26,26,26,0.08)' : 'rgba(255, 107, 61, 0.15)'
+                                }
+                                label={progressLabel}
+                              />
+                            </View>
+                            <View style={styles.goalTextWrap}>
+                              <View style={styles.goalTitleRow}>
+                                <Text
+                                  style={[styles.goalRowName, isEnded && styles.goalRowNameEnded]}
+                                  numberOfLines={1}
+                                >
+                                  {goal.name}
                                 </Text>
-                                {isMergedWeekGoal ? (
-                                  <Badge
-                                    label="편입주"
-                                    tone="warning"
-                                    style={styles.mergedBadge}
-                                    textStyle={styles.mergedBadgeText}
-                                  />
-                                ) : null}
-                                {isEnded ? (
-                                  <View style={styles.endedBadge}>
-                                    <Text style={styles.endedBadgeText}>종료됨</Text>
-                                  </View>
-                                ) : null}
                               </View>
-                            ) : null}
+                              {userGoal ? (
+                                <View style={styles.goalSubtitleRow}>
+                                  <View style={styles.goalSubtitleItem}>
+                                    <Ionicons
+                                      name="repeat"
+                                      size={14}
+                                      color={isEnded ? colors.textFaint : colors.textSecondary}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.goalSubtitleText,
+                                        isEnded && styles.goalSubtitleTextEnded,
+                                      ]}
+                                    >
+                                      {freqLabel(userGoal)}
+                                    </Text>
+                                  </View>
+                                  <Text
+                                    style={[
+                                      styles.goalSubtitleDot,
+                                      isEnded && styles.goalSubtitleTextEnded,
+                                    ]}
+                                  >
+                                    ·
+                                  </Text>
+                                  <View style={styles.goalSubtitleItem}>
+                                    <Ionicons
+                                      name="time-outline"
+                                      size={14}
+                                      color={isEnded ? colors.textFaint : colors.textSecondary}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.goalSubtitleText,
+                                        isEnded && styles.goalSubtitleTextEnded,
+                                      ]}
+                                    >
+                                      {isEnded ? periodLabel(userGoal) : startLabel(userGoal)}
+                                    </Text>
+                                  </View>
+                                </View>
+                              ) : null}
+                              {userGoal
+                                ? renderPassIndicator(
+                                    userGoal,
+                                    weeklyDoneCounts[goal.id] || 0,
+                                    isEnded,
+                                  )
+                                : null}
+                            </View>
                           </View>
-                        ) : null}
+                          {userGoal ? (
+                            <View style={styles.goalMetaRight}>
+                              <View
+                                style={[
+                                  styles.selectedDayStatusIcon,
+                                  {
+                                    backgroundColor: isEnded
+                                      ? 'rgba(255,255,255,0.42)'
+                                      : selectedDayStatusMeta.backgroundColor,
+                                    borderColor: isEnded
+                                      ? 'rgba(255,255,255,0.48)'
+                                      : selectedDayStatusMeta.borderColor,
+                                  },
+                                ]}
+                              >
+                                <Ionicons
+                                  name={selectedDayStatusMeta.iconName}
+                                  size={18}
+                                  color={isEnded ? colors.textMuted : selectedDayStatusMeta.color}
+                                />
+                              </View>
+                              {userGoal ? (
+                                <View style={styles.goalPeriodRow}>
+                                  {isMergedWeekGoal ? (
+                                    <Badge
+                                      label="편입주"
+                                      tone="warning"
+                                      style={styles.mergedBadge}
+                                      textStyle={styles.mergedBadgeText}
+                                    />
+                                  ) : null}
+                                  {isEnded ? (
+                                    <View style={styles.endedBadge}>
+                                      <Text style={styles.endedBadgeText}>종료됨</Text>
+                                    </View>
+                                  ) : null}
+                                </View>
+                              ) : null}
+                            </View>
+                          ) : null}
+                        </View>
                       </View>
                     </BaseCard>
                   </TouchableOpacity>
@@ -312,11 +410,20 @@ export default function GoalSetting({
             </View>
           </>
         )}
-      </BaseCard>
+
+        {onAddRoutine ? (
+          <TouchableOpacity onPress={onAddRoutine} activeOpacity={0.7}>
+            <GlassCard style={styles.addRoutineButton}>
+              <Ionicons name="add-circle-outline" size={20} color="#FF6B3D" />
+              <Text style={styles.addRoutineButtonText}>새 루틴 추가</Text>
+            </GlassCard>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
       {/* 한마디/회고 */}
-      <View style={styles.resolutionSection}>
-        <BaseCard glassOnly padded={false} contentStyle={styles.resolutionCardInner}>
+      {/* <View style={styles.resolutionSection}>
+        <GlassCard style={styles.resolutionCardInner}>
           <View style={styles.sectionHeader}>
             <Text style={styles.innerTitle}>이번 달 한마디</Text>
           </View>
@@ -334,18 +441,13 @@ export default function GoalSetting({
                 accessibilityRole="button"
                 accessibilityLabel="이번 달 한마디 편집"
               >
-                <Ionicons name="create-outline" size={20} color={colors.primary} />
+                <Ionicons name="create-outline" size={20} color="#FF6B3D" />
               </TouchableOpacity>
             ) : null}
           </View>
-        </BaseCard>
+        </GlassCard>
 
-        <BaseCard
-          glassOnly
-          padded={false}
-          contentStyle={styles.resolutionCardInner}
-          style={{ marginTop: 12 }}
-        >
+        <GlassCard style={[styles.resolutionCardInner, { marginTop: 12 }]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.innerTitle}>이번 달 회고</Text>
           </View>
@@ -365,47 +467,67 @@ export default function GoalSetting({
                 accessibilityRole="button"
                 accessibilityLabel="이번 달 회고 편집"
               >
-                <Ionicons name="create-outline" size={20} color={colors.primary} />
+                <Ionicons name="create-outline" size={20} color="#FF6B3D" />
               </TouchableOpacity>
             ) : null}
           </View>
-        </BaseCard>
-      </View>
+        </GlassCard>
+      </View> */}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleBlock: {
-    marginBottom: spacing[4],
+  container: {
+    marginBottom: 90,
   },
   sectionHeader: {
     marginBottom: spacing[2],
   },
   sectionTitle: {
-    ...typography.titleSm,
+    fontSize: 18,
+    fontWeight: '700',
     color: colors.text,
   },
-  sectionSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginLeft: -spacing[2],
+  sectionHint: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.textMuted,
   },
   section: {
-    marginBottom: spacing[4],
+    marginBottom: spacing[6],
   },
   goalSection: {
+    marginBottom: spacing[3],
+    marginTop: spacing[1] + 2,
+  },
+  sectionHeading: {
+    gap: spacing[1],
+  },
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[2],
-    marginBottom: spacing[4],
-    marginTop: spacing[1],
+    justifyContent: 'space-between',
+    gap: spacing[3],
+  },
+  weekBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.62)',
+    paddingHorizontal: spacing[3],
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.58)',
+  },
+  weekBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
   },
   resolutionSection: {
     marginBottom: spacing[5],
   },
   innerTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
   },
@@ -428,33 +550,33 @@ const styles = StyleSheet.create({
   },
 
   resolutionCardInner: {
-    paddingVertical: spacing[3] + 2,
-    paddingHorizontal: spacing[3] + 2,
+    paddingVertical: spacing[4] + 2,
+    paddingHorizontal: spacing[4],
   },
   resolutionRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'colors.brandLight',
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[2],
+    marginTop: spacing[2],
+    gap: spacing[3],
   },
   resolutionText: {
     flex: 1,
     ...typography.body,
     color: colors.text,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   placeholderText: {
     color: colors.textMuted,
   },
   emptyBox: {
     alignItems: 'center',
+    marginBottom: spacing[4],
     paddingVertical: spacing[8],
+    paddingHorizontal: spacing[5],
     gap: spacing[3],
-    borderRadius: radius.md,
+    borderRadius: 24,
     borderWidth: 2,
-    borderColor: colors.brandLight,
+    borderColor: 'rgba(255, 107, 61, 0.2)',
     borderStyle: 'dashed',
   },
   emptyText: {
@@ -471,13 +593,17 @@ const styles = StyleSheet.create({
     marginTop: spacing[1],
   },
   goalList: {
-    gap: spacing[2] + 2,
+    gap: spacing[2],
     marginBottom: spacing[4],
+  },
+  goalCard: {
+    borderRadius: 24,
   },
   goalLeading: {
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     position: 'relative',
+    gap: spacing[2],
   },
   goalBadge: {
     position: 'absolute',
@@ -495,58 +621,86 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   goalRowFrame: {
-    marginTop: 0,
+    padding: 16,
+    borderRadius: 50,
   },
   goalRowContentBox: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing[4],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[2],
-    paddingRight: spacing[3],
-    paddingLeft: spacing[2],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
   },
   goalRowContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     flex: 1,
+    gap: spacing[2],
+  },
+  goalMainInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing[3],
+    flex: 1,
+    minWidth: 0,
   },
   goalTextWrap: {
     flex: 1,
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  goalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    minWidth: 0,
+    marginBottom: 4,
   },
   goalRowName: {
-    ...typography.bodyStrong,
+    fontSize: 16,
+    fontWeight: '700',
     color: colors.text,
+    lineHeight: 20,
+    flexShrink: 1,
   },
   goalRowNameEnded: {
     color: colors.textSecondary,
   },
+  goalSubtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  goalSubtitleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  goalSubtitleText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  goalSubtitleTextEnded: {
+    color: colors.textFaint,
+  },
+  goalSubtitleDot: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginHorizontal: 2,
+    fontWeight: '600',
+  },
   goalMetaRight: {
     alignItems: 'flex-end',
     justifyContent: 'flex-start',
-    minWidth: 64,
-  },
-  goalPeriod: {
-    ...typography.caption,
-    color: colors.textMuted,
+    gap: spacing[2],
   },
   goalPeriodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    marginTop: 2,
     flexWrap: 'wrap',
-  },
-  goalRowFreq: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textTransform: 'none',
-    textAlign: 'right',
-  },
-  goalRowFreqEnded: {
-    color: colors.textFaint,
+    justifyContent: 'flex-end',
   },
   endedBadge: {
     paddingHorizontal: spacing[2] + 2,
@@ -559,6 +713,14 @@ const styles = StyleSheet.create({
   endedBadgeText: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  selectedDayStatusIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   mergedBadge: {
     paddingHorizontal: spacing[2],
@@ -573,10 +735,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 6,
+    marginTop: 4,
   },
   indicatorText: {
     ...typography.caption,
     fontWeight: '600',
+  },
+  addRoutineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: radius.xl,
+  },
+  addRoutineButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FF6B3D',
   },
 });

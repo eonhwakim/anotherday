@@ -20,7 +20,8 @@ import BaseCard from '../../components/ui/BaseCard';
 import ReviewModal from '../../components/stats/ReviewModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
-import ScreenBackground from '../../components/ui/ScreenBackground';
+// import ScreenBackground from '../../components/ui/ScreenBackground';
+import GradientScreen from '../../components/ui/GradientScreen';
 import { colors, ds, radius, spacing, typography } from '../../design/recipes';
 import { useTeamGoalsQuery } from '../../queries/goalQueries';
 import { useSaveMonthlyRetrospectiveMutation } from '../../queries/monthlyMutations';
@@ -168,7 +169,7 @@ export default function StatisticsScreen() {
   }, [myMember]);
 
   return (
-    <ScreenBackground>
+    <GradientScreen>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
           ref={scrollRef}
@@ -178,7 +179,7 @@ export default function StatisticsScreen() {
         >
           <View style={ds.pagePadding as ViewStyle}>
             <View style={styles.header}>
-              <Text style={ds.headerTitle as TextStyle}>통계</Text>
+              <Text style={ds.headerTitle as TextStyle}>Stats</Text>
               <Text style={styles.subtitle}>
                 월초와 월말의 부분주는 4일 미만이면 인접 월에 편입돼요.
               </Text>
@@ -309,7 +310,7 @@ export default function StatisticsScreen() {
           onSave={saveReview}
         />
       </SafeAreaView>
-    </ScreenBackground>
+    </GradientScreen>
   );
 }
 

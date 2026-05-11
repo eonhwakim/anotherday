@@ -110,6 +110,25 @@ export function getCalendarWeekRanges(yearMonth: string) {
   return { ranges, monthEnd, dataStart, dataEnd };
 }
 
+export function getOwningMonthForDate(dateStr: string): string {
+  const date = dayjs(dateStr);
+  const candidates = [
+    date.subtract(1, 'month').format('YYYY-MM'),
+    date.format('YYYY-MM'),
+    date.add(1, 'month').format('YYYY-MM'),
+  ];
+
+  for (const monthStr of candidates) {
+    const { ranges } = getCalendarWeekRanges(monthStr);
+    const isInOwnedRange = ranges.some(
+      (range) => range.s.format('YYYY-MM-DD') <= dateStr && range.e.format('YYYY-MM-DD') >= dateStr,
+    );
+    if (isInOwnedRange) return monthStr;
+  }
+
+  return date.format('YYYY-MM');
+}
+
 export interface GoalWeekRange {
   s: dayjs.Dayjs;
   e: dayjs.Dayjs;

@@ -14,7 +14,7 @@ import { queryKeys } from './queryKeys';
 export function useMemberProgressQuery(teamId?: string, userId?: string, date = dayjs().format('YYYY-MM-DD')) {
   return useQuery({
     queryKey: queryKeys.stats.memberProgress(teamId, userId, date),
-    queryFn: () => fetchMemberProgress(teamId, userId),
+    queryFn: () => fetchMemberProgress(teamId, userId, date),
     enabled: !!userId,
   });
 }

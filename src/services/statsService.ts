@@ -201,9 +201,8 @@ function normalizeJoinedUser(
 export async function fetchMemberProgress(
   teamId?: string,
   userId?: string,
+  date = dayjs().format('YYYY-MM-DD'),
 ): Promise<MemberProgress[]> {
-  const today = dayjs().format('YYYY-MM-DD');
-
   let members: MemberRow[] = [];
   if (teamId) {
     const { data } = await supabase
@@ -255,42 +254,42 @@ export async function fetchMemberProgress(
     const user = normalizeJoinedUser(member.user);
     const uid = (member.user_id || user?.id) as string;
     const goals = userGoalsByUserId.get(uid) ?? [];
-    const todayGoalIds = goals
-      .filter((goal) => isGoalActiveOnDate(goal, today))
+    const dateGoalIds = goals
+      .filter((goal) => isGoalActiveOnDate(goal, date))
       .map((goal) => goal.goal_id);
 
     return {
       uid,
       nickname: user?.nickname ?? '알 수 없음',
       profileImageUrl: user?.profile_image_url ?? null,
-      todayGoalIds,
+      dateGoalIds,
     };
   });
 
-  const allTodayGoalIds = Array.from(new Set(memberBases.flatMap((member) => member.todayGoalIds)));
+  const allDateGoalIds = Array.from(new Set(memberBases.flatMap((member) => member.dateGoalIds)));
   const { data: goalRows } =
-    allTodayGoalIds.length > 0
-      ? await supabase.from('goals').select('id, name').in('id', allTodayGoalIds)
+    allDateGoalIds.length > 0
+      ? await supabase.from('goals').select('id, name').in('id', allDateGoalIds)
       : { data: [] as { id: string; name: string }[] };
   const goalNameMap = new Map(
     ((goalRows ?? []) as { id: string; name: string }[]).map((goal) => [goal.id, goal.name]),
   );
 
-  const { data: todayCheckins } = await supabase
+  const { data: dateCheckins } = await supabase
     .from('checkins')
     .select(
       '*, goal:goals(id, name), reactions:checkin_reactions(id, checkin_id, user_id, created_at, user:users(id, nickname, profile_image_url))',
     )
     .in('user_id', memberIds)
-    .eq('date', today)
+    .eq('date', date)
     .order('created_at');
 
   const doneByUser = new Map<string, Set<string>>();
   const passByUser = new Map<string, Set<string>>();
 
-  const typedTodayCheckins = (todayCheckins ?? []) as CheckinWithGoal[];
+  const typedDateCheckins = (dateCheckins ?? []) as CheckinWithGoal[];
 
-  typedTodayCheckins.forEach((checkin) => {
+  typedDateCheckins.forEach((checkin) => {
     const targetMap = checkin.status === 'pass' ? passByUser : doneByUser;
     const setForUser = targetMap.get(checkin.user_id) ?? new Set<string>();
     setForUser.add(checkin.goal_id);
@@ -298,7 +297,7 @@ export async function fetchMemberProgress(
   });
 
   const checkinsByUser = new Map<string, CheckinWithGoal[]>();
-  typedTodayCheckins.forEach((checkin) => {
+  typedDateCheckins.forEach((checkin) => {
     const list = checkinsByUser.get(checkin.user_id) ?? [];
     list.push(checkin);
     checkinsByUser.set(checkin.user_id, list);
@@ -308,17 +307,17 @@ export async function fetchMemberProgress(
     const doneSet = doneByUser.get(member.uid) ?? new Set<string>();
     const passSet = passByUser.get(member.uid) ?? new Set<string>();
     const memberGoals = (userGoalsByUserId.get(member.uid) ?? []).filter((goal) =>
-      member.todayGoalIds.includes(goal.goal_id),
+      member.dateGoalIds.includes(goal.goal_id),
     );
 
     let doneCount = 0;
     let passCount = 0;
-    member.todayGoalIds.forEach((goalId) => {
+    member.dateGoalIds.forEach((goalId) => {
       if (doneSet.has(goalId)) doneCount += 1;
       if (passSet.has(goalId)) passCount += 1;
     });
 
-    const goalDetails: MemberGoalDetail[] = member.todayGoalIds.map((goalId) => ({
+    const goalDetails: MemberGoalDetail[] = member.dateGoalIds.map((goalId) => ({
       goalId,
       goalName: goalNameMap.get(goalId) ?? '목표',
       isDone: doneSet.has(goalId),
@@ -328,7 +327,7 @@ export async function fetchMemberProgress(
       targetCount: memberGoals.find((goal) => goal.goal_id === goalId)?.target_count ?? null,
     }));
 
-    const total = member.todayGoalIds.length;
+    const total = member.dateGoalIds.length;
     return {
       userId: member.uid,
       nickname: member.nickname,
