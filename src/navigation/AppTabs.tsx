@@ -37,26 +37,32 @@ const TAB_META: Record<
 function SlidingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const horizontalInset = styles.tabBarWrap.paddingHorizontal;
-  const availableWidth =
-    width - (typeof horizontalInset === 'number' ? horizontalInset * 2 : 24);
+  const horizontalInset = styles.glassShell.paddingHorizontal;
+  const availableWidth = width - (typeof horizontalInset === 'number' ? horizontalInset * 2 : 24);
   const tabWidth = availableWidth / state.routes.length;
   const indicatorWidth = 42;
   const indicatorTranslateX = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     Animated.spring(indicatorTranslateX, {
-      toValue: state.index * tabWidth + (tabWidth - indicatorWidth) / 2,
+      toValue:
+        (typeof horizontalInset === 'number' ? horizontalInset : 12) +
+        state.index * tabWidth +
+        (tabWidth - indicatorWidth) / 2,
       useNativeDriver: true,
       damping: 18,
       stiffness: 180,
       mass: 0.9,
     }).start();
-  }, [indicatorTranslateX, state.index, tabWidth]);
+  }, [horizontalInset, indicatorTranslateX, state.index, tabWidth]);
 
   return (
-    <View style={[styles.tabBarWrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      <SafeBlurView intensity={50} tint="light" style={styles.glassShell}>
+    <View style={styles.tabBarWrap}>
+      <SafeBlurView
+        intensity={50}
+        tint="light"
+        style={[styles.glassShell, { paddingBottom: Math.max(insets.bottom, 10) }]}
+      >
         <View style={styles.edgeHighlight} />
         <Animated.View
           style={[
@@ -150,16 +156,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 12,
     backgroundColor: 'transparent',
   },
   glassShell: {
     overflow: 'hidden',
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.72)',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     backgroundColor: 'rgba(255,255,255,0.42)',
-    minHeight: 76,
+    minHeight: 58,
+    paddingHorizontal: 12,
     paddingTop: 10,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
@@ -173,7 +180,6 @@ const styles = StyleSheet.create({
     left: 18,
     right: 18,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.85)',
   },
   activeIndicator: {
     position: 'absolute',
@@ -195,13 +201,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingTop: 2,
-    paddingBottom: 8,
+    gap: 4,
   },
   iconWrap: {
     width: 46,
-    height: 42,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -230,6 +234,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     letterSpacing: 0.3,
+    paddingTop: 4,
   },
   tabLabelFocused: {
     fontWeight: '700',
