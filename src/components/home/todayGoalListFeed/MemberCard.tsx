@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
-import { Animated, Image, Text, useWindowDimensions, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Animated, Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import dayjs from '../../../lib/dayjs';
+import { colors, typography } from '@/design/recipes';
 
 import { useAuthStore } from '../../../stores/authStore';
 import { useTeamStore } from '../../../stores/teamStore';
@@ -12,7 +12,6 @@ import BaseCard from '../../ui/BaseCard';
 import GoalStatusChip from '../../ui/GoalStatusChip';
 
 import { PHOTO_CARD_GAP } from './constants';
-import { styles } from './styles';
 import type { MemberCardProps } from './types';
 import { usePhotoCarousel } from './usePhotoCarousel';
 import type { CheckinWithGoal } from '../../../types/domain';
@@ -78,12 +77,6 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
                   {member.nickname.charAt(0)}
                 </Text>
               )}
-              {allDone && (
-                <View style={styles.doneCheckBadge}>
-                  <Ionicons name="checkmark-sharp" size={12} color="#000" />
-                  <Text style={{ display: 'none' }}>✓</Text>
-                </View>
-              )}
             </View>
 
             <Text style={styles.memberName} numberOfLines={1}>
@@ -146,3 +139,93 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  memberRow: {
+    marginBottom: 12,
+    width: '100%',
+  },
+  memberCard: {
+    flex: 1,
+    width: '100%',
+  },
+  memberCardContent: {
+    paddingHorizontal: 14,
+    width: '100%',
+  },
+  memberHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  memberIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  memberAvatarWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 50,
+    backgroundColor: colors.white80,
+    borderWidth: 2,
+    borderColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginRight: 12,
+    shadowColor: '#4A558F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  memberAvatarWrapDone: {
+    borderColor: colors.successBright,
+    backgroundColor: colors.successBright,
+  },
+  memberAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  memberAvatarInitial: {
+    ...typography.titleSm,
+    color: '#4A558F',
+  },
+  memberAvatarInitialDone: {
+    color: colors.white,
+  },
+  noGoalText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+  },
+  goalChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  memberName: {
+    ...typography.titleSm,
+    flex: 1,
+  },
+  memberCount: {
+    ...typography.bodyStrong,
+    color: colors.textFaint,
+  },
+  photoCarouselClip: {
+    width: '100%',
+    overflow: 'hidden',
+  },
+  photoSingleRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  photoSection: {
+    marginTop: 12,
+    marginBottom: 22,
+    paddingLeft: 12,
+    overflow: 'hidden',
+  },
+});

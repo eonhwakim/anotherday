@@ -1,9 +1,9 @@
 import React from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactionWithUser } from '../../../types/domain';
 import { FEED_REACTION_AVATAR_MAX } from './constants';
-import { styles } from './styles';
+import { colors } from '@/design/tokens';
 
 export function FeedReactionAvatars({
   reactions,
@@ -47,7 +47,7 @@ export function FeedReactionAvatars({
               />
             ) : (
               <View style={[styles.reactionAvatar, styles.reactionAvatarFallback]}>
-                <Ionicons name="person" size={iconSize} color="#fff" />
+                <Ionicons name="person" size={iconSize} color={colors.white} />
               </View>
             )}
           </View>
@@ -70,3 +70,50 @@ export function FeedReactionAvatars({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  feedReactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  reactionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reactionSticker: {
+    width: 26,
+    height: 26,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: colors.sauvignonBlush,
+    overflow: 'hidden',
+    backgroundColor: '#FFF2EC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reactionAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  reactionAvatarFallback: {
+    backgroundColor: '#555',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reactionMore: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 6,
+    marginLeft: 4,
+    backgroundColor: 'rgba(255, 107, 61, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reactionMoreText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+});

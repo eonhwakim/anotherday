@@ -1,9 +1,10 @@
 import React from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import dayjs from '@/lib/dayjs';
 import { LIKE_PILL_ACCENT, LIKE_PILL_MUTED } from './constants';
 import { FeedReactionAvatars } from './FeedReactionAvatars';
-import { styles } from './styles';
+import { colors } from '@/design/tokens';
 import type { PhotoSlideCardProps } from './types';
 
 export function PhotoPeekPlaceholder() {
@@ -38,6 +39,11 @@ export function PhotoSlideCard({
           <Text style={styles.photoTagText}>{checkin.goal?.name ?? '오늘의 인증'}</Text>
         </View>
         <Image source={{ uri: checkin.photo_url! }} style={styles.photoImage} />
+        <View style={styles.photoTimestamp}>
+          <Text style={styles.photoTimestampText}>
+            {dayjs(checkin.created_at).format('A h:mm')}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.photoFooter}>
@@ -68,3 +74,115 @@ export function PhotoSlideCard({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  photoSlideCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: colors.white80,
+  },
+  photoPlaceholderCard: {
+    backgroundColor: colors.white40,
+  },
+  photoSlideDashedCard: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: colors.black20,
+    borderTopLeftRadius: 22,
+    borderBottomLeftRadius: 22,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    minWidth: 200,
+  },
+  photoSlideInner: {
+    position: 'relative',
+    width: '100%',
+  },
+  photoTag: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 2,
+    backgroundColor: colors.white,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  photoTagText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  photoImage: {
+    width: '100%',
+    aspectRatio: 1.18,
+    backgroundColor: colors.black30,
+  },
+  photoTimestamp: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    zIndex: 2,
+    backgroundColor: colors.black40,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  photoTimestampText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  photoFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.black60,
+  },
+  photoFooterRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,
+  },
+  photoActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    flexShrink: 1,
+  },
+  likePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(182, 180, 180, 0.2)',
+    borderRadius: 999,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    gap: 8,
+    alignSelf: 'flex-start',
+  },
+  likePillCount: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: LIKE_PILL_MUTED,
+    fontVariant: ['tabular-nums'],
+  },
+  likePillCountAccent: {
+    color: LIKE_PILL_ACCENT,
+  },
+  feedReactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  photoIndexText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.34)',
+  },
+});

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Animated, Easing, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 
@@ -9,11 +9,10 @@ import {
   sortMembersForDisplay,
 } from './todayGoalListFeed/feedUtils';
 import type { TodayGoalListFeedProps } from './todayGoalListFeed/types';
-import { styles } from './todayGoalListFeed/styles';
-
-import { FeedBadgePanel } from './todayGoalListFeed/FeedBadgePanel';
+// import { FeedBadgePanel } from './todayGoalListFeed/FeedBadgePanel';
 import { MemberCard } from './todayGoalListFeed/MemberCard';
 import { FeedReactionAvatars } from './todayGoalListFeed/FeedReactionAvatars';
+import { colors, typography } from '@/design/recipes';
 
 export { FeedReactionAvatars };
 
@@ -24,17 +23,15 @@ export default function TodayGoalListFeed({
   isNight = false,
   onPhotoCarouselDragChange,
 }: TodayGoalListFeedProps) {
-  // ===========================================================================
   // 1. Context & Derived Data
   const isFocused = useIsFocused();
   const { progress } = React.useMemo(() => getMissionProgress(members), [members]);
-  const { badgeState, badgeMembers } = React.useMemo(() => getBadgeMeta(members), [members]);
+  const { badgeState } = React.useMemo(() => getBadgeMeta(members), [members]);
   const sortedMembers = React.useMemo(
     () => sortMembersForDisplay(members, currentUserId),
     [members, currentUserId],
   );
 
-  // ===========================================================================
   // 2. Animation Values & Refs
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;
@@ -46,19 +43,6 @@ export default function TodayGoalListFeed({
   const sequenceAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const staggerAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  // ===========================================================================
-  // 3. Interpolated Animation Styles
-  const scale = scaleAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [0.92, 1.04, 1] });
-  const translateY = translateYAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [8, 0],
-  });
-  const glowOpacity = scaleAnim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [0, 0.9, 0],
-  });
-
-  // ===========================================================================
   // 4. Callbacks & Handlers
   const carouselDragParentRef = useRef(onPhotoCarouselDragChange);
   carouselDragParentRef.current = onPhotoCarouselDragChange;
@@ -92,7 +76,6 @@ export default function TodayGoalListFeed({
     staggeredMemberCountRef.current = memberAnims.length;
   }, [memberAnims]);
 
-  // ===========================================================================
   // 5. Lifecycle Effects (Animation Orchestration)
   // 5.1. 멤버 수 변경 시 애니메이션 배열 동기화
   useEffect(() => {
@@ -195,8 +178,6 @@ export default function TodayGoalListFeed({
     startMemberCardStagger();
   }, [isFocused, members, members.length, memberAnims.length, startMemberCardStagger]);
 
-  // ===========================================================================
-  // 6. Render
   return (
     <View>
       {/*헤더 */}
@@ -211,30 +192,12 @@ export default function TodayGoalListFeed({
           </Text>
         </View>
       </View>
-      {/*도장 배찌*/}
-      {/* <FeedBadgePanel
-        badgeMembers={badgeMembers}
-        badgeOpacityAnim={badgeOpacityAnim}
-        badgeState={badgeState}
-        glowOpacity={glowOpacity}
-        isNight={isNight}
-        scale={scale}
-        translateY={translateY}
-      /> */}
+
       {/*목표 리스트 */}
       <View style={styles.trailContainer}>
-        {/* <View style={styles.listHeaderRow}>
-          <Text style={[styles.listHeaderTitle, isNight && styles.listHeaderTitleNight]}>
-            GOAL LIST
-          </Text>
-          <Text style={[styles.listHeaderMeta, isNight && styles.listHeaderMetaNight]}>
-            {sortedMembers.length}명
-          </Text>
-        </View> */}
-
         {sortedMembers.length === 0 ? (
           <View style={styles.emptyTrail}>
-            <Ionicons name="flag-outline" size={24} color="rgba(26,26,26,0.18)" />
+            <Ionicons name="flag-outline" size={24} color={colors.black20} />
             <Text style={styles.emptyText}>목표를 추가해보세요.</Text>
           </View>
         ) : (
@@ -263,3 +226,78 @@ export default function TodayGoalListFeed({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  headerBlock: {
+    marginBottom: 14,
+    width: '100%',
+  },
+  headerTextBlock: {
+    gap: 4,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.black70,
+    letterSpacing: 2,
+  },
+  titleNight: {
+    color: colors.white90,
+  },
+  hintText: {
+    ...typography.bodyStrong,
+    color: colors.textSecondary,
+  },
+  hintTextNight: {
+    color: colors.white80,
+  },
+  metaText: {
+    ...typography.label,
+    color: colors.white60,
+    alignSelf: 'flex-end',
+  },
+  metaTextNight: {
+    color: colors.white60,
+  },
+  trailContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+  emptyTrail: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 6,
+  },
+  emptyText: {
+    ...typography.label,
+    color: colors.textFaint,
+    fontStyle: 'italic',
+  },
+  summitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 4,
+    paddingBottom: 4,
+    position: 'relative',
+  },
+  trailNodeSummit: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  summitText: {
+    ...typography.label,
+    color: colors.primary,
+  },
+});

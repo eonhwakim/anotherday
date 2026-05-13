@@ -1,13 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  Image,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -22,7 +14,7 @@ import dayjs from '../../lib/dayjs';
 import { scheduleGoalReminderNotification } from '../../utils/notifications';
 
 // 3. Queries (Data Fetching)
-import { useDailyTodosQuery } from '../../queries/todoQueries';
+// import { useDailyTodosQuery } from '../../queries/todoQueries';
 import {
   useMyGoalsQuery,
   useTeamGoalsQuery,
@@ -33,7 +25,7 @@ import { useMemberProgressQuery } from '../../queries/statsQueries';
 // 4. Custom Hooks (Business Logic)
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import { useCheckinGoals } from './hooks/useCheckinGoals';
-import { useDailyTodoActions } from './hooks/useDailyTodoActions';
+// import { useDailyTodoActions } from './hooks/useDailyTodoActions';
 import { useHomeRefresh } from './hooks/useHomeRefresh';
 import { useHomeTimePeriod } from './hooks/useHomeTimePeriod';
 import { useMonthlyGoalPrompt } from './hooks/useMonthlyGoalPrompt';
@@ -43,12 +35,12 @@ import { colors } from '../../design/tokens';
 import BaseCard from '../../components/ui/BaseCard';
 import MountainProgress from '../../components/home/MountainProgress';
 import TodayGoalList from '../../components/home/TodayGoalListFeed';
-import TodayTodoSection from '../../components/home/TodayTodoSection';
+// import TodayTodoSection from '../../components/home/TodayTodoSection';
 import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
+import FloatingCameraButton from '../../components/home/FloatingCameraButton';
 
 export default function HomeScreen() {
-  // ===========================================================================
   // 1. Global State & Base Context
   const user = useAuthStore((s) => s.user);
   const { currentTeam } = useTeamStore();
@@ -58,18 +50,16 @@ export default function HomeScreen() {
   const todayStr = dayjs().format('YYYY-MM-DD');
   const todayLabel = dayjs().format('YY년 M월 D일');
 
-  // ===========================================================================
   // 2. Data Fetching (React Query)
   const { data: myGoals = [] } = useMyGoalsQuery(userId);
   const { data: teamGoals = [] } = useTeamGoalsQuery(currentTeamId ?? '', userId);
   const { data: todayCheckins = [] } = useTodayCheckinsQuery(userId, todayStr);
-  const { data: dailyTodos = [], isLoading: isDailyTodosLoading } = useDailyTodosQuery(
-    userId,
-    todayStr,
-  );
+  // const { data: dailyTodos = [], isLoading: isDailyTodosLoading } = useDailyTodosQuery(
+  //   userId,
+  //   todayStr,
+  // );
   const { data: memberProgress = [] } = useMemberProgressQuery(currentTeamId, userId, todayStr);
 
-  // ===========================================================================
   // 3. UI State & Navigation
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const scrollRef = useRef<ScrollView>(null);
@@ -80,19 +70,18 @@ export default function HomeScreen() {
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
   const [photoCarouselDragging, setPhotoCarouselDragging] = React.useState(false);
 
-  // ===========================================================================
   // 4. Custom Feature Hooks (Business Logic)
   // 4.1 Time & Refresh
   const { isDay, isNight, isSunset, timePeriod, updateTime } = useHomeTimePeriod();
   const refreshHomeQueries = useHomeRefresh({ currentTeamId, todayStr, userId });
 
   // 4.2 Todo Actions
-  const {
-    handleAddDailyTodo,
-    handleDeleteDailyTodo,
-    handleToggleDailyTodo,
-    handleUpdateDailyTodo,
-  } = useDailyTodoActions({ todayStr, userId });
+  // const {
+  //   handleAddDailyTodo,
+  //   handleDeleteDailyTodo,
+  //   handleToggleDailyTodo,
+  //   handleUpdateDailyTodo,
+  // } = useDailyTodoActions({ todayStr, userId });
 
   // 4.3 Goal Prompts & Modals
   const {
@@ -105,7 +94,6 @@ export default function HomeScreen() {
   } = useMonthlyGoalPrompt({ currentTeamId, userId });
   const goalsForCheckinModal = useCheckinGoals({ myGoals, teamGoals, todayStr, userId });
 
-  // ===========================================================================
   // 5. Effects & Event Handlers
   React.useEffect(() => {
     if (!user) return;
@@ -132,7 +120,6 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  // ===========================================================================
   // 6. Render
   return (
     <View style={styles.container}>
@@ -155,7 +142,7 @@ export default function HomeScreen() {
                 ? require('../../../assets/bg-d.png')
                 : require('../../../assets/bg-n.png')
           }
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
           resizeMode="cover"
         />
         {timePeriod === 'NIGHT' && <View style={styles.nightOverlay} pointerEvents="none" />}
@@ -185,11 +172,11 @@ export default function HomeScreen() {
                     isSunset && styles.greetingSunset,
                   ]}
                 >
-                  Hello,
+                  Hello ⋆
                   {user?.nickname
-                    ? `${user?.nickname}`
+                    ? ` ${user?.nickname}`
                     : currentTeam?.name
-                      ? `${currentTeam?.name} 팀원`
+                      ? ` ${currentTeam?.name} 팀원`
                       : ''}
                 </Text>
                 <View style={styles.frameRow}>
@@ -205,7 +192,7 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <View style={styles.rightColumn}>
+            {/* <View style={styles.rightColumn}>
               <View style={styles.todoSection}>
                 <TodayTodoSection
                   todos={dailyTodos}
@@ -216,7 +203,7 @@ export default function HomeScreen() {
                   onDeleteTodo={handleDeleteDailyTodo}
                 />
               </View>
-            </View>
+            </View> */}
           </View>
 
           <View style={styles.mountainSection}>
@@ -239,17 +226,7 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
 
-        <TouchableOpacity
-          style={styles.floatingButtonWrapper}
-          onPress={() => setCheckinModalVisible(true)}
-          activeOpacity={0.78}
-        >
-          <Image
-            source={require('../../../assets/camera-btn.png')}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
+        <FloatingCameraButton onPress={() => setCheckinModalVisible(true)} />
       </SafeAreaView>
 
       <CheckinModal
@@ -271,7 +248,7 @@ const styles = StyleSheet.create({
   },
   nightOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: colors.overlayBackdrop,
   },
   safe: { flex: 1 },
   scroll: { flex: 1 },
@@ -311,10 +288,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   greeting: {
-    fontSize: 26,
-    color: '#FFFFFF',
+    fontSize: 18,
+    color: colors.white,
+    fontStyle: 'italic',
     fontWeight: '700',
-    marginBottom: 6,
     marginLeft: 6,
     lineHeight: 28,
   },
@@ -330,45 +307,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1.6,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   dateTextLight: {
-    color: '#E0E0E0',
+    color: colors.white60,
   },
   teamName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#282828',
+    color: colors.black90,
     letterSpacing: 0.2,
     textAlign: 'center',
   },
   teamNameLight: {
-    color: '#FFFAF7',
+    color: colors.white90,
   },
   mountainSection: {
     alignItems: 'center',
     marginBottom: 18,
     zIndex: 10,
     position: 'relative',
-    top: 16,
   },
   todoSection: {
     width: '100%',
   },
   goalSection: {
     paddingHorizontal: 20,
-    paddingTop: 0,
+    paddingTop: 60,
     width: '100%',
     alignItems: 'stretch',
-  },
-
-  floatingButtonWrapper: {
-    position: 'absolute',
-    right: 16,
-    bottom: 116,
-    width: 80,
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
