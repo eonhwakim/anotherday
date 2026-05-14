@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
+import { ds } from '@/design/recipes';
 
 import {
   getBadgeMeta,
@@ -183,7 +184,7 @@ export default function TodayGoalListFeed({
       {/*헤더 */}
       <View style={styles.headerBlock}>
         <View style={styles.headerTextBlock}>
-          <Text style={[styles.title, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
+          <Text style={[ds.bigTitle, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
           <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
             오늘 해야 할 목표와 팀 진행 상황을 한눈에 확인하세요.
           </Text>

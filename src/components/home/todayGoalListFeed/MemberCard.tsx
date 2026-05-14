@@ -1,7 +1,15 @@
 import React, { useCallback } from 'react';
-import { Animated, Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  Animated,
+  Image,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+  Dimensions,
+} from 'react-native';
 import dayjs from '../../../lib/dayjs';
-import { colors, typography } from '@/design/recipes';
+import { colors, radius, typography } from '@/design/recipes';
 
 import { useAuthStore } from '../../../stores/authStore';
 import { useTeamStore } from '../../../stores/teamStore';
@@ -64,7 +72,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
     <Animated.View
       style={[styles.memberRow, { opacity: animOpacity, transform: [{ translateY: animSlide }] }]}
     >
-      <BaseCard glassOnly style={styles.memberCard} contentStyle={styles.memberCardContent}>
+      <BaseCard glassOnly wide style={styles.memberCard}>
         <View style={styles.memberHeader}>
           <View style={styles.memberIdentity}>
             <View style={[styles.memberAvatarWrap, allDone && styles.memberAvatarWrapDone]}>
@@ -142,17 +150,16 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
 
 const styles = StyleSheet.create({
   memberRow: {
-    marginBottom: 12,
+    marginBottom: 18,
     width: '100%',
   },
   memberCard: {
     flex: 1,
-    width: '100%',
+    width: Dimensions.get('window').width, // 화면 전체 너비로 강제 고정
+    marginLeft: -20, // 부모의 좌측 여백 상쇄
+    borderRadius: radius.xxl,
   },
-  memberCardContent: {
-    paddingHorizontal: 14,
-    width: '100%',
-  },
+
   memberHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -164,8 +171,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   memberAvatarWrap: {
-    width: 38,
-    height: 38,
+    width: 34,
+    height: 34,
     borderRadius: 50,
     backgroundColor: colors.white80,
     borderWidth: 2,
@@ -223,9 +230,8 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   photoSection: {
-    marginTop: 12,
+    marginTop: 22,
     marginBottom: 22,
-    paddingLeft: 12,
     overflow: 'hidden',
   },
 });

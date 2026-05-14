@@ -34,11 +34,13 @@ import { useMonthlyGoalPrompt } from './hooks/useMonthlyGoalPrompt';
 import { colors } from '../../design/tokens';
 import BaseCard from '../../components/ui/BaseCard';
 import MountainProgress from '../../components/home/MountainProgress';
+import RacingProgress from '../../components/home/RacingProgress';
 import TodayGoalList from '../../components/home/TodayGoalListFeed';
 // import TodayTodoSection from '../../components/home/TodayTodoSection';
 import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
 import FloatingCameraButton from '../../components/home/FloatingCameraButton';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 export default function HomeScreen() {
   // 1. Global State & Base Context
@@ -74,6 +76,7 @@ export default function HomeScreen() {
   // 4.1 Time & Refresh
   const { isDay, isNight, isSunset, timePeriod, updateTime } = useHomeTimePeriod();
   const refreshHomeQueries = useHomeRefresh({ currentTeamId, todayStr, userId });
+  const backgroundTheme = useSettingsStore((s) => s.backgroundTheme);
 
   // 4.2 Todo Actions
   // const {
@@ -180,7 +183,7 @@ export default function HomeScreen() {
                       : ''}
                 </Text>
                 <View style={styles.frameRow}>
-                  <BaseCard glassOnly padded={false} style={styles.teamCard}>
+                  <BaseCard glassOnly noBorder padded={false} style={styles.teamCard}>
                     <Text style={[styles.dateText, isNight && styles.dateTextLight]}>
                       {todayLabel}
                     </Text>
@@ -207,11 +210,19 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.mountainSection}>
-            <MountainProgress
-              members={memberProgress}
-              currentUserId={user?.id}
-              startAnimation={isStampFinished}
-            />
+            {backgroundTheme === 'racing' ? (
+              <RacingProgress
+                members={memberProgress}
+                currentUserId={user?.id}
+                startAnimation={isStampFinished}
+              />
+            ) : (
+              <MountainProgress
+                members={memberProgress}
+                currentUserId={user?.id}
+                startAnimation={isStampFinished}
+              />
+            )}
           </View>
 
           <View style={styles.goalSection}>
@@ -285,12 +296,10 @@ const styles = StyleSheet.create({
     maxWidth: 158,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 6,
   },
   greeting: {
     fontSize: 18,
     color: colors.white,
-    fontStyle: 'italic',
     fontWeight: '700',
     marginLeft: 6,
     lineHeight: 28,
@@ -324,7 +333,7 @@ const styles = StyleSheet.create({
   },
   mountainSection: {
     alignItems: 'center',
-    marginBottom: 18,
+    marginVertical: 18,
     zIndex: 10,
     position: 'relative',
   },

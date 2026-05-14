@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import {
   getDailyNotificationEnabled,
@@ -13,15 +12,16 @@ import {
   sendTestNotification,
   sendTestGoalReminderNotification,
 } from '../../utils/notifications';
-import ScreenHeader from '../../components/ui/ScreenHeader';
 import SectionHeader from '../../components/ui/SectionHeader';
 import BaseCard from '../../components/ui/BaseCard';
 import { colors, ds, spacing, typography } from '../../design/recipes';
 
+import { useSettingsStore } from '../../stores/settingsStore';
+
 export default function AppSettingsScreen() {
-  const navigation = useNavigation();
   const [dailyNoti, setDailyNoti] = useState(true);
   const [goalReminder, setGoalReminder] = useState(true);
+  const { backgroundTheme, setBackgroundTheme } = useSettingsStore();
 
   useEffect(() => {
     getDailyNotificationEnabled().then(setDailyNoti);
@@ -40,7 +40,7 @@ export default function AppSettingsScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      <ScreenHeader title="앱 설정" onBack={() => navigation.goBack()} />
+      {/* <ScreenHeader title="앱 설정" onBack={() => navigation.goBack()} /> */}
 
       <View style={s.content}>
         <SectionHeader title="알림" subtitle="알림과 리마인더를 한 곳에서 관리해요" />
@@ -77,6 +77,32 @@ export default function AppSettingsScreen() {
             trackColor={{ false: 'rgba(0,0,0,0.10)', true: 'rgba(255,107,61,0.35)' }}
             thumbColor={goalReminder ? colors.primary : '#f4f3f4'}
           />
+        </BaseCard>
+
+        <SectionHeader title="화면 설정" subtitle="앱의 배경 테마를 선택하세요" />
+
+        <BaseCard glassOnly style={s.rowFrame} contentStyle={s.row} padded={false}>
+          <View style={s.rowLeft}>
+            <Ionicons name="image-outline" size={20} color={colors.text} />
+            <View style={s.rowText}>
+              <Text style={s.rowTitle}>홈 화면 배경 테마</Text>
+              <Text style={s.rowDesc}>팀원들의 진행 상황을 보여주는 배경을 선택하세요</Text>
+            </View>
+          </View>
+          <View style={s.themeButtons}>
+            <TouchableOpacity
+              style={[s.themeBtn, backgroundTheme === 'mountain' && s.themeBtnActive]}
+              onPress={() => setBackgroundTheme('mountain')}
+            >
+              <Text style={[s.themeBtnText, backgroundTheme === 'mountain' && s.themeBtnTextActive]}>산</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.themeBtn, backgroundTheme === 'racing' && s.themeBtnActive]}
+              onPress={() => setBackgroundTheme('racing')}
+            >
+              <Text style={[s.themeBtnText, backgroundTheme === 'racing' && s.themeBtnTextActive]}>레이싱</Text>
+            </TouchableOpacity>
+          </View>
         </BaseCard>
 
         {__DEV__ && (
@@ -138,4 +164,25 @@ const s = StyleSheet.create({
     borderStyle: 'dashed',
   },
   testBtnText: { ...typography.label, color: colors.primary, textTransform: 'none' },
+  themeButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  themeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  themeBtnActive: {
+    backgroundColor: colors.primary,
+  },
+  themeBtnText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  themeBtnTextActive: {
+    color: colors.white,
+  },
 });

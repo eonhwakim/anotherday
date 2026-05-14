@@ -14,12 +14,7 @@ interface MyPageProfileCardProps {
 export default function MyPageProfileCard({ user, onPress }: MyPageProfileCardProps) {
   return (
     <TouchableOpacity onPress={onPress}>
-      <BaseCard
-        glassOnly
-        style={[styles.profileSection]}
-        contentStyle={styles.profileCard}
-        padded={false}
-      >
+      <BaseCard style={[styles.profileSection]} contentStyle={styles.profileCard} padded={false}>
         <View style={styles.avatarLarge}>
           <Avatar uri={user?.profile_image_url ?? null} size={56} />
         </View>

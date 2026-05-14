@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import dayjs from '@/lib/dayjs';
 import { LIKE_PILL_ACCENT, LIKE_PILL_MUTED } from './constants';
 import { FeedReactionAvatars } from './FeedReactionAvatars';
-import { colors } from '@/design/tokens';
+import { colors, radius, typography } from '@/design/tokens';
 import type { PhotoSlideCardProps } from './types';
 
 export function PhotoPeekPlaceholder() {
@@ -77,7 +77,7 @@ export function PhotoSlideCard({
 
 const styles = StyleSheet.create({
   photoSlideCard: {
-    borderRadius: 24,
+    borderRadius: radius.md,
     overflow: 'hidden',
     backgroundColor: colors.white80,
   },
@@ -88,11 +88,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: colors.black20,
-    borderTopLeftRadius: 22,
-    borderBottomLeftRadius: 22,
+    borderTopLeftRadius: radius.md,
+    borderBottomLeftRadius: radius.md,
     borderTopRightRadius: 0,
     borderBottomRightRadius: 0,
-    minWidth: 200,
+    minWidth: 180,
   },
   photoSlideInner: {
     position: 'relative',
@@ -109,8 +109,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   photoTagText: {
-    fontSize: 13,
-    fontWeight: '700',
+    ...typography.bodyStrong,
     color: colors.primary,
   },
   photoImage: {
@@ -129,8 +128,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   photoTimestampText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.caption,
     color: colors.white,
   },
   photoFooter: {
@@ -181,8 +179,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   photoIndexText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: 'rgba(26,26,26,0.34)',
+    ...typography.label,
+    color: colors.textMuted,
   },
 });

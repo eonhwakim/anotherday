@@ -1,8 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { TouchableOpacity, StyleSheet, Animated, Easing, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../design/tokens';
-
+import { colors } from '@/design/tokens';
 interface FloatingCameraButtonProps {
   onPress: () => void;
 }
@@ -61,53 +60,82 @@ export default function FloatingCameraButton({ onPress }: FloatingCameraButtonPr
     ).start();
   }, [scaleAnim1, scaleAnim2, rotateAnim]);
 
+  // 툴팁 둥둥 떠다니는 애니메이션
+  const tooltipFloatAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(tooltipFloatAnim, {
+          toValue: -6,
+          duration: 1500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(tooltipFloatAnim, {
+          toValue: 0,
+          duration: 1500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [tooltipFloatAnim]);
+
   const spin = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
-      <Animated.View style={[styles.animationWrapper, { transform: [{ rotate: spin }] }]}>
-        {/* 가장 바깥쪽 옅은 겹 */}
-        <Animated.View
-          style={[styles.blob, styles.blob1, { transform: [{ scale: scaleAnim1 }] }]}
-        />
-        {/* 중간 겹 */}
-        <Animated.View
-          style={[styles.blob, styles.blob2, { transform: [{ scale: scaleAnim2 }] }]}
-        />
-        {/* 흰색 겹 추가 (가장 안쪽 진한 겹 바로 뒤) */}
-        <View style={[styles.blob, styles.blobWhite]} />
-        {/* 가장 안쪽 진한 겹 */}
-        <View style={[styles.blob, styles.blob3]} />
-      </Animated.View>
+    <View style={styles.outerContainer}>
+      <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
+        <Animated.View style={[styles.animationWrapper, { transform: [{ rotate: spin }] }]}>
+          {/* 가장 바깥쪽 옅은 겹 (무지개빛 느낌을 위해 색상 분리) */}
+          <Animated.View
+            style={[styles.blob, styles.blob1, { transform: [{ scale: scaleAnim1 }] }]}
+          />
+          {/* 중간 겹 */}
+          <Animated.View
+            style={[styles.blob, styles.blob2, { transform: [{ scale: scaleAnim2 }] }]}
+          />
+          {/* 흰색 겹 추가 (가장 안쪽 진한 겹 바로 뒤) */}
+          <View style={[styles.blob, styles.blobWhite]} />
+          {/* 가장 안쪽 겹 (투명한 유리구슬 느낌) */}
+          <View style={[styles.blob, styles.blob3]} />
+        </Animated.View>
 
-      {/* 3D 입체감을 위한 고정된 빛 반사(하이라이트) 효과 */}
-      <View style={styles.glassHighlight} />
+        {/* 3D 입체감을 위한 고정된 빛 반사(하이라이트) 효과 */}
+        <View style={styles.glassHighlight} />
+        <View style={styles.glassHighlightBottom} />
 
-      {/* 아이콘은 회전하지 않도록 바깥에 둠 */}
-      <View style={styles.iconContainer}>
-        <Ionicons name="camera" size={32} color="#FFFFFF" style={styles.iconShadow} />
-      </View>
-    </TouchableOpacity>
+        {/* 카메라 아이콘 */}
+        <View style={styles.iconContainer}>
+          <Ionicons name="camera" size={32} color={colors.softOrange} style={styles.iconShadow} />
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     position: 'absolute',
     right: 16,
     bottom: 148,
-    width: 80,
-    height: 80,
     alignItems: 'center',
     justifyContent: 'center',
-    // 전체가 떠있는 듯한 메인 그림자 (주조색 활용)
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
+    zIndex: 100,
+  },
+  container: {
+    width: 76, // 구슬 크기 축소 (100 -> 76)
+    height: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // 전체가 떠있는 듯한 메인 그림자
+    shadowColor: colors.lavender,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
     elevation: 10,
   },
   animationWrapper: {
@@ -117,81 +145,80 @@ const styles = StyleSheet.create({
   },
   blob: {
     position: 'absolute',
-    width: 70,
-    height: 70,
-    backgroundColor: colors.primary,
+    width: 68, // 90 -> 68
+    height: 68,
   },
-  // 여러 겹의 유기적인 모양을 만들기 위해 border-radius를 불규칙하게 설정
+  // 무지개빛 비눗방울 효과를 위해 각 겹의 색상을 다르게 설정
   blob1: {
-    opacity: 0.3,
-    borderRadius: 35,
-    borderTopLeftRadius: 45,
-    borderTopRightRadius: 30,
-    borderBottomRightRadius: 40,
-    borderBottomLeftRadius: 25,
-    width: 76,
-    height: 76,
+    backgroundColor: colors.mint,
+    opacity: 0.4,
+    borderRadius: 45,
+    borderTopLeftRadius: 55,
+    borderTopRightRadius: 40,
+    borderBottomRightRadius: 50,
+    borderBottomLeftRadius: 35,
+    width: 72, // 96 -> 72
+    height: 72,
   },
   blob2: {
+    backgroundColor: colors.softCoral,
     opacity: 0.5,
-    borderRadius: 35,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 40,
-    borderBottomRightRadius: 30,
-    borderBottomLeftRadius: 45,
-    width: 68,
-    height: 68,
+    borderRadius: 45,
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 50,
+    borderBottomRightRadius: 40,
+    borderBottomLeftRadius: 55,
+    width: 66, // 88 -> 66
+    height: 66,
     transform: [{ rotate: '45deg' }],
   },
   blobWhite: {
-    backgroundColor: '#FFFFFF',
-    opacity: 0.4,
-    borderRadius: 35,
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 30,
-    borderBottomRightRadius: 45,
-    borderBottomLeftRadius: 25,
-    width: 64,
-    height: 64,
+    backgroundColor: colors.softCoral,
+    opacity: 0.3,
+    borderRadius: 45,
+    borderTopLeftRadius: 50,
+    borderTopRightRadius: 40,
+    borderBottomRightRadius: 55,
+    borderBottomLeftRadius: 35,
+    width: 63, // 84 -> 63
+    height: 63,
     transform: [{ rotate: '-20deg' }],
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 4,
   },
   blob3: {
+    backgroundColor: colors.white60, // 반투명한 흰색 유리구슬
     opacity: 0.9,
-    borderRadius: 35,
-    borderTopLeftRadius: 35,
-    borderTopRightRadius: 35,
-    borderBottomRightRadius: 35,
-    borderBottomLeftRadius: 35,
-    width: 56,
-    height: 56,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
+    borderRadius: 45,
+    width: 57, // 76 -> 57
+    height: 57,
+    borderWidth: 2,
+    borderColor: colors.white80,
+    shadowColor: colors.mint,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
     elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
   },
   glassHighlight: {
     position: 'absolute',
-    top: 18,
-    left: 22,
-    width: 16,
-    height: 6,
+    top: 16, // 22 -> 16
+    left: 21, // 28 -> 21
+    width: 15, // 20 -> 15
+    height: 6, // 8 -> 6
     borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: colors.white90,
     transform: [{ rotate: '-25deg' }],
     zIndex: 5,
   },
-  iconShadow: {
-    textShadowColor: 'rgba(0,0,0,0.25)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
+  glassHighlightBottom: {
+    position: 'absolute',
+    bottom: 16, // 22 -> 16
+    right: 21, // 28 -> 21
+    width: 22, // 30 -> 22
+    height: 4, // 6 -> 4
+    borderRadius: 10,
+    backgroundColor: colors.white40,
+    transform: [{ rotate: '-25deg' }],
+    zIndex: 5,
   },
   iconContainer: {
     position: 'absolute',
@@ -200,5 +227,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     zIndex: 10,
+  },
+  iconShadow: {
+    textShadowColor: colors.black20,
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
 });

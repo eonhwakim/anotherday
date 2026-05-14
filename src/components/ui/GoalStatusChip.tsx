@@ -22,11 +22,7 @@ export default function GoalStatusChip({ goalName, status }: GoalStatusChipProps
   const isDone = status === 'done';
   const isPass = status === 'pass';
 
-  const containerStyle = [
-    styles.chip,
-    isPass && styles.chipPass,
-    isDone && styles.chipDone,
-  ];
+  const containerStyle = [styles.chip, isPass && styles.chipPass, isDone && styles.chipDone];
   const labelStyle = [
     styles.chipText,
     isPass && styles.chipTextPass,
@@ -49,17 +45,16 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.54)',
+    backgroundColor: colors.white50,
   },
   chipDone: {
-    backgroundColor: colors.brandWarm,
+    backgroundColor: colors.softOrange,
   },
   chipPass: {
-    backgroundColor: colors.brandPale,
+    backgroundColor: colors.softGreen,
   },
   chipIcon: {
-    marginRight: 3,
-    color: '#fff',
+    color: colors.white,
     fontWeight: '700',
   },
   chipText: {
@@ -68,7 +63,7 @@ const styles = StyleSheet.create({
     maxWidth: 120,
   },
   chipTextDone: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: '600',
   },
   chipTextPass: {
