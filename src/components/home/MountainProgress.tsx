@@ -448,8 +448,8 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   mountainScene: {
-    width: '100%',
-    height: '100%',
+    width: '95%',
+    height: '95%',
     alignSelf: 'center',
     alignItems: 'center',
   },
