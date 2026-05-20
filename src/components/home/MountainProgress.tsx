@@ -357,17 +357,17 @@ function ClimbingCharacter({
       timeoutId = setTimeout(() => {
         Animated.timing(progressAnim, {
           toValue: progress,
-          duration: 1200 + progress * 1500, // 높이 올라갈수록 더 오래 걸림
+          duration: 2400 + progress * 2200,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: false,
         }).start();
         Animated.timing(displayPercent, {
           toValue: progress * 100,
-          duration: 1200 + progress * 800,
+          duration: 2400 + progress * 1800,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: false,
         }).start();
-      }, index * 100);
+      }, index * 180);
     }
 
     return () => {
@@ -391,13 +391,13 @@ function ClimbingCharacter({
     if (hasStarted.current) {
       Animated.timing(progressAnim, {
         toValue: progress,
-        duration: 600,
+        duration: 1200,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }).start();
       Animated.timing(displayPercent, {
         toValue: progress * 100,
-        duration: 600,
+        duration: 1200,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }).start();
