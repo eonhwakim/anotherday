@@ -131,14 +131,17 @@ export default function AppSettingsScreen() {
             style={styles.sectionHeader}
           />
 
-          <BaseCard glassOnly style={styles.rowFrame} contentStyle={styles.themeCard} padded={false}>
+          <BaseCard
+            glassOnly
+            style={styles.rowFrame}
+            contentStyle={styles.themeCard}
+            padded={false}
+          >
             <View style={styles.themeHeader}>
               <Ionicons name="image-outline" size={20} color={colors.text} />
               <View style={styles.rowText}>
                 <Text style={styles.rowTitle}>홈 화면 배경 테마</Text>
-                <Text style={styles.rowDesc}>
-                  팀원들의 진행 상황을 보여주는 배경을 선택하세요
-                </Text>
+                <Text style={styles.rowDesc}>팀원들의 진행 상황을 보여주는 배경을 선택하세요</Text>
               </View>
             </View>
 

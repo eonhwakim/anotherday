@@ -381,7 +381,7 @@ export default function GoalSetting({
                                   {isMergedWeekGoal ? (
                                     <Badge
                                       label="편입주"
-                                      tone="warning"
+                                      tone="neutral"
                                       style={styles.mergedBadge}
                                       textStyle={styles.mergedBadgeText}
                                     />

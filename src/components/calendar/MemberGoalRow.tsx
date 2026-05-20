@@ -173,7 +173,7 @@ export default function MemberGoalRow({
         <View style={styles.goalTitleRow}>
           <View style={styles.goalInfo}>
             <Text style={styles.goalName} numberOfLines={2}>
-              ∙ {goal.name}
+              {goal.name}
             </Text>
             <Text style={styles.goalFreq}>
               {goal.frequency === 'daily' ? '매일' : `주 ${goal.targetCount}회`}
@@ -278,8 +278,9 @@ const styles = StyleSheet.create({
     paddingRight: 6,
   },
   goalName: {
-    ...typography.bodyStrong,
-    fontSize: 14,
+    paddingLeft: 10,
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.text,
     marginBottom: 4,
   },
