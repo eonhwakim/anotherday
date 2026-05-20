@@ -1,17 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import BaseCard from '../ui/BaseCard';
-import type {
-  CalendarDayMarking,
-  DailyTodo,
-  MemberCheckinSummary,
-} from '../../types/domain';
+import type { CalendarDayMarking, DailyTodo, MemberCheckinSummary } from '../../types/domain';
 import { colors } from '../../design/tokens';
 import CalendarScoreTable from './CalendarScoreTable';
-import MemberGoalRow, {
-  membersAuthenticatedForGoal,
-  type OpenPhotoHandler,
-} from './MemberGoalRow';
+import MemberGoalRow, { membersAuthenticatedForGoal, type OpenPhotoHandler } from './MemberGoalRow';
 
 type DayMarking = CalendarDayMarking[string];
 
@@ -91,12 +84,7 @@ export default function CalendarDateSummaryCard({
           <View style={styles.todoList}>
             {dailyTodos.map((todo) => (
               <View key={todo.id} style={styles.todoItem}>
-                <View
-                  style={[
-                    styles.todoCheck,
-                    todo.is_completed ? styles.todoCheckDone : null,
-                  ]}
-                />
+                <View style={[styles.todoCheck, todo.is_completed ? styles.todoCheckDone : null]} />
                 <View style={styles.todoTextWrap}>
                   <Text style={[styles.todoText, todo.is_completed ? styles.todoTextDone : null]}>
                     {todo.title}

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import BaseCard from '../../components/ui/BaseCard';
-import { colors } from '../../design/recipes';
+import { colors, ds } from '../../design/recipes';
 import type { MemberDetail, MyGoalDetail } from '../../services/statsService';
 import { statisticsSharedStyles as sharedStyles } from './statisticsShared';
 import MonthlySummaryCards from '../../components/ui/MonthlySummaryCards';
@@ -81,45 +81,39 @@ export default function MyMonthlyStatistics({
       />
 
       {/* 주차별 달성률 차트 */}
-      <BaseCard glassOnly style={sharedStyles.section}>
-        <View style={sharedStyles.cardHeader}>
-          <Text style={sharedStyles.cardName}>이번 달 주차별 달성률</Text>
-        </View>
+      <View style={[sharedStyles.cardHeader, styles.cardHeader]}>
+        <Text style={ds.cardTitle}>Weekly Achievement Rate</Text>
+      </View>
 
-        <View style={styles.weeklyBarsContainer}>
-          {myWeeklyRates.map((w) => (
-            <View key={w.week} style={styles.weeklyBarRow}>
-              <View style={styles.weeklyBarHeader}>
-                <View style={styles.weeklyBarLabelWrap}>
-                  <Text style={styles.weeklyBarLabel}>{w.week}주차</Text>
-                  <Text style={styles.weeklyBarDate}>
-                    ({w.startDate} - {w.endDate})
-                  </Text>
-                </View>
-                <Text
-                  style={[styles.weeklyBarValue, w.rate === null && { color: colors.textMuted }]}
-                >
-                  {w.rate === null ? '-' : `${w.rate}%`}
+      <BaseCard glassOnly style={styles.weeklyBarsContainer}>
+        {myWeeklyRates.map((w) => (
+          <View key={w.week} style={styles.weeklyBarRow}>
+            <View style={styles.weeklyBarHeader}>
+              <View style={styles.weeklyBarLabelWrap}>
+                <Text style={styles.weeklyBarLabel}>{w.week}주차</Text>
+                <Text style={styles.weeklyBarDate}>
+                  ({w.startDate} - {w.endDate})
                 </Text>
               </View>
-              <View style={styles.weeklyBarTrack}>
-                {w.rate !== null && (
-                  <View style={[styles.weeklyBarFill, { width: `${w.rate}%` }]} />
-                )}
-              </View>
+              <Text style={[styles.weeklyBarValue, w.rate === null && { color: colors.textMuted }]}>
+                {w.rate === null ? '-' : `${w.rate}%`}
+              </Text>
             </View>
-          ))}
-        </View>
+            <View style={styles.weeklyBarTrack}>
+              {w.rate !== null && <View style={[styles.weeklyBarFill, { width: `${w.rate}%` }]} />}
+            </View>
+          </View>
+        ))}
       </BaseCard>
       {/* 루틴 카드 */}
-      <BaseCard glassOnly style={sharedStyles.section}>
+      <View style={sharedStyles.section}>
         {myGoalDetails.length > 0 && (
           <>
-            <View style={sharedStyles.cardHeader}>
-              <Text style={sharedStyles.cardName}>루틴</Text>
+            <View style={[sharedStyles.cardHeader, styles.cardHeader]}>
+              <Text style={ds.cardTitle}>Routine Status</Text>
               <Text style={sharedStyles.cardSubText}>통계 기준 총 일수: {monthTotalDays}일</Text>
             </View>
-            <View style={{ marginVertical: 18 }}>
+            <View>
               {myGoalDetails.map((goal) => (
                 <RoutineStatusCard
                   key={goal.goalId}
@@ -136,7 +130,7 @@ export default function MyMonthlyStatistics({
                 />
               ))}
             </View>
-            <>
+            {/* <>
               <View style={sharedStyles.dividerSection}>
                 <Text style={sharedStyles.subLabel}>한마디</Text>
                 <Text style={[sharedStyles.reviewText, !myMember?.hanmadi && styles.placeholder]}>
@@ -150,20 +144,23 @@ export default function MyMonthlyStatistics({
                   {myMember?.hoego || '이번 달은 어떠셨나요? "내목표"에서 남겨보세요!'}
                 </Text>
               </View>
-            </>
+            </> */}
           </>
         )}
-      </BaseCard>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  cardHeader: {
+    marginTop: 26,
+  },
   weeklyBarsContainer: {
     gap: 16,
   },
   weeklyBarRow: {
-    marginBottom: 8,
+    marginBottom: 14,
   },
   weeklyBarHeader: {
     flexDirection: 'row',

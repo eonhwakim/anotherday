@@ -184,11 +184,8 @@ export default function TodayGoalListFeed({
       {/*헤더 */}
       <View style={styles.headerBlock}>
         <View style={styles.headerTextBlock}>
-          <Text style={[ds.bigTitle, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
+          <Text style={[ds.cardTitle, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
           <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
-            오늘 해야 할 목표와 팀 진행 상황을 한눈에 확인하세요.
-          </Text>
-          <Text style={[styles.metaText, isNight && styles.metaTextNight]}>
             참여 멤버 {sortedMembers.length}명
           </Text>
         </View>
@@ -208,6 +205,7 @@ export default function TodayGoalListFeed({
                 key={member.userId}
                 member={member}
                 isMe={member.userId === currentUserId}
+                isFirst={index === 0}
                 animVal={memberAnims[index] ?? new Animated.Value(1)}
                 onCarouselDragChange={notifyCarouselDragToParent}
               />
@@ -230,11 +228,13 @@ export default function TodayGoalListFeed({
 
 const styles = StyleSheet.create({
   headerBlock: {
-    marginBottom: 14,
     width: '100%',
   },
   headerTextBlock: {
-    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   title: {
     fontSize: 20,

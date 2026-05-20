@@ -7,7 +7,6 @@ import {
   Image,
   TouchableOpacity,
   Alert,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,11 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
 import { pickProfileImage, uploadProfileImage, updateProfile } from '../../services/userService';
-import { colors } from '../../design/tokens';
+import { colors, ds } from '../../design/recipes';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import BaseCard from '../../components/ui/BaseCard';
-import ScreenBackground from '../../components/ui/ScreenBackground';
+import { SelectableCard, SelectableCardGroup } from '../../components/ui/SelectableCard';
+import GradientBackground from '../../components/ui/GradientBackground';
+import PageHeader from '../../components/ui/PageHeader';
 
 export default function ProfileEditScreen() {
   const navigation = useNavigation();
@@ -126,106 +127,88 @@ export default function ProfileEditScreen() {
   };
 
   return (
-    <ScreenBackground>
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
+    <GradientBackground curve>
+      <SafeAreaView style={ds.safe} edges={['top']}>
+        <ScrollView
+          style={ds.scroll}
+          contentContainerStyle={ds.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView style={styles.scroll}>
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
-              </TouchableOpacity>
-              <Text style={styles.title}>프로필 수정</Text>
-              <View style={{ width: 24 }} />
-            </View>
+          <PageHeader title="프로필 수정" onBack={() => navigation.goBack()} />
 
-            <View style={styles.profileImageContainer}>
-              <TouchableOpacity onPress={handlePickImage} style={styles.imageWrapper}>
-                {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={styles.profileImage} />
-                ) : (
-                  <View style={[styles.profileImage, styles.placeholderImage]}>
-                    <Ionicons name="person" size={36} color={colors.primaryLight} />
-                  </View>
-                )}
-                <View style={styles.cameraIcon}>
-                  <Ionicons name="camera" size={14} color="#FFF" />
+          <View style={styles.profileImageContainer}>
+            <TouchableOpacity onPress={handlePickImage} style={styles.imageWrapper}>
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.profileImage} />
+              ) : (
+                <View style={[styles.profileImage, styles.placeholderImage]}>
+                  <Ionicons name="person" size={36} color={colors.primaryLight} />
                 </View>
-              </TouchableOpacity>
-            </View>
-
-            <BaseCard glassOnly style={styles.formFrame} contentStyle={styles.form}>
-              <Input
-                label="닉네임"
-                value={nickname}
-                onChangeText={setNickname}
-                placeholder="닉네임을 입력하세요"
-              />
-
-              <Input
-                label="이름"
-                value={name}
-                onChangeText={setName}
-                placeholder="이름을 입력하세요"
-              />
-
-              <Text style={styles.label}>성별</Text>
-              <View style={styles.genderContainer}>
-                {['남성', '여성'].map((g) => {
-                  const isActive = gender === g;
-                  return (
-                    <TouchableOpacity
-                      key={g}
-                      style={{ flex: 1 }}
-                      activeOpacity={0.7}
-                      onPress={() => setGender(g)}
-                    >
-                      <BaseCard
-                        style={[styles.genderBtnFrame, isActive && styles.genderBtnFrameActive]}
-                        contentStyle={styles.genderBtnContent}
-                        glassOnly
-                      >
-                        <Text style={[styles.genderText, isActive && styles.genderTextActive]}>
-                          {g}
-                        </Text>
-                      </BaseCard>
-                    </TouchableOpacity>
-                  );
-                })}
+              )}
+              <View style={styles.cameraIcon}>
+                <Ionicons name="camera" size={14} color="#FFF" />
               </View>
-
-              <Input
-                label="나이"
-                value={age}
-                onChangeText={setAge}
-                placeholder="나이를 입력하세요"
-                keyboardType="number-pad"
-              />
-            </BaseCard>
-
-            <BaseCard glassOnly style={styles.dangerFrame} contentStyle={styles.dangerContent}>
-              <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
-                <View style={styles.accountRowLeft}>
-                  <Ionicons name="trash-outline" size={20} color={colors.error} />
-                  <Text style={[styles.accountRowText, { color: colors.error }]}>탈퇴하기</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.error} />
-              </TouchableOpacity>
-            </BaseCard>
-
-            <Text style={styles.accountDeleteHint}>
-              탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
-            </Text>
-          </ScrollView>
-
-          <View style={styles.footer}>
-            <Button title="저장하기" onPress={handleSave} loading={loading} />
+            </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+
+          <BaseCard style={styles.formFrame} contentStyle={styles.form}>
+            <Input
+              label="닉네임"
+              value={nickname}
+              onChangeText={setNickname}
+              placeholder="닉네임을 입력하세요"
+            />
+
+            <Input
+              label="이름"
+              value={name}
+              onChangeText={setName}
+              placeholder="이름을 입력하세요"
+            />
+
+            <Text style={styles.label}>성별</Text>
+            <SelectableCardGroup style={styles.genderContainer}>
+              <SelectableCard
+                label="남성"
+                active={gender === '남성'}
+                onPress={() => setGender('남성')}
+              />
+              <SelectableCard
+                label="여성"
+                active={gender === '여성'}
+                onPress={() => setGender('여성')}
+              />
+            </SelectableCardGroup>
+
+            <Input
+              label="나이"
+              value={age}
+              onChangeText={setAge}
+              placeholder="나이를 입력하세요"
+              keyboardType="number-pad"
+            />
+          </BaseCard>
+
+          <BaseCard style={styles.dangerFrame} contentStyle={styles.dangerContent}>
+            <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
+              <View style={styles.accountRowLeft}>
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
+                <Text style={[styles.accountRowText, { color: colors.error }]}>탈퇴하기</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.error} />
+            </TouchableOpacity>
+          </BaseCard>
+
+          <Text style={styles.accountDeleteHint}>
+            탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
+          </Text>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Button title="저장하기" onPress={handleSave} loading={loading} />
+        </View>
       </SafeAreaView>
-    </ScreenBackground>
+    </GradientBackground>
   );
 }
 
@@ -239,19 +222,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(55, 53, 53, 0.1)',
-  },
-  backBtn: {
-    padding: 4,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.text,
   },
   profileImageContainer: {
     alignItems: 'center',
@@ -286,7 +262,6 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   formFrame: {
-    marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
   },
@@ -303,42 +278,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   genderContainer: {
-    flexDirection: 'row',
-    gap: 10,
     marginBottom: 16,
   },
-  genderBtnFrame: {
-    borderRadius: 12,
-  },
-  genderBtnContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-  },
-  genderBtnFrameActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderTopColor: 'rgba(255, 255, 255, 1)',
-    borderLeftColor: 'rgba(229, 229, 229, 1)',
-    borderBottomColor: 'rgba(255, 135, 61, 0.22)',
-    borderWidth: 0.6,
-    shadowColor: '#FF6B3D',
-    shadowOffset: { width: 1, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-    overflow: 'visible',
-  },
-  genderText: {
-    fontSize: 14,
-    color: 'rgba(26,26,26,0.40)',
-    fontWeight: '600',
-  },
-  genderTextActive: {
-    color: '#FF6B3D',
-    fontWeight: '700',
-  },
   dangerFrame: {
-    marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 16,
   },
@@ -369,10 +311,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     marginBottom: 40,
-    paddingHorizontal: 16,
   },
   footer: {
-    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 36 : 24, // 하단 여백 추가
   },

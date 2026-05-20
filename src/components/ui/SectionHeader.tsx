@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { colors, ds, spacing, typography } from '../../design/recipes';
 
 interface SectionHeaderProps {
@@ -8,6 +9,7 @@ interface SectionHeaderProps {
   subtitle?: string;
   right?: ReactNode;
   inset?: boolean;
+  style?: StyleProp<ViewStyle>;
 }
 
 export default function SectionHeader({
@@ -15,9 +17,10 @@ export default function SectionHeader({
   subtitle,
   right,
   inset = false,
+  style,
 }: SectionHeaderProps) {
   return (
-    <View style={[styles.row, inset && styles.inset]}>
+    <View style={[styles.row, inset && styles.inset, style]}>
       <View style={styles.textWrap}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}

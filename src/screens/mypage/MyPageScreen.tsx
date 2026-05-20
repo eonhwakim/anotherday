@@ -1,13 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-  type TextStyle,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +22,7 @@ import GlassModal from '../../components/ui/GlassModal';
 import MyPageProfileCard from '../../components/mypage/MyPageProfileCard';
 import GradientBackground from '../../components/ui/GradientBackground';
 import BaseCard from '../../components/ui/BaseCard';
-
+import PageHeader from '../../components/ui/PageHeader';
 const ROW_ICON = '#4A4A4A';
 const CHEVRON = '#BDBDBD';
 const DIVIDER = 'rgba(0,0,0,0.06)';
@@ -224,9 +216,7 @@ export default function MyPageScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View>
-            <View style={styles.header}>
-              <Text style={ds.headerTitle as TextStyle}>Profile</Text>
-            </View>
+            <PageHeader title="Profile" />
 
             <MyPageProfileCard user={user} onPress={() => navigation.navigate('ProfileEdit')} />
 

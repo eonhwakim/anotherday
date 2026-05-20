@@ -37,12 +37,7 @@ export default function MonthlySummaryCards({
 
   return (
     <View style={styles.topCardsRow}>
-      <BaseCard
-        glassOnly
-        padded={false}
-        style={styles.topCard}
-        contentStyle={styles.topCardContent}
-      >
+      <BaseCard padded={false} style={styles.topCard} contentStyle={styles.topCardContent}>
         <View style={styles.cardColumn}>
           <Ionicons
             name="trending-up"
@@ -65,12 +60,7 @@ export default function MonthlySummaryCards({
         </View>
       </BaseCard>
 
-      <BaseCard
-        glassOnly
-        padded={false}
-        style={styles.topCard}
-        contentStyle={styles.topCardContent}
-      >
+      <BaseCard padded={false} style={styles.topCard} contentStyle={styles.topCardContent}>
         <View style={styles.cardColumn}>
           <Ionicons
             name="ribbon-outline"
@@ -94,12 +84,7 @@ export default function MonthlySummaryCards({
         </View>
       </BaseCard>
 
-      <BaseCard
-        glassOnly
-        padded={false}
-        style={styles.topCard}
-        contentStyle={styles.topCardContent}
-      >
+      <BaseCard padded={false} style={styles.topCard} contentStyle={styles.topCardContent}>
         <View style={styles.cardColumn}>
           <Ionicons
             name={diffFromPrev !== null && diffFromPrev < 0 ? 'arrow-down' : 'arrow-up'}

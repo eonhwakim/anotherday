@@ -1,13 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  type TextStyle,
-  type ViewStyle,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -22,6 +14,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 
 import GradientBackground from '../../components/ui/GradientBackground';
+import PageHeader from '../../components/ui/PageHeader';
 import { colors, ds, radius, spacing, typography } from '../../design/recipes';
 import { useTeamGoalsQuery } from '../../queries/goalQueries';
 import { useSaveMonthlyRetrospectiveMutation } from '../../queries/monthlyMutations';
@@ -178,12 +171,10 @@ export default function StatisticsScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View>
-            <View style={styles.header}>
-              <Text style={ds.headerTitle as TextStyle}>Stats</Text>
-              <Text style={styles.subtitle}>
-                월초와 월말의 부분주는 4일 미만이면 인접 월에 편입돼요.
-              </Text>
-            </View>
+            <PageHeader
+              title="Stats"
+              subtitle="월초와 월말의 부분주는 4일 미만이면 인접 월에 편입돼요."
+            />
 
             <View style={styles.scopeTabRow}>
               <TouchableOpacity
@@ -342,10 +333,10 @@ const styles = StyleSheet.create({
   },
   scopeTabText: {
     ...typography.bodyStrong,
-    color: colors.textSecondary,
+    color: colors.darkGreen,
   },
   scopeTabTextActive: {
-    color: colors.text,
+    color: colors.darkGreen,
     fontWeight: '800',
   },
 

@@ -37,7 +37,6 @@ export default function MyPageProfileCard({ user, onPress }: MyPageProfileCardPr
 
 const styles = StyleSheet.create({
   profileSection: {
-    marginTop: spacing[2],
     marginBottom: spacing[5],
   },
   profileCard: {

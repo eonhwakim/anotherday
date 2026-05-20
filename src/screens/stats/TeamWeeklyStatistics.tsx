@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
+import { ds } from '@/design/recipes';
 import type { UserGoal } from '../../types/domain';
 import { getWeekLabelParts, statisticsSharedStyles as sharedStyles } from './statisticsShared';
 
@@ -41,17 +42,17 @@ export default function TeamWeeklyStatistics({
   const memberRanks = useMemo(() => {
     const ranks: number[] = [];
     let currentRank = 1;
-    
+
     for (let i = 0; i < weeklyTeamData.length; i++) {
       if (i > 0) {
         const prev = weeklyTeamData[i - 1];
         const curr = weeklyTeamData[i];
-        
-        const isSameRank = 
+
+        const isSameRank =
           prev.isAllClear === curr.isAllClear &&
           prev.failedGoals === curr.failedGoals &&
           prev.doneCount === curr.doneCount;
-          
+
         if (!isSameRank) {
           currentRank = i + 1;
         }
@@ -78,15 +79,15 @@ export default function TeamWeeklyStatistics({
       </View>
       {/* 팀원 주간 루틴 */}
       {hasTeam && (
-        <View style={sharedStyles.section}>
-          <BaseCard glassOnly>
-            {weeklyTeamData.length === 0 ? (
-              <Text style={sharedStyles.emptySmall}>팀원 데이터가 없습니다</Text>
-            ) : (
-              <>
-                <View style={sharedStyles.cardHeader}>
-                  <Text style={sharedStyles.cardName}>팀원들의 주간 현황</Text>
-                </View>
+        <>
+          {weeklyTeamData.length === 0 ? (
+            <Text style={sharedStyles.emptySmall}>팀원 데이터가 없습니다</Text>
+          ) : (
+            <>
+              <View style={styles.cardHeader}>
+                <Text style={ds.cardTitle}>Weekly Status Report</Text>
+              </View>
+              <BaseCard glassOnly>
                 {weeklyTeamData.map((member, index) => (
                   <TeamMemberCard
                     key={member.userId}
@@ -96,11 +97,18 @@ export default function TeamWeeklyStatistics({
                     variant="weekly"
                   />
                 ))}
-              </>
-            )}
-          </BaseCard>
-        </View>
+              </BaseCard>
+            </>
+          )}
+        </>
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  cardHeader: {
+    marginTop: 26,
+    marginBottom: 16,
+  },
+});

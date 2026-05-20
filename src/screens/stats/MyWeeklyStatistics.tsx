@@ -11,6 +11,7 @@ import { getWeekLabelParts, statisticsSharedStyles as sharedStyles } from './sta
 
 import BaseCard from '../../components/ui/BaseCard';
 import RoutineStatusCard from '../../components/stats/RoutineStatusCard';
+import { ds } from '@/design/recipes';
 
 interface Props {
   userId?: string;
@@ -102,65 +103,59 @@ export default function MyWeeklyStatistics({
 
       {/* 루틴 현황 카드 */}
       {myWeeklyGoals.length === 0 ? (
-        <BaseCard glassOnly>
+        <BaseCard>
           <Text style={sharedStyles.emptySmall}>이번 주 진행 중인 루틴이 없어요</Text>
         </BaseCard>
       ) : (
         <View style={sharedStyles.section}>
-          <BaseCard glassOnly>
-            <View style={sharedStyles.cardHeader}>
-              <View
-                style={{
-                  gap: 4,
-                }}
-              >
-                <Text style={[sharedStyles.cardName]}>루틴 현황</Text>
-                <Text style={sharedStyles.cardSubText}>총 루틴 {myTotalGoals}개</Text>
-              </View>
-              <View style={sharedStyles.scoreBox}>
-                {isAllClear ? (
-                  <View style={sharedStyles.badgeClear}>
-                    <Text style={sharedStyles.badgeTextClear}>🏆 올클리어</Text>
-                  </View>
-                ) : !isWeekEnded ? (
-                  <View style={sharedStyles.badgeProgress}>
-                    <Text
-                      style={[sharedStyles.badgeTextProgress, { color: 'rgba(26,26,26,0.45)' }]}
-                    >
-                      아직 진행중
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={sharedStyles.badgeProgress}>
-                    <Text style={sharedStyles.badgeTextProgress}>
-                      <Text style={{ color: '#15803d' }}>
-                        {myTotalGoals - myFailedGoals}개 완료
-                      </Text>
-                      <Text style={{ color: 'rgba(26,26,26,0.2)' }}> | </Text>
-                      <Text style={{ color: '#EF4444' }}>{myFailedGoals}개 미달</Text>
-                    </Text>
-                  </View>
-                )}
-              </View>
+          <View style={sharedStyles.cardHeader}>
+            <View
+              style={{
+                gap: 8,
+              }}
+            >
+              <Text style={ds.cardTitle}>Routine Status</Text>
+              <Text style={sharedStyles.cardSubText}>총 루틴 {myTotalGoals}개</Text>
             </View>
-            {/* 목표리스트 */}
-            {myWeeklyGoals.map((goal) => (
-              <RoutineStatusCard
-                key={goal.goalId}
-                name={goal.name}
-                frequency={goal.isDaily ? 'daily' : 'weekly_count'}
-                targetCount={goal.target}
-                rate={goal.target > 0 ? (goal.doneCount / goal.target) * 100 : 0}
-                isAchieved={goal.isAchieved}
-                isEnded={goal.isEnded}
-                startDate={goal.startDate}
-                endDate={goal.endDate}
-                doneCount={goal.doneCount}
-                target={goal.target}
-                variant="weekly"
-              />
-            ))}
-          </BaseCard>
+            <View style={sharedStyles.scoreBox}>
+              {isAllClear ? (
+                <View style={sharedStyles.badgeClear}>
+                  <Text style={sharedStyles.badgeTextClear}>🏆 올클리어</Text>
+                </View>
+              ) : !isWeekEnded ? (
+                <View style={sharedStyles.badgeProgress}>
+                  <Text style={[sharedStyles.badgeTextProgress, { color: 'rgba(26,26,26,0.45)' }]}>
+                    아직 진행중
+                  </Text>
+                </View>
+              ) : (
+                <View style={sharedStyles.badgeProgress}>
+                  <Text style={sharedStyles.badgeTextProgress}>
+                    <Text style={{ color: '#15803d' }}>{myTotalGoals - myFailedGoals}개 완료</Text>
+                    <Text style={{ color: 'rgba(26,26,26,0.2)' }}> | </Text>
+                    <Text style={{ color: '#EF4444' }}>{myFailedGoals}개 미달</Text>
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+          {/* 목표리스트 */}
+          {myWeeklyGoals.map((goal) => (
+            <RoutineStatusCard
+              key={goal.goalId}
+              name={goal.name}
+              frequency={goal.isDaily ? 'daily' : 'weekly_count'}
+              targetCount={goal.target}
+              rate={goal.target > 0 ? (goal.doneCount / goal.target) * 100 : 0}
+              isAchieved={goal.isAchieved}
+              isEnded={goal.isEnded}
+              startDate={goal.startDate}
+              endDate={goal.endDate}
+              doneCount={goal.doneCount}
+              target={goal.target}
+              variant="weekly"
+            />
+          ))}
         </View>
       )}
     </View>

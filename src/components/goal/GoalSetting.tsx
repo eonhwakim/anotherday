@@ -1,11 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Goal, UserGoal } from '../../types/domain';
-import GlassCard from '../ui/GlassCard';
 import Badge from '../ui/Badge';
 import dayjs from '../../lib/dayjs';
-import { colors, radius, spacing, typography } from '../../design/recipes';
+import { colors, ds, radius, spacing, typography } from '../../design/recipes';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import CircularProgress from '../ui/CircularProgress';
 import BaseCard from '../ui/BaseCard';
@@ -240,12 +239,7 @@ export default function GoalSetting({
             <View style={styles.goalSection}>
               <View style={styles.sectionHeading}>
                 <View style={styles.sectionTitleRow}>
-                  <Text style={styles.sectionTitle}>This week's routine</Text>
-                  {selectedWeekLabel ? (
-                    <View style={styles.weekBadge}>
-                      <Text style={styles.weekBadgeText}>{selectedWeekLabel}</Text>
-                    </View>
-                  ) : null}
+                  <Text style={ds.cardTitle as TextStyle}>My routine</Text>
                 </View>
                 <Text style={styles.sectionHint}>길게 눌러 종료하거나 삭제할 수 있어요.</Text>
               </View>
@@ -285,7 +279,7 @@ export default function GoalSetting({
                     delayLongPress={500}
                     disabled={isEnded}
                   >
-                    <BaseCard glassOnly padded={false} style={styles.goalCard}>
+                    <BaseCard padded={false}>
                       <View style={styles.goalRowContentBox}>
                         <View style={styles.goalRowContent}>
                           <View style={styles.goalMainInfo}>
@@ -413,17 +407,17 @@ export default function GoalSetting({
 
         {onAddRoutine ? (
           <TouchableOpacity onPress={onAddRoutine} activeOpacity={0.7}>
-            <GlassCard style={styles.addRoutineButton}>
+            <BaseCard glassOnly padded={false} style={styles.addRoutineButton}>
               <Ionicons name="add-circle-outline" size={20} color="#FF6B3D" />
               <Text style={styles.addRoutineButtonText}>새 루틴 추가</Text>
-            </GlassCard>
+            </BaseCard>
           </TouchableOpacity>
         ) : null}
       </View>
 
       {/* 한마디/회고 */}
       {/* <View style={styles.resolutionSection}>
-        <GlassCard style={styles.resolutionCardInner}>
+        <BaseCard glassOnly padded={false} style={styles.resolutionCardInner}>
           <View style={styles.sectionHeader}>
             <Text style={styles.innerTitle}>이번 달 한마디</Text>
           </View>
@@ -445,9 +439,9 @@ export default function GoalSetting({
               </TouchableOpacity>
             ) : null}
           </View>
-        </GlassCard>
+        </BaseCard>
 
-        <GlassCard style={[styles.resolutionCardInner, { marginTop: 12 }]}>
+        <BaseCard glassOnly padded={false} style={[styles.resolutionCardInner, { marginTop: 12 }]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.innerTitle}>이번 달 회고</Text>
           </View>
@@ -471,7 +465,7 @@ export default function GoalSetting({
               </TouchableOpacity>
             ) : null}
           </View>
-        </GlassCard>
+        </BaseCard>
       </View> */}
     </View>
   );
@@ -484,15 +478,11 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: spacing[2],
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
+
   sectionHint: {
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.textMuted,
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   section: {
     marginBottom: spacing[6],
@@ -593,11 +583,8 @@ const styles = StyleSheet.create({
     marginTop: spacing[1],
   },
   goalList: {
-    gap: spacing[2],
+    gap: spacing[4],
     marginBottom: spacing[4],
-  },
-  goalCard: {
-    borderRadius: 24,
   },
   goalLeading: {
     alignItems: 'center',

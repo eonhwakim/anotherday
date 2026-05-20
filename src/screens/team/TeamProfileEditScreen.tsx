@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Image,
   TouchableOpacity,
   Alert,
-  KeyboardAvoidingView,
   Platform,
-  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -19,6 +16,9 @@ import { handleServiceError } from '../../lib/serviceError';
 import { useTeamStore } from '../../stores/teamStore';
 import { useUpdateTeamProfileMutation } from '../../queries/teamMutations';
 import { colors } from '../../design/tokens';
+import { ds } from '../../design/recipes';
+import GradientBackground from '../../components/ui/GradientBackground';
+import PageHeader from '../../components/ui/PageHeader';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import BaseCard from '../../components/ui/BaseCard';
@@ -81,19 +81,10 @@ export default function TeamProfileEditScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe as ViewStyle} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView style={styles.scroll}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={styles.title}>팀 프로필 설정</Text>
-            <View style={{ width: 24 }} />
-          </View>
+    <GradientBackground curve>
+      <SafeAreaView style={ds.safe} edges={['top']}>
+        <ScrollView style={ds.scroll} contentContainerStyle={ds.scrollContent}>
+          <PageHeader title="팀 프로필 설정" onBack={() => navigation.goBack()} />
 
           <View style={styles.profileImageContainer}>
             <TouchableOpacity onPress={handlePickImage} style={styles.imageWrapper}>
@@ -110,7 +101,7 @@ export default function TeamProfileEditScreen() {
             </TouchableOpacity>
           </View>
 
-          <BaseCard glassOnly style={styles.formFrame} contentStyle={styles.form}>
+          <BaseCard style={styles.formFrame} contentStyle={styles.form}>
             <Input
               label="팀 이름"
               value={name}
@@ -127,34 +118,12 @@ export default function TeamProfileEditScreen() {
             loading={updateTeamProfileMutation.isPending}
           />
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  scroll: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(55, 53, 53, 0.1)',
-  },
-  backBtn: {
-    padding: 4,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
   profileImageContainer: {
     alignItems: 'center',
     paddingVertical: 24,
@@ -184,7 +153,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   formFrame: {
-    marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
   },
@@ -193,7 +161,6 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   footer: {
-    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
   },

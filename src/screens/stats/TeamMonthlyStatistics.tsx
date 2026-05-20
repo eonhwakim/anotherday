@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../design/tokens';
 import type { MemberDetail } from '../../services/statsService';
 import { statisticsSharedStyles as sharedStyles } from './statisticsShared';
-
+import { ds } from '@/design/recipes';
 import BaseCard from '../../components/ui/BaseCard';
 import MonthlySummaryCards from '../../components/ui/MonthlySummaryCards';
 import MonthlyTeamTrendChart from '../../components/stats/MonthlyTeamTrendChart';
@@ -88,37 +88,51 @@ export default function TeamMonthlyStatistics({
       {/* 팀원별 주차별 추이 */}
       {hasTeam && memberDetails.length > 0 && <MonthlyTeamTrendChart members={memberDetails} />}
       {/* 팀원별 루틴 상세 */}
-      {hasTeam && memberDetails.length > 0 && (
-        <View style={{ gap: 16 }}>
-          {memberDetails.map((member, index) => {
-            const rank = memberRanks[index];
-            return (
-              <BaseCard glassOnly key={member.userId}>
-                {/* 루틴상세 */}
-                <TeamMemberCard
-                  member={member}
-                  rank={rank}
-                  variant="monthly"
-                  monthTotalDays={monthTotalDays}
-                />
-                {/* 한마디 / 회고 */}
-                <View>
-                  <View style={sharedStyles.dividerSection}>
-                    <Text style={sharedStyles.subLabel}>한마디</Text>
-                    <Text style={sharedStyles.reviewText}>
-                      {member.hanmadi ? member.hanmadi : '-'}
-                    </Text>
-                  </View>
-                  <View style={sharedStyles.dividerSection}>
-                    <Text style={sharedStyles.subLabel}>회고</Text>
-                    <Text style={sharedStyles.reviewText}>{member.hoego ? member.hoego : '-'}</Text>
-                  </View>
-                </View>
-              </BaseCard>
-            );
-          })}
-        </View>
-      )}
+      <View>
+        {hasTeam && memberDetails.length > 0 && (
+          <>
+            <Text style={[ds.cardTitle, styles.detailsTitle]}>Details</Text>
+            <View style={{ gap: 20 }}>
+              {memberDetails.map((member, index) => {
+                const rank = memberRanks[index];
+                return (
+                  <BaseCard key={member.userId}>
+                    {/* 루틴상세 */}
+                    <TeamMemberCard
+                      member={member}
+                      rank={rank}
+                      variant="monthly"
+                      monthTotalDays={monthTotalDays}
+                    />
+                    {/* 한마디 / 회고 */}
+                    <View>
+                      <View style={sharedStyles.dividerSection}>
+                        <Text style={sharedStyles.subLabel}>한마디</Text>
+                        <Text style={sharedStyles.reviewText}>
+                          {member.hanmadi ? member.hanmadi : '-'}
+                        </Text>
+                      </View>
+                      <View style={sharedStyles.dividerSection}>
+                        <Text style={sharedStyles.subLabel}>회고</Text>
+                        <Text style={sharedStyles.reviewText}>
+                          {member.hoego ? member.hoego : '-'}
+                        </Text>
+                      </View>
+                    </View>
+                  </BaseCard>
+                );
+              })}
+            </View>
+          </>
+        )}
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  detailsTitle: {
+    marginTop: 26,
+    marginBottom: 16,
+  },
+});
