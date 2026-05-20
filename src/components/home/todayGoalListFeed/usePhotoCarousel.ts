@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, PanResponder, type PanResponderGestureState } from 'react-native';
 import type { CheckinWithGoal } from '../../../types/domain';
 import {
+  CARD_CONTENT_HORIZONTAL_PAD,
   CAROUSEL_DRAG_COMMIT_FRAC,
   CAROUSEL_FLICK_VX,
   PHOTO_CARD_GAP,
@@ -47,7 +48,9 @@ export function usePhotoCarousel(
     () => (todayCheckins ?? []).filter((checkin) => !!checkin.photo_url),
     [todayCheckins],
   );
-  const [photoSectionWidth, setPhotoSectionWidth] = useState(Math.max(screenWidth - 96, 220));
+
+  // 좌측은 카드 콘텐츠 패딩에 맞추고, 우측은 화면 끝까지 (MemberCard photoSection marginRight 상쇄)
+  const photoViewportWidth = Math.max(screenWidth - CARD_CONTENT_HORIZONTAL_PAD, 220);
   const carouselX = useRef(new Animated.Value(0)).current;
   const carouselPullStartRef = useRef(0);
   const lastCarouselSyncRef = useRef(0);
@@ -58,19 +61,19 @@ export function usePhotoCarousel(
   const carouselAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const maxPullPx = useMemo(
-    () => (photoSectionWidth > 0 ? Math.round(photoSectionWidth * SINGLE_PHOTO_PULL_RATIO) : 0),
-    [photoSectionWidth],
+    () => (photoViewportWidth > 0 ? Math.round(photoViewportWidth * SINGLE_PHOTO_PULL_RATIO) : 0),
+    [photoViewportWidth],
   );
 
   const cardWidth = useMemo(() => {
-    if (photoSectionWidth <= 0) return 0;
-    return Math.max(photoSectionWidth - PHOTO_CARD_PEEK, 160);
-  }, [photoSectionWidth]);
+    if (photoViewportWidth <= 0) return 0;
+    return Math.max(photoViewportWidth - PHOTO_CARD_PEEK, 160);
+  }, [photoViewportWidth]);
 
   const peekTailWidth = useMemo(() => {
-    if (photoSectionWidth <= 0 || photoCheckins.length === 0) return 0;
-    return Math.max(100, Math.round(photoSectionWidth * SINGLE_PHOTO_PULL_RATIO) + PHOTO_CARD_PEEK);
-  }, [photoSectionWidth, photoCheckins.length]);
+    if (photoViewportWidth <= 0 || photoCheckins.length === 0) return 0;
+    return Math.max(100, Math.round(photoViewportWidth * SINGLE_PHOTO_PULL_RATIO) + PHOTO_CARD_PEEK);
+  }, [photoViewportWidth, photoCheckins.length]);
 
   const snapInterval = cardWidth > 0 ? cardWidth + PHOTO_CARD_GAP : 0;
 
@@ -81,9 +84,9 @@ export function usePhotoCarousel(
   }, [photoCheckins.length, cardWidth, peekTailWidth]);
 
   const rawMaxOffset = useMemo(() => {
-    if (photoSectionWidth <= 0 || carouselContentWidth <= 0) return 0;
-    return Math.max(0, carouselContentWidth - photoSectionWidth);
-  }, [photoSectionWidth, carouselContentWidth]);
+    if (photoViewportWidth <= 0 || carouselContentWidth <= 0) return 0;
+    return Math.max(0, carouselContentWidth - photoViewportWidth);
+  }, [photoViewportWidth, carouselContentWidth]);
 
   const carouselMaxOffset = useMemo(() => {
     if (photoCheckins.length <= 1) return Math.min(maxPullPx, rawMaxOffset);
@@ -244,7 +247,6 @@ export function usePhotoCarousel(
     carouselX,
     peekTailWidth,
     photoCheckins,
-    photoSectionWidth,
-    setPhotoSectionWidth,
+    photoViewportWidth,
   };
 }

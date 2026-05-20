@@ -7,8 +7,16 @@ import { FeedReactionAvatars } from './FeedReactionAvatars';
 import { colors, radius, typography } from '@/design/tokens';
 import type { PhotoSlideCardProps } from './types';
 
-export function PhotoPeekPlaceholder() {
-  return <View style={[styles.photoSlideDashedCard, styles.photoPlaceholderCard]} />;
+export function PhotoPeekPlaceholder({ width }: { width: number }) {
+  return (
+    <View
+      style={[
+        styles.photoSlideDashedCard,
+        styles.photoPlaceholderCard,
+        { width: width > 0 ? width : undefined },
+      ]}
+    />
+  );
 }
 
 export function PhotoSlideCard({
@@ -77,7 +85,7 @@ export function PhotoSlideCard({
 
 const styles = StyleSheet.create({
   photoSlideCard: {
-    borderRadius: radius.md,
+    borderRadius: radius.xxl,
     overflow: 'hidden',
     backgroundColor: colors.white80,
   },
@@ -88,11 +96,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: colors.black20,
-    borderTopLeftRadius: radius.md,
-    borderBottomLeftRadius: radius.md,
+    borderTopLeftRadius: radius.xxl,
+    borderBottomLeftRadius: radius.xxl,
     borderTopRightRadius: 0,
     borderBottomRightRadius: 0,
-    minWidth: 180,
+    borderRightWidth: 0,
   },
   photoSlideInner: {
     position: 'relative',

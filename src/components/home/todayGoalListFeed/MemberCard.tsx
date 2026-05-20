@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import dayjs from '../../../lib/dayjs';
-import { colors, radius, typography } from '@/design/recipes';
+import { colors, radius, spacing, typography } from '@/design/recipes';
 
 import { useAuthStore } from '../../../stores/authStore';
 import { useTeamStore } from '../../../stores/teamStore';
@@ -19,7 +19,7 @@ import { useToggleReactionMutation } from '../../../queries/statsMutations';
 import BaseCard from '../../ui/BaseCard';
 import GoalStatusChip from '../../ui/GoalStatusChip';
 
-import { PHOTO_CARD_GAP } from './constants';
+import { PHOTO_CARD_GAP, CARD_CONTENT_HORIZONTAL_PAD } from './constants';
 import type { MemberCardProps } from './types';
 import { usePhotoCarousel } from './usePhotoCarousel';
 import type { CheckinWithGoal } from '../../../types/domain';
@@ -39,15 +39,8 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
     userId: user?.id,
     date: todayStr,
   });
-  const {
-    cardWidth,
-    carouselPanResponder,
-    carouselX,
-    peekTailWidth,
-    photoCheckins,
-    photoSectionWidth,
-    setPhotoSectionWidth,
-  } = usePhotoCarousel(member.todayCheckins, screenWidth, onCarouselDragChange);
+  const { cardWidth, carouselPanResponder, carouselX, peekTailWidth, photoCheckins } =
+    usePhotoCarousel(member.todayCheckins, screenWidth, onCarouselDragChange);
 
   const handleReactionPress = useCallback(
     async (checkin: CheckinWithGoal) => {
@@ -112,15 +105,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
         )}
 
         {photoCheckins.length > 0 ? (
-          <View
-            style={styles.photoSection}
-            onLayout={(event) => {
-              const width = event.nativeEvent.layout.width;
-              if (width > 0 && Math.abs(width - photoSectionWidth) > 1) {
-                setPhotoSectionWidth(width);
-              }
-            }}
-          >
+          <View style={styles.photoSection}>
             <View style={styles.photoCarouselClip}>
               <Animated.View
                 style={[styles.photoSingleRow, { transform: [{ translateX: carouselX }] }]}
@@ -138,7 +123,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
                     onReactionPress={handleReactionPress}
                   />
                 ))}
-                {peekTailWidth > 0 ? <PhotoPeekPlaceholder /> : null}
+                {peekTailWidth > 0 ? <PhotoPeekPlaceholder width={peekTailWidth} /> : null}
               </Animated.View>
             </View>
           </View>
@@ -150,7 +135,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
 
 const styles = StyleSheet.create({
   memberRow: {
-    marginBottom: 18,
+    marginBottom: 22, //멤버간간격
     width: '100%',
   },
   memberCard: {
@@ -230,8 +215,8 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   photoSection: {
-    marginTop: 22,
-    marginBottom: 22,
+    paddingVertical: spacing[4],
     overflow: 'hidden',
+    marginRight: -CARD_CONTENT_HORIZONTAL_PAD,
   },
 });
