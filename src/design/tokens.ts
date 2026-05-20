@@ -1,32 +1,32 @@
 export const colors = {
-  brand: '#FF6B3D',
-  brandLight: 'rgba(255, 107, 61, 0.12)',
-  brandMid: 'rgba(255, 107, 61, 0.22)',
-  brandWarm: '#FF9A5C',
-  brandSoft: '#FFB380',
-  brandPale: '#fcc8a4',
-
   primary: '#FF6B3D',
+  primaryWarm: '#FF9A5C',
+  primaryPale: '#fcc8a4',
+
   primaryDark: '#E85A2C',
-  primaryLight: 'rgba(255, 107, 61, 0.65)',
+  primaryLight: 'rgba(255, 107, 61, 0.85)',
   primaryStrong: 'rgba(255, 107, 61, 0.18)',
 
-  background: 'rgba(255, 255, 255, 0.45)',
   white: '#FFFFFF',
-  screen: {
-    colors: ['#F6A07A', '#F8C7B0', '#FBEEE7', '#F7F2ED'],
-    locations: [0, 0.18, 0.42, 1],
-    start: { x: 0, y: 0 },
-    end: { x: 0, y: 1 },
-  },
-  surface: '#FFFAF7',
-  surfaceSoft: '#FFF7F3',
-  surfaceLight: '#FFF2EC',
+  white90: 'rgba(255, 255, 255, 0.9)',
+  white80: 'rgba(255, 255, 255, 0.8)',
+  white60: 'rgba(255, 255, 255, 0.6)',
+  white50: 'rgba(255, 255, 255, 0.5)',
+  white40: 'rgba(255, 255, 255, 0.4)',
+
+  black: '#000000',
+  black90: 'rgba(0, 0, 0, 0.9)',
+  black80: 'rgba(0, 0, 0, 0.8)',
+  black70: 'rgba(0, 0, 0, 0.7)',
+  black60: 'rgba(0, 0, 0, 0.6)',
+  black40: 'rgba(0, 0, 0, 0.4)',
+  black30: 'rgba(0, 0, 0, 0.3)',
+  black20: 'rgba(0, 0, 0, 0.2)',
 
   text: '#1A1A1A',
   textSecondary: 'rgba(26, 26, 26, 0.50)',
+  textFaint: 'rgba(26, 26, 26, 0.40)',
   textMuted: 'rgba(26, 26, 26, 0.30)',
-  textFaint: 'rgba(26, 26, 26, 0.35)',
 
   border: 'rgba(255, 107, 61, 0.08)',
   borderMuted: 'rgba(75, 74, 74, 0.12)',
@@ -46,7 +46,7 @@ export const colors = {
   holoRed: '#fc5c7d',
   holoCyan: '#6EE7F9',
 
-  overlayBackdrop: 'rgba(0, 0, 0, 0.45)',
+  overlayBackdrop: 'rgba(0, 0, 0, 0.55)',
   sheetOverlay: 'rgba(255, 255, 255, 0.85)',
   handleTint: 'rgba(255, 255, 255, 0.20)',
   avatarGlass: 'rgba(255,255,255,0.10)',
@@ -61,6 +61,22 @@ export const colors = {
   statusErrorBorder: 'rgba(255, 69, 58, 0.30)',
   statusFutureBg: 'rgba(39, 38, 38, 0.24)',
   statusFutureBorder: 'rgba(255, 255, 255, 0.10)',
+
+  // version2 soft color
+  softOrange: '#FF9A5C',
+  softBlue: '#9ECCF0',
+  softPink: '#F5C8C4',
+  softCoral: '#F59C9A',
+  softPeach: '#FFBE98',
+  softYellow: '#FFE7AB',
+  softGreen: '#C5DBA9',
+  mint: '#A8E6CF',
+  lavender: '#B4A6F5',
+  softRed: 'rgba(255, 68, 58, 0.35)',
+  darkGreen: '#004c63',
+
+  background: '#e9f2f5',
+  bgSoft: 'rgba(248, 193, 176, 0.17)',
 } as const;
 
 export const spacing = {
@@ -82,14 +98,14 @@ export const radius = {
   md: 12,
   lg: 16,
   xl: 18,
-  xxl: 24,
+  xxl: 24, //기본
   pill: 999,
 } as const;
 
 export const typography = {
   titleLg: {
     fontSize: 26,
-    fontWeight: '800' as const,
+    fontWeight: '700' as const,
   },
   titleMd: {
     fontSize: 18,
@@ -97,7 +113,7 @@ export const typography = {
   },
   titleSm: {
     fontSize: 16,
-    fontWeight: '700' as const,
+    fontWeight: '600' as const,
   },
   body: {
     fontSize: 14,
@@ -105,7 +121,7 @@ export const typography = {
   },
   bodyStrong: {
     fontSize: 14,
-    fontWeight: '600' as const,
+    fontWeight: '500' as const,
   },
   label: {
     fontSize: 13,
@@ -114,7 +130,7 @@ export const typography = {
   },
   caption: {
     fontSize: 11,
-    fontWeight: '400' as const,
+    fontWeight: '500' as const,
   },
   badge: {
     fontSize: 10,

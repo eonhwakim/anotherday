@@ -1,12 +1,12 @@
 import { StyleSheet } from 'react-native';
-import { colors, typography, spacing } from '../../design/tokens';
-import { ds, radius } from '../../design/recipes';
-import dayjs from '../../lib/dayjs';
-import { getCalendarWeekRanges } from '../../lib/statsUtils';
+import { colors, typography, spacing } from '@/design/tokens';
+import { ds, radius } from '@/design/recipes';
+import dayjs from '@/lib/dayjs';
+import { getCalendarWeekRanges } from '@/lib/statsUtils';
 
 export function endedDateLabel(startDate?: string | null, endDate?: string | null) {
   if (!startDate || !endDate) return null;
-  return `${dayjs(startDate).format('M.D')} ~ ${dayjs(endDate).format('M.D')}`;
+  return `${dayjs(startDate).locale('ko').format('M.D')} ~ ${dayjs(endDate).locale('ko').format('M.D')}`;
 }
 
 export function getWeekLabelParts(weekStart: string) {
@@ -34,7 +34,7 @@ export function freqLabel(frequency: string, targetCount: number | null): string
 export const statisticsSharedStyles = StyleSheet.create({
   container: { flex: 1 },
   section: {
-    marginBottom: 16,
+    paddingVertical: 16,
   },
   //캘린더 선택 영역
   selectorRow: {
@@ -74,7 +74,7 @@ export const statisticsSharedStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 26,
   },
   cardName: {
     ...typography.titleMd,
@@ -189,109 +189,4 @@ export const statisticsSharedStyles = StyleSheet.create({
   //메달
   teamMemberRank: { width: 20, alignItems: 'center' },
   teamMemberRankText: { fontSize: 18, fontWeight: '700', color: 'rgba(26,26,26,0.4)' },
-  //-----------
-
-  // teamMemberNameBox: { flex: 1 },
-
-  // teamMemberScoreTextGray: { fontSize: 12, fontWeight: '500', color: 'rgba(26,26,26,0.4)' },
-  // teamMemberGoalList: {
-  //   marginTop: 8,
-  //   gap: 10,
-  // },
-  // teamMemberGoalRow: {
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   justifyContent: 'space-between',
-  // },
-  // teamMemberGoalInfo: {
-  //   // flex: 1,
-  //   // paddingLeft: 12,
-  // },
-  // // teamMemberGoalName: {
-  // //   fontSize: 14,
-  // //   fontWeight: '600',
-  // //   color: '#1A1A1A',
-  // //   marginBottom: 2,
-  // // },
-  // // teamMemberGoalTarget: {
-  // //   fontSize: 11,
-  // //   color: 'rgba(26,26,26,0.5)',
-  // // },
-  // teamMemberGoalCount: {
-  //   fontSize: 12,
-  //   fontWeight: '700',
-  // },
-  // // teamMemberGoalEndedDate: {
-  // //   fontSize: 12,
-  // //   fontWeight: '600',
-  // //   color: 'rgba(26,26,26,0.45)',
-  // // },
-
-  // chartFrame: { marginHorizontal: spacing[4], marginTop: 8, marginBottom: 8 },
-  // chartContent: { paddingVertical: spacing[4], paddingHorizontal: spacing[4], gap: spacing[3] },
-  // chartRow: ds.rowCenter,
-  // chartLabelBox: { width: 70, ...ds.rowCenter, gap: spacing[1] + 2 },
-  // chartRank: { fontSize: 20, fontWeight: '700', color: colors.textFaint, width: 20 },
-  // chartName: { ...typography.label, color: colors.text, textTransform: 'none', flex: 1 },
-  // chartNameMe: { color: colors.primary, fontWeight: '800' },
-  // chartBarBg: {
-  //   flex: 1,
-  //   height: 12,
-  //   backgroundColor: 'rgba(0,0,0,0.04)',
-  //   borderRadius: 6,
-  //   overflow: 'hidden',
-  //   marginHorizontal: 10,
-  // },
-  // chartBarFill: { height: '100%', borderRadius: 6 },
-  // chartRateText: {
-  //   width: 38,
-  //   textAlign: 'right',
-  //   ...typography.label,
-  //   color: colors.text,
-  //   textTransform: 'none',
-  // },
-  // chartRateTextMe: { color: colors.primary, fontWeight: '800' },
-
-  // cardRateRow: {
-  //   ...ds.rowBetween,
-  //   paddingHorizontal: 18,
-  //   paddingVertical: 18,
-  // },
-  // cardRateLabel: { fontSize: 16, fontWeight: '600', color: colors.textSecondary },
-  // rateBig: { fontSize: 32, fontWeight: '900', letterSpacing: -1 },
-  // rateMedium: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
-  // rateEmpty: {
-  //   ...typography.label,
-  //   color: colors.textFaint,
-  //   fontWeight: '500',
-  //   textTransform: 'none',
-  // },
-
-  // memberNameRow: { ...ds.rowCenter, gap: spacing[1] + 2 },
-  // memberRankText: { fontSize: 20, fontWeight: '700', color: colors.textFaint, width: 20 },
-  // memberNickname: { fontSize: 15, fontWeight: '700', color: colors.text },
-
-  // goalRow: { ...ds.rowCenter, marginBottom: 8 },
-  // goalInfo: { flex: 1, ...ds.rowCenter },
-  // myGoalChip: {
-  //   ...ds.rowCenter,
-  //   backgroundColor: 'rgba(255,255,255,0.72)',
-  //   paddingHorizontal: 10,
-  //   paddingVertical: 5,
-  //   borderRadius: 20,
-  //   flexWrap: 'wrap',
-  //   gap: 4,
-  // },
-  // myGoalChipText: { ...typography.label, color: colors.text, textTransform: 'none' },
-  // myGoalChipFreq: { ...typography.caption, color: colors.textSecondary },
-  // goalRateWrap: { ...ds.rowCenter, gap: 4 },
-  // goalRate: { fontSize: 14, fontWeight: '800' },
-  // goalRateGray: { ...typography.caption, color: colors.textFaint, fontWeight: '500' },
-
-  // reviewHeaderRow: {
-  //   ...ds.rowBetween,
-  //   marginBottom: 8,
-  // },
-
-  // placeholder: { color: colors.textMuted },
 });
