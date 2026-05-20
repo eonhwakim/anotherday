@@ -306,6 +306,8 @@ export default function GoalScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      const today = dayjs().format('YYYY-MM-DD');
+      setSelectedDate(today);
       void loadData();
     }, [loadData]),
   );
