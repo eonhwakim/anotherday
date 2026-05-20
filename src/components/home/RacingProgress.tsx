@@ -6,13 +6,13 @@ import { colors } from '../../design/tokens';
 
 const DEFAULT_CONTAINER_WIDTH = Dimensions.get('window').width;
 const SVG_W = 340;
-const SVG_H = 370;
+const SVG_H = 365;
 const CONTAINER_HEIGHT = 370;
 
 const TRACK_START_X = 90;
 const TRACK_START_Y = 70;
-const TRACK_FINISH_X = 260;
-const TRACK_FINISH_Y = 280;
+const TRACK_FINISH_X = 250;
+const TRACK_FINISH_Y = 260;
 
 const AVATAR_COLORS = [colors.holoMint, colors.holoLavender, colors.holoCyan, colors.holoRed];
 
@@ -40,7 +40,7 @@ function getMemberStartEnd(index: number, total: number) {
   // 각 멤버를 두 개의 길 중 하나에 할당 (홀수/짝수 인덱스로 분배)
   const trackIndex = index % trackCount;
 
-  const maxSpread = 35; // 두 길 사이의 간격
+  const maxSpread = 33; // 두 길 사이의 간격
   const spacing = maxSpread;
   const offset = (trackIndex - (trackCount - 1) / 2) * spacing;
 
@@ -418,8 +418,8 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   racingScene: {
-    width: '95%',
-    height: '95%',
+    width: '90%',
+    height: '90%',
     alignSelf: 'center',
     alignItems: 'center',
   },
