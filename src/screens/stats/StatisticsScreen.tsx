@@ -166,7 +166,7 @@ export default function StatisticsScreen() {
         <ScrollView
           ref={scrollRef}
           style={ds.scroll}
-          contentContainerStyle={ds.scrollContent}
+          contentContainerStyle={ds.tabScrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -288,8 +288,6 @@ export default function StatisticsScreen() {
                 monthTotalDays={monthTotalDays}
               />
             ) : null}
-
-            <View style={styles.bottomSpace} />
           </View>
         </ScrollView>
 
@@ -372,9 +370,5 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: colors.text,
     fontWeight: '700',
-  },
-
-  bottomSpace: {
-    height: 120,
   },
 });

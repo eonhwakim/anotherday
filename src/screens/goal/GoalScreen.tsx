@@ -371,7 +371,7 @@ export default function GoalScreen() {
         <ScrollView
           ref={scrollRef}
           style={ds.scroll}
-          contentContainerStyle={ds.scrollContent}
+          contentContainerStyle={ds.tabScrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >

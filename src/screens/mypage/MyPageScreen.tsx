@@ -211,7 +211,7 @@ export default function MyPageScreen() {
       <SafeAreaView style={ds.safe} edges={['top']}>
         <ScrollView
           style={ds.scroll}
-          contentContainerStyle={ds.scrollContent}
+          contentContainerStyle={ds.tabScrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >

@@ -343,7 +343,12 @@ export default function CalendarScreen() {
   return (
     <GradientBackground>
       <SafeAreaView style={ds.safe} edges={['top']}>
-        <ScrollView ref={scrollRef} style={ds.scroll} contentContainerStyle={ds.scrollContent}>
+        <ScrollView
+          ref={scrollRef}
+          style={ds.scroll}
+          contentContainerStyle={ds.tabScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View>
             {teamWithCaption ? <PageHeader title="Calendar" subtitle={teamWithCaption} /> : null}
 

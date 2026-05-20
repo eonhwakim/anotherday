@@ -225,8 +225,7 @@ export default function GoalSetting({
   };
 
   return (
-    <View style={styles.container}>
-      {/* 등록된 루틴 */}
+    <View>
       <View style={styles.section}>
         {teamGoals.length === 0 ? (
           <View style={styles.emptyBox}>
@@ -410,12 +409,12 @@ export default function GoalSetting({
           <Button
             title="새 루틴 추가"
             onPress={onAddRoutine}
+            style={{ marginTop: spacing[4] }}
             icon={<Ionicons name="add-circle-outline" size={20} color={colors.white} />}
           />
         ) : null}
       </View>
 
-      {/* 한마디/회고 */}
       {/* <View style={styles.resolutionSection}>
         <BaseCard glassOnly padded={false} style={styles.resolutionCardInner}>
           <View style={styles.sectionHeader}>
@@ -472,13 +471,6 @@ export default function GoalSetting({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 90,
-  },
-  sectionHeader: {
-    marginBottom: spacing[2],
-  },
-
   sectionHint: {
     ...typography.caption,
     color: colors.textSecondary,
@@ -500,19 +492,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing[3],
   },
-  weekBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.62)',
-    paddingHorizontal: spacing[3],
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.58)',
-  },
-  weekBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.primary,
-  },
   resolutionSection: {
     marginBottom: spacing[5],
   },
@@ -520,12 +499,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
-  },
-  //----------
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing[1] + 2,
   },
   title: {
     fontSize: 20,
@@ -575,13 +548,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  hintLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    alignSelf: 'stretch',
-    marginTop: spacing[1],
-  },
+
   goalList: {
     gap: spacing[4],
     marginBottom: spacing[4],
@@ -591,25 +558,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     position: 'relative',
     gap: spacing[2],
-  },
-  goalBadge: {
-    position: 'absolute',
-    top: -14,
-    minWidth: 16,
-    textAlign: 'center',
-    height: 16,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  goalText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  goalRowFrame: {
-    padding: 16,
-    borderRadius: 50,
   },
   goalRowContentBox: {
     flexDirection: 'row',
@@ -695,7 +643,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.borderMuted,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bgSoft,
   },
   endedBadgeText: {
     ...typography.caption,

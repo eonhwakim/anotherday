@@ -14,6 +14,10 @@ export const ds = StyleSheet.create({
   scrollContent: {
     paddingBottom: 68,
   },
+  /** Tab Navigator 화면용 — absolute 탭바에 가리지 않도록 하단 여백 */
+  tabScrollContent: {
+    paddingBottom: 120,
+  },
   //앱 전체 타이틀
   title: {
     fontSize: 18,

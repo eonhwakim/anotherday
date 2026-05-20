@@ -157,9 +157,10 @@ export default function HomeScreen() {
         <ScrollView
           ref={scrollRef}
           style={ds.scroll}
-          contentContainerStyle={ds.scrollContent}
+          contentContainerStyle={ds.tabScrollContent}
           scrollEnabled={!photoCarouselDragging}
           nestedScrollEnabled
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -242,7 +243,6 @@ export default function HomeScreen() {
               isNight={isNight}
               onPhotoCarouselDragChange={setPhotoCarouselDragging}
             />
-            <View style={{ height: 120 }} />
           </View>
         </ScrollView>
 
