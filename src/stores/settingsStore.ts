@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type BackgroundTheme = 'mountain' | 'racing';
+export type BackgroundTheme = 'mountain' | 'racing' | 'climbing';
 
 interface SettingsState {
   backgroundTheme: BackgroundTheme;
