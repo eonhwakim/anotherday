@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import {
   TouchableOpacity,
   Text,
+  View,
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
@@ -15,6 +16,7 @@ interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'outline';
   loading?: boolean;
   disabled?: boolean;
+  icon?: ReactNode;
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
@@ -25,6 +27,7 @@ export default function Button({
   variant = 'primary',
   loading = false,
   disabled = false,
+  icon,
   style,
   textStyle,
 }: ButtonProps) {
@@ -47,17 +50,20 @@ export default function Button({
       {loading ? (
         <ActivityIndicator color="rgba(255,255,255,0.70)" />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            variant === 'primary' && styles.primaryText,
-            variant === 'outline' && styles.outlineText,
-            variant === 'secondary' && styles.secondaryText,
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
+        <View style={[styles.content, icon ? styles.contentWithIcon : null]}>
+          {icon}
+          <Text
+            style={[
+              styles.text,
+              variant === 'primary' && styles.primaryText,
+              variant === 'outline' && styles.outlineText,
+              variant === 'secondary' && styles.secondaryText,
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -90,6 +96,14 @@ const styles = StyleSheet.create({
     opacity: 0.4,
     shadowOpacity: 0,
     elevation: 0,
+  },
+  content: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contentWithIcon: {
+    flexDirection: 'row',
+    gap: spacing[2],
   },
   text: {
     ...typography.bodyStrong,

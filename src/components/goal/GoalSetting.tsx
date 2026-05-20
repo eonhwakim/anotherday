@@ -8,6 +8,7 @@ import { colors, ds, radius, spacing, typography } from '../../design/recipes';
 import { getCalendarWeekRanges } from '../../lib/statsUtils';
 import CircularProgress from '../ui/CircularProgress';
 import BaseCard from '../ui/BaseCard';
+import Button from '../common/Button';
 
 type SelectedDayGoalStatus = 'done' | 'pass' | 'pending';
 
@@ -406,12 +407,11 @@ export default function GoalSetting({
         )}
 
         {onAddRoutine ? (
-          <TouchableOpacity onPress={onAddRoutine} activeOpacity={0.7}>
-            <BaseCard glassOnly padded={false} style={styles.addRoutineButton}>
-              <Ionicons name="add-circle-outline" size={20} color="#FF6B3D" />
-              <Text style={styles.addRoutineButtonText}>새 루틴 추가</Text>
-            </BaseCard>
-          </TouchableOpacity>
+          <Button
+            title="새 루틴 추가"
+            onPress={onAddRoutine}
+            icon={<Ionicons name="add-circle-outline" size={20} color={colors.white} />}
+          />
         ) : null}
       </View>
 
@@ -727,18 +727,5 @@ const styles = StyleSheet.create({
   indicatorText: {
     ...typography.caption,
     fontWeight: '600',
-  },
-  addRoutineButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: radius.xl,
-  },
-  addRoutineButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FF6B3D',
   },
 });
