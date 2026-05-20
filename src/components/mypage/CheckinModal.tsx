@@ -369,7 +369,6 @@ const styles = StyleSheet.create({
   },
   goalNameRow: {
     flexDirection: 'column',
-    gap: 2,
     flex: 1,
     minWidth: 0,
   },
@@ -377,10 +376,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A1A',
+    marginBottom: 6,
   },
   freqLabel: {
     fontSize: 12,
     color: 'rgba(26,26,26,0.5)',
+    lineHeight: 16,
   },
   goalNameDone: {
     color: 'rgba(26,26,26,0.45)',
