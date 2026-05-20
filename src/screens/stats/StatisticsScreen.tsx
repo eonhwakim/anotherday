@@ -20,8 +20,8 @@ import BaseCard from '../../components/ui/BaseCard';
 import ReviewModal from '../../components/stats/ReviewModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
-// import ScreenBackground from '../../components/ui/ScreenBackground';
-import GradientScreen from '../../components/ui/GradientScreen';
+
+import GradientBackground from '../../components/ui/GradientBackground';
 import { colors, ds, radius, spacing, typography } from '../../design/recipes';
 import { useTeamGoalsQuery } from '../../queries/goalQueries';
 import { useSaveMonthlyRetrospectiveMutation } from '../../queries/monthlyMutations';
@@ -33,7 +33,6 @@ import MyWeeklyStatistics from './MyWeeklyStatistics';
 import TeamWeeklyStatistics from './TeamWeeklyStatistics';
 import MyMonthlyStatistics from './MyMonthlyStatistics';
 import TeamMonthlyStatistics from './TeamMonthlyStatistics';
-
 type StatsScope = 'my' | 'team';
 type StatsPeriod = 'monthly' | 'weekly';
 
@@ -169,15 +168,16 @@ export default function StatisticsScreen() {
   }, [myMember]);
 
   return (
-    <GradientScreen>
-      <SafeAreaView style={styles.safe} edges={['top']}>
+    <GradientBackground>
+      <SafeAreaView style={ds.safe} edges={['top']}>
         <ScrollView
           ref={scrollRef}
-          style={styles.scroll}
+          style={ds.scroll}
+          contentContainerStyle={ds.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={ds.pagePadding as ViewStyle}>
+          <View>
             <View style={styles.header}>
               <Text style={ds.headerTitle as TextStyle}>Stats</Text>
               <Text style={styles.subtitle}>
@@ -194,7 +194,7 @@ export default function StatisticsScreen() {
                 <Text
                   style={[styles.scopeTabText, activeScope === 'my' && styles.scopeTabTextActive]}
                 >
-                  나의 통계
+                  My
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -208,15 +208,15 @@ export default function StatisticsScreen() {
                 <Text
                   style={[styles.scopeTabText, activeScope === 'team' && styles.scopeTabTextActive]}
                 >
-                  팀 통계
+                  Team
                 </Text>
               </TouchableOpacity>
             </View>
 
             <BaseCard
+              glassOnly
               style={styles.tabFrame}
               contentStyle={styles.tabContent}
-              glassOnly
               padded={false}
             >
               <TouchableOpacity
@@ -224,7 +224,7 @@ export default function StatisticsScreen() {
                 onPress={() => setActiveTab('weekly')}
               >
                 <Text style={[styles.tabText, activeTab === 'weekly' && styles.tabTextActive]}>
-                  주간
+                  Weekly
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -232,7 +232,7 @@ export default function StatisticsScreen() {
                 onPress={() => setActiveTab('monthly')}
               >
                 <Text style={[styles.tabText, activeTab === 'monthly' && styles.tabTextActive]}>
-                  월간
+                  Monthly
                 </Text>
               </TouchableOpacity>
             </BaseCard>
@@ -310,17 +310,11 @@ export default function StatisticsScreen() {
           onSave={saveReview}
         />
       </SafeAreaView>
-    </GradientScreen>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
   header: {
     paddingTop: spacing[3],
     paddingBottom: spacing[6],
@@ -330,7 +324,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 6,
   },
-
   scopeTabRow: {
     flexDirection: 'row',
     gap: spacing[5],
@@ -391,6 +384,6 @@ const styles = StyleSheet.create({
   },
 
   bottomSpace: {
-    height: 40,
+    height: 120,
   },
 });

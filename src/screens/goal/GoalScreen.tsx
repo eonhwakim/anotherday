@@ -1,14 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import {
-  View,
-  Text,
-  TextStyle,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  TextInput,
-} from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -38,7 +30,8 @@ import { getCalendarWeekRanges, getOwningMonthForDate } from '../../lib/statsUti
 import { useMemberProgressQuery } from '../../queries/statsQueries';
 import { colors, ds, spacing } from '../../design/recipes';
 
-import GradientScreen from '../../components/ui/GradientScreen';
+import GradientBackground from '../../components/ui/GradientBackground';
+import PageHeader from '../../components/ui/PageHeader';
 import GoalSetting from '../../components/goal/GoalSetting';
 import AddRoutineModal from '../../components/goal/AddRoutineModal';
 import DaySummaryCard from '../../components/goal/DaySummaryCard';
@@ -373,19 +366,17 @@ export default function GoalScreen() {
   }, []);
 
   return (
-    <GradientScreen>
-      <SafeAreaView style={styles.safe} edges={['top']}>
+    <GradientBackground>
+      <SafeAreaView style={ds.safe} edges={['top']}>
         <ScrollView
           ref={scrollRef}
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={ds.scroll}
+          contentContainerStyle={ds.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.pagePadding}>
-            <View style={styles.header}>
-              <Text style={ds.headerTitle as TextStyle}>Routine</Text>
-            </View>
+          <View>
+            <PageHeader title="Routine" />
 
             <WeeklyCalendarCard
               selectedDate={selectedDate}
@@ -476,30 +467,14 @@ export default function GoalScreen() {
           onSelect={handleSelectYearMonthWeek}
         />
       </SafeAreaView>
-    </GradientScreen>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 148,
-  },
   section: {
+    marginTop: spacing[4],
     marginBottom: spacing[6],
-  },
-  pagePadding: {
-    paddingHorizontal: spacing[4],
-  },
-  header: {
-    paddingTop: spacing[2],
-    paddingBottom: spacing[5],
   },
   loadingWrap: {
     minHeight: 280,

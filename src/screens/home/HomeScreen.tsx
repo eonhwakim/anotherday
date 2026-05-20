@@ -31,16 +31,18 @@ import { useHomeTimePeriod } from './hooks/useHomeTimePeriod';
 import { useMonthlyGoalPrompt } from './hooks/useMonthlyGoalPrompt';
 
 // 5. Components & UI Tokens
-import { colors } from '../../design/tokens';
+import { colors, radius, typography } from '../../design/tokens';
 import BaseCard from '../../components/ui/BaseCard';
 import MountainProgress from '../../components/home/MountainProgress';
 import RacingProgress from '../../components/home/RacingProgress';
+import ClimbingProgress from '../../components/home/ClimbingProgress';
 import TodayGoalList from '../../components/home/TodayGoalListFeed';
 // import TodayTodoSection from '../../components/home/TodayTodoSection';
 import MonthlyGoalPromptModal from '../../components/home/MonthlyGoalPromptModal';
 import CheckinModal from '../../components/mypage/CheckinModal';
 import FloatingCameraButton from '../../components/home/FloatingCameraButton';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { ds } from '@/design/recipes';
 
 export default function HomeScreen() {
   // 1. Global State & Base Context
@@ -125,7 +127,7 @@ export default function HomeScreen() {
 
   // 6. Render
   return (
-    <View style={styles.container}>
+    <View style={ds.screen}>
       <MonthlyGoalPromptModal
         visible={showMonthlyPrompt}
         newMonthStr={promptNewMonth}
@@ -151,17 +153,18 @@ export default function HomeScreen() {
         {timePeriod === 'NIGHT' && <View style={styles.nightOverlay} pointerEvents="none" />}
       </View>
 
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={ds.safe} edges={['top']}>
         <ScrollView
           ref={scrollRef}
-          style={styles.scroll}
+          style={ds.scroll}
+          contentContainerStyle={ds.scrollContent}
           scrollEnabled={!photoCarouselDragging}
           nestedScrollEnabled
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={colors.brandWarm}
+              tintColor={colors.primaryWarm}
             />
           }
         >
@@ -175,7 +178,7 @@ export default function HomeScreen() {
                     isSunset && styles.greetingSunset,
                   ]}
                 >
-                  Hello ⋆
+                  HELLO,
                   {user?.nickname
                     ? ` ${user?.nickname}`
                     : currentTeam?.name
@@ -216,6 +219,12 @@ export default function HomeScreen() {
                 currentUserId={user?.id}
                 startAnimation={isStampFinished}
               />
+            ) : backgroundTheme === 'climbing' ? (
+              <ClimbingProgress
+                members={memberProgress}
+                currentUserId={user?.id}
+                startAnimation={isStampFinished}
+              />
             ) : (
               <MountainProgress
                 members={memberProgress}
@@ -251,9 +260,6 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   bgLayer: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -261,9 +267,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.overlayBackdrop,
   },
-  safe: { flex: 1 },
-  scroll: { flex: 1 },
-
   header: {
     position: 'relative',
     paddingHorizontal: 20,
@@ -277,7 +280,7 @@ const styles = StyleSheet.create({
   greetingWrap: {
     flex: 1,
     minHeight: 120,
-    paddingRight: '58%',
+    paddingRight: '0%',
   },
   frameRow: {
     width: '100%',
@@ -293,14 +296,16 @@ const styles = StyleSheet.create({
   },
   teamCard: {
     alignSelf: 'flex-start',
+    marginTop: 6,
     maxWidth: 158,
     paddingHorizontal: 16,
     paddingVertical: 10,
+    borderRadius: radius.sm,
   },
   greeting: {
-    fontSize: 18,
+    ...typography.titleSm,
+    fontWeight: '800',
     color: colors.white,
-    fontWeight: '700',
     marginLeft: 6,
     lineHeight: 28,
   },
@@ -333,7 +338,6 @@ const styles = StyleSheet.create({
   },
   mountainSection: {
     alignItems: 'center',
-    marginVertical: 18,
     zIndex: 10,
     position: 'relative',
   },
@@ -342,7 +346,7 @@ const styles = StyleSheet.create({
   },
   goalSection: {
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 40,
     width: '100%',
     alignItems: 'stretch',
   },

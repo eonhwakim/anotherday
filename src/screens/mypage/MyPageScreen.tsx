@@ -7,7 +7,6 @@ import {
   Alert,
   TouchableOpacity,
   type TextStyle,
-  type ViewStyle,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,7 +28,7 @@ import { colors, ds, spacing, typography } from '../../design/recipes';
 import Input from '../../components/common/Input';
 import GlassModal from '../../components/ui/GlassModal';
 import MyPageProfileCard from '../../components/mypage/MyPageProfileCard';
-import ScreenBackground from '../../components/ui/ScreenBackground';
+import GradientBackground from '../../components/ui/GradientBackground';
 import BaseCard from '../../components/ui/BaseCard';
 
 const ROW_ICON = '#4A4A4A';
@@ -216,25 +215,26 @@ export default function MyPageScreen() {
   };
 
   return (
-    <ScreenBackground>
-      <SafeAreaView style={styles.safe} edges={['top']}>
+    <GradientBackground curve>
+      <SafeAreaView style={ds.safe} edges={['top']}>
         <ScrollView
-          style={styles.scroll}
+          style={ds.scroll}
+          contentContainerStyle={ds.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={ds.pagePadding as ViewStyle}>
+          <View>
             <View style={styles.header}>
               <Text style={ds.headerTitle as TextStyle}>Profile</Text>
             </View>
 
             <MyPageProfileCard user={user} onPress={() => navigation.navigate('ProfileEdit')} />
 
-            <BaseCard glassOnly padded={false} style={styles.section}>
+            <BaseCard padded={false} style={styles.section}>
               <SettingsRow
-                icon="notifications-outline"
-                title="알림 설정"
-                subtitle="루틴 리마인더"
+                icon="settings-outline"
+                title="설정"
+                subtitle="앱 설정"
                 onPress={() => navigation.navigate('AppSettings')}
                 showDivider
               />
@@ -267,7 +267,7 @@ export default function MyPageScreen() {
               />
             </BaseCard>
 
-            <BaseCard glassOnly padded={false}>
+            <BaseCard padded={false} style={styles.logoutCardFrame}>
               <TouchableOpacity
                 style={styles.logoutCard}
                 onPress={handleLogout}
@@ -301,20 +301,11 @@ export default function MyPageScreen() {
           />
         </GlassModal>
       </SafeAreaView>
-    </ScreenBackground>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 48,
-  },
   header: {
     paddingTop: spacing[3],
     paddingBottom: spacing[4],
@@ -366,5 +357,8 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: spacing[4],
+  },
+  logoutCardFrame: {
+    marginTop: spacing[8],
   },
 });

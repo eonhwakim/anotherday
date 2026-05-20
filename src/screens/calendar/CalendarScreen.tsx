@@ -1,13 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  type TextStyle,
-  type ViewStyle,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -27,10 +19,11 @@ import { useTeamMembersQuery } from '../../queries/teamQueries';
 import { useCalendarMarkingsQuery, useMemberDateCheckinsQuery } from '../../queries/statsQueries';
 import { queryKeys } from '../../queries/queryKeys';
 
+import GradientBackground from '../../components/ui/GradientBackground';
 import CalendarDateSummaryCard from '../../components/calendar/CalendarDateSummaryCard';
 import CalendarMemberCheckinsSection from '../../components/calendar/CalendarMemberCheckinsSection';
 import CalendarPhotoModal from '../../components/calendar/CalendarPhotoModal';
-import ScreenBackground from '../../components/ui/ScreenBackground';
+import PageHeader from '../../components/ui/PageHeader';
 
 export default function CalendarScreen() {
   const user = useAuthStore((s) => s.user);
@@ -129,8 +122,8 @@ export default function CalendarScreen() {
       const isEvenWeek = !isExcluded && weekNum % 2 === 0;
       const isOddWeek = !isExcluded && weekNum % 2 === 1;
 
-      const isMonday = dayjs(date.dateString).day() === 1;
-      const showWeekLabel = isMonday && !isExcluded;
+      const isSunday = dayjs(date.dateString).day() === 0;
+      const showWeekLabel = isSunday;
 
       let textColor = '';
       const isToday = state === 'today';
@@ -142,6 +135,77 @@ export default function CalendarScreen() {
       if (isDisabled) textColor = 'rgba(26, 26, 26, 0.20)';
       if (isSelected) textColor = marking?.selectedTextColor || colors.primary;
 
+      let weekProgressNode = null;
+      if (showWeekLabel) {
+        const todayStr = dayjs().format('YYYY-MM-DD');
+        const weekEndStr = date.dateString;
+        const weekStartStr = dayjs(date.dateString).subtract(6, 'day').format('YYYY-MM-DD');
+
+        let weekState: 'past' | 'current' | 'future' | 'empty' = 'future';
+        if (isExcluded) {
+          weekState = 'empty';
+        } else if (todayStr > weekEndStr) {
+          weekState = 'past';
+        } else if (todayStr >= weekStartStr && todayStr <= weekEndStr) {
+          weekState = 'current';
+        } else {
+          weekState = 'future';
+        }
+
+        const prevWeekEndStr = dayjs(date.dateString).subtract(7, 'day').format('YYYY-MM-DD');
+        const isPrevWeekExcluded = prevWeekEndStr < dataStart || prevWeekEndStr > dataEnd;
+
+        const nextWeekEndStr = dayjs(date.dateString).add(7, 'day').format('YYYY-MM-DD');
+        const isNextWeekExcluded = nextWeekEndStr < dataStart || nextWeekEndStr > dataEnd;
+
+        const showBg = weekState !== 'empty';
+        const roundTop = isPrevWeekExcluded;
+        const roundBottom = isNextWeekExcluded;
+
+        weekProgressNode = (
+          <View style={styles.weekProgressContainer}>
+            {showBg && (
+              <View
+                style={[
+                  styles.weekProgressBar,
+                  { top: roundTop ? 0 : -10 },
+                  { bottom: roundBottom ? 0 : -10 },
+                  roundTop && { borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+                  roundBottom && { borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
+                ]}
+              />
+            )}
+
+            {weekState === 'empty' && <View style={[styles.weekCircle, styles.weekCircleEmpty]} />}
+
+            {weekState === 'past' && (
+              <View style={[styles.weekCircle, styles.weekCirclePast]}>
+                <Text style={styles.weekTextPast}>{weekNum}주</Text>
+              </View>
+            )}
+
+            {weekState === 'current' && (
+              <View style={styles.weekFlameContainer}>
+                <Image
+                  source={require('../../../assets/fire.png')}
+                  style={styles.flameImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.flameTextContainer}>
+                  <Text style={styles.weekTextCurrent}>{weekNum}주</Text>
+                </View>
+              </View>
+            )}
+
+            {weekState === 'future' && (
+              <View style={[styles.weekCircle, styles.weekCircleFuture]}>
+                <Text style={styles.weekTextFuture}>{weekNum}주</Text>
+              </View>
+            )}
+          </View>
+        );
+      }
+
       return (
         <View
           style={[
@@ -150,7 +214,6 @@ export default function CalendarScreen() {
             isOddWeek && styles.zebraStripeOdd,
           ]}
         >
-          {showWeekLabel && <Text style={styles.weekNumberLabel}>{weekNum}주</Text>}
           <TouchableOpacity
             onPress={() => handleDayPress(date)}
             activeOpacity={0.7}
@@ -165,6 +228,8 @@ export default function CalendarScreen() {
               <View style={[styles.dot, { backgroundColor: marking.dotColor || colors.primary }]} />
             )}
           </TouchableOpacity>
+
+          {weekProgressNode}
         </View>
       );
     },
@@ -276,16 +341,11 @@ export default function CalendarScreen() {
   }, [isExcludedFromStats, isOtherMonth, selectedDate, dataStart, dataEnd, currentMonth]);
 
   return (
-    <ScreenBackground>
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScrollView ref={scrollRef} style={styles.scroll}>
-          <View style={ds.pagePadding as ViewStyle}>
-            {teamWithCaption ? (
-              <View style={styles.header}>
-                <Text style={ds.headerTitle as TextStyle}>Calendar</Text>
-                <Text style={styles.subtitle}>{teamWithCaption}</Text>
-              </View>
-            ) : null}
+    <GradientBackground>
+      <SafeAreaView style={ds.safe} edges={['top']}>
+        <ScrollView ref={scrollRef} style={ds.scroll} contentContainerStyle={ds.scrollContent}>
+          <View>
+            {teamWithCaption ? <PageHeader title="Calendar" subtitle={teamWithCaption} /> : null}
 
             <View style={styles.calendarContainer}>
               <Calendar
@@ -340,51 +400,100 @@ export default function CalendarScreen() {
           onClose={() => setPhotoModal(null)}
         />
       </SafeAreaView>
-    </ScreenBackground>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  scroll: {
-    flex: 1,
-  },
-  header: {
-    paddingTop: 12,
-    paddingBottom: 16,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: 6,
-  },
   calendarContainer: {
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.96)',
+    paddingRight: 28, // 주차 막대가 들어갈 공간을 달력 내부에 확보
   },
   calendar: {
     backgroundColor: 'transparent',
     borderRadius: 20,
   },
   dayCellWrapper: {
-    width: 62,
+    width: '100%',
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   zebraStripeEven: {},
   zebraStripeOdd: {},
-  weekNumberLabel: {
+  weekProgressContainer: {
     position: 'absolute',
-    top: 2,
-    left: 6,
+    right: -32, // 달력 우측 패딩 공간 안으로 들어오도록 조정
+    top: 0,
+    bottom: 0,
+    width: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  weekProgressBar: {
+    position: 'absolute',
+    width: 24,
+    backgroundColor: 'rgba(255, 107, 61, 0.2)',
+  },
+  weekCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  weekCirclePast: {
+    backgroundColor: '#FF6B3D',
+  },
+  weekCircleFuture: {
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#E5E5E5',
+  },
+  weekCircleEmpty: {
+    width: 22,
+    height: 22,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: '#E5E5E5',
+  },
+  weekTextPast: {
+    color: '#FFF',
     fontSize: 10,
     fontWeight: '700',
-    color: 'rgba(255, 107, 61, 0.6)',
+  },
+  weekTextFuture: {
+    color: '#999',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  weekFlameContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 32,
+    height: 38,
+    zIndex: 2,
+  },
+  flameImage: {
+    position: 'absolute',
+    top: -4,
+    width: 38,
+    height: 38,
+  },
+  flameTextContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekTextCurrent: {
+    color: colors.white,
+    bottom: -4,
+    fontSize: 11,
+    fontWeight: '800',
   },
   dayContainer: {
     width: 32,
