@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import dayjs from '../../lib/dayjs';
-import { colors, radius, spacing, typography } from '../../design/recipes';
+import { colors, radius, spacing } from '../../design/recipes';
 
 import { Ionicons } from '@expo/vector-icons';
 
-import GlassCard from '../ui/GlassCard';
+import BaseCard from '../ui/BaseCard';
 import { getCalendarWeekRanges, getOwningMonthForDate } from '../../lib/statsUtils';
 
 interface WeeklyCalendarCardProps {
@@ -50,7 +50,7 @@ export default function WeeklyCalendarCard({
   const weekLabel = `${monthLabel} ${selectedWeekRange.weekNumber}주차`;
 
   return (
-    <View style={styles.container}>
+    <View>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => setMonthPickerVisible(true)}
@@ -58,9 +58,9 @@ export default function WeeklyCalendarCard({
           activeOpacity={0.7}
         >
           <Text style={styles.monthPickerText}>
-            {dayjs(`${selectedYearMonth}-01`).format('MMMM YYYY')}
+            {dayjs(`${selectedYearMonth}-01`).format('YYYY MMMM ')}
           </Text>
-          <Ionicons name="chevron-down" size={16} color={colors.text} />
+          <Ionicons name="chevron-down" size={16} color={colors.darkGreen} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -90,9 +90,9 @@ export default function WeeklyCalendarCard({
               <Text style={[styles.dayName, isSelected && styles.dayNameSelected]}>{dayName}</Text>
 
               {isSelected ? (
-                <GlassCard style={styles.dayCircleSelected}>
+                <BaseCard glassOnly padded={false} style={styles.dayCircleSelected}>
                   <Text style={styles.dayNumSelected}>{dayNum}</Text>
-                </GlassCard>
+                </BaseCard>
               ) : (
                 <View style={styles.dayCircle}>
                   <Text style={styles.dayNum}>{dayNum}</Text>
@@ -101,7 +101,7 @@ export default function WeeklyCalendarCard({
 
               {hasDot && !isSelected && <View style={styles.dot} />}
               {hasDot && isSelected && (
-                <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+                <View style={[styles.dot, { backgroundColor: colors.softCoral }]} />
               )}
             </TouchableOpacity>
           );
@@ -112,9 +112,6 @@ export default function WeeklyCalendarCard({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing[6],
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -133,21 +130,21 @@ const styles = StyleSheet.create({
   },
   monthPickerText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
+    fontWeight: '800',
+    color: colors.darkGreen,
   },
   weekBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: colors.white60,
     paddingHorizontal: spacing[3],
     paddingVertical: 6,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.62)',
+    borderColor: 'rgba(255, 255, 255, 0.82)',
   },
   weekBadgeText: {
-    color: colors.primary,
+    color: colors.softCoral,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   daysRow: {
     flexDirection: 'row',
@@ -168,6 +165,7 @@ const styles = StyleSheet.create({
   },
   dayNameSelected: {
     color: colors.text,
+    fontWeight: '600',
   },
   dayCircle: {
     width: 42,
@@ -185,7 +183,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 61, 0.85)',
+    backgroundColor: colors.primary,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.6)',
     shadowColor: colors.primary,
@@ -196,7 +194,7 @@ const styles = StyleSheet.create({
   dayNum: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: colors.darkGreen,
   },
   dayNumSelected: {
     fontSize: 16,
@@ -207,8 +205,8 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.darkGreen,
     position: 'absolute',
-    bottom: -6,
+    bottom: -10,
   },
 });

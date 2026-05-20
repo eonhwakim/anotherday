@@ -105,12 +105,12 @@ export default function FloatingCameraButton({ onPress }: FloatingCameraButtonPr
         </Animated.View>
 
         {/* 3D 입체감을 위한 고정된 빛 반사(하이라이트) 효과 */}
-        <View style={styles.glassHighlight} />
-        <View style={styles.glassHighlightBottom} />
+        {/* <View style={styles.glassHighlight} />
+        <View style={styles.glassHighlightBottom} /> */}
 
         {/* 카메라 아이콘 */}
         <View style={styles.iconContainer}>
-          <Ionicons name="camera" size={32} color={colors.softOrange} style={styles.iconShadow} />
+          <Ionicons name="camera" size={38} color={colors.white} style={styles.iconShadow} />
         </View>
       </TouchableOpacity>
     </View>
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   // 무지개빛 비눗방울 효과를 위해 각 겹의 색상을 다르게 설정
   blob1: {
-    backgroundColor: colors.mint,
+    backgroundColor: colors.softCoral,
     opacity: 0.4,
     borderRadius: 45,
     borderTopLeftRadius: 55,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     height: 72,
   },
   blob2: {
-    backgroundColor: colors.softCoral,
+    backgroundColor: colors.white,
     opacity: 0.5,
     borderRadius: 45,
     borderTopLeftRadius: 35,
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
   },
   blobWhite: {
-    backgroundColor: colors.softCoral,
+    backgroundColor: colors.softYellow,
     opacity: 0.3,
     borderRadius: 45,
     borderTopLeftRadius: 50,
@@ -185,14 +185,14 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-20deg' }],
   },
   blob3: {
-    backgroundColor: colors.white60, // 반투명한 흰색 유리구슬
+    backgroundColor: colors.primary, // 반투명한 흰색 유리구슬
     opacity: 0.9,
     borderRadius: 45,
-    width: 57, // 76 -> 57
-    height: 57,
-    borderWidth: 2,
-    borderColor: colors.white80,
-    shadowColor: colors.mint,
+    width: 64, //크기
+    height: 64,
+    borderWidth: 1,
+    borderColor: colors.softRed,
+    shadowColor: colors.softOrange,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 15,
