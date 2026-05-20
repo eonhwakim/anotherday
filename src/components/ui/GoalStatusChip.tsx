@@ -48,13 +48,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white50,
   },
   chipDone: {
-    backgroundColor: colors.softOrange,
-  },
-  chipPass: {
     backgroundColor: colors.softGreen,
   },
+  chipPass: {
+    backgroundColor: colors.softYellow,
+  },
   chipIcon: {
-    color: colors.white,
+    color: colors.primary,
     fontWeight: '700',
   },
   chipText: {
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     maxWidth: 120,
   },
   chipTextDone: {
-    color: colors.white,
+    color: colors.primary,
     fontWeight: '600',
   },
   chipTextPass: {

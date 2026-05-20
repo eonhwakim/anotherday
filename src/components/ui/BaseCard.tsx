@@ -3,19 +3,11 @@ import { View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { shadows } from '@/design/recipes';
 
-/** CyberFrame과 동일한 은빛 팔레트 (SVG 없이 그라데이션·뷰로만 표현) */
-const METAL = {
-  silver: '#B8BCC6',
-  silverLight: '#D8DAE2',
-  silverBright: '#ECEEF4',
-  silverDim: '#7E8290',
-} as const;
-
 const METAL_COLORS = {
-  silverBright: '#FFF6F1',
-  silverLight: '#FFD9C8',
-  silverDim: '#FFD9C8',
-  silver: '#FFF6F1',
+  silverBright: '#FFFFFF',
+  silverLight: '#EBF4FA', // #9ECCF0의 아주 연한 톤
+  silverDim: '#e2ebf0', // #9ECCF0의 약간 톤 다운된 연한 톤 //D2E8F7
+  silver: '#DFEFF9', // #9ECCF0의 기본 연한 톤
 } as const;
 
 const FRAME_PAD = 1.2;
@@ -31,6 +23,10 @@ export interface BaseCardProps {
   /** false면 내부 패딩 제거 (CyberFrame content와 동일한 기본 패딩은 true) */
   padded?: boolean;
   cornerBrackets?: boolean;
+  /** true면 양옆 테두리(border/padding)와 둥근 모서리를 제거하여 화면 꽉 차게 표시 */
+  wide?: boolean;
+  /** true면 테두리(border 또는 프레임 패딩)를 완전히 제거 */
+  noBorder?: boolean;
 }
 
 function CornerBrackets() {
@@ -51,35 +47,53 @@ function BaseCard({
   glassOnly = false,
   padded = true,
   cornerBrackets = false,
+  wide = false,
+  noBorder = false,
 }: BaseCardProps) {
   if (glassOnly) {
     return (
-      <View style={[styles.glassOnlyOuter, style]}>
+      <View
+        style={[
+          styles.glassOnlyOuter,
+          wide && styles.wideGlass,
+          noBorder && styles.noBorderGlass,
+          style,
+        ]}
+      >
         <View style={[padded && styles.contentPad, contentStyle]}>{children}</View>
       </View>
     );
   }
 
   return (
-    <View style={[styles.shadowWrap, style]}>
+    <View style={[styles.shadowWrap, wide && styles.wideShadowWrap, style]}>
       <LinearGradient
         colors={[
           METAL_COLORS.silverBright,
           METAL_COLORS.silverLight,
-          METAL.silverBright,
+          METAL_COLORS.silverBright,
           METAL_COLORS.silverDim,
         ]}
         locations={[0, 0.35, 0.65, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.frameGradient}
+        style={[
+          styles.frameGradient,
+          wide && styles.wideFrameGradient,
+          noBorder && styles.noBorderFrame,
+        ]}
       >
-        <View style={styles.innerPlate}>
+        <View style={[styles.innerPlate, wide && styles.wideInnerPlate]}>
           <LinearGradient
-            colors={['#FFF6F1', '#FFE9DF', '#FFE9DF', '#FFF6F1']}
-            locations={[0, 0.5, 0.7, 1]}
+            colors={[
+              'rgba(255,255,255,0.66)',
+              'rgba(238,247,255,0.36)',
+              'rgba(255,247,231,0.18)',
+              'rgba(255,255,255,0.42)',
+            ]}
+            locations={[0, 0.38, 0.72, 1]}
             start={{ x: 0, y: 0 }}
-            end={{ x: 0.8, y: 1 }}
+            end={{ x: 0.92, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
           <View pointerEvents="none" style={styles.topSheen} />
@@ -96,38 +110,43 @@ function BaseCard({
 const styles = StyleSheet.create({
   shadowWrap: {
     alignSelf: 'stretch',
-    marginTop: 8,
     borderRadius: R_OUT,
     overflow: 'hidden',
-    backgroundColor: METAL.silverLight,
-    shadowColor: METAL.silverLight,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 4,
   },
   frameGradient: {
     borderRadius: R_OUT,
     padding: FRAME_PAD,
+    flex: 1, // 카드가 부모 높이를 채우도록 flex: 1 추가
   },
   innerPlate: {
+    flex: 1, // 내부 판도 부모 높이를 채우도록 flex: 1 추가
     borderRadius: R_IN,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    backgroundColor: 'rgba(255, 255, 255, 0.46)',
   },
   topSheen: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
-    height: 16,
+    left: 12,
+    right: 12,
+    height: 18,
     borderTopLeftRadius: R_IN,
     borderTopRightRadius: R_IN,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: 'rgba(255, 255, 255, 0.34)',
+  },
+  bottomBloom: {
+    position: 'absolute',
+    right: -18,
+    bottom: -10,
+    width: 120,
+    height: 72,
+    borderRadius: 999,
+    backgroundColor: 'rgba(214, 236, 255, 0.2)',
   },
   contentLayer: {
     position: 'relative',
     zIndex: 1,
+    flex: 1,
   },
   contentPad: {
     paddingHorizontal: 18,
@@ -135,12 +154,10 @@ const styles = StyleSheet.create({
   },
   glassOnlyOuter: {
     alignSelf: 'stretch',
-    // backgroundColor: 'rgba(255, 255, 255, 0.72)',
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    backgroundColor: 'rgba(255, 255, 255, 0.46)',
     borderRadius: R_OUT,
-    borderWidth: 1.5,
-    // borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.84)',
     overflow: 'hidden',
     ...shadows.glass,
   },
@@ -178,6 +195,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1.8,
     borderRightWidth: 1.8,
     borderBottomRightRadius: 18,
+  },
+  wideShadowWrap: {
+    borderRadius: 0,
+  },
+  wideFrameGradient: {
+    borderRadius: 0,
+    paddingLeft: 0,
+    paddingRight: 0,
+  },
+  wideInnerPlate: {
+    borderRadius: 0,
+  },
+  wideGlass: {
+    borderRadius: 0,
+    borderWidth: 0, // 상하좌우 모든 테두리 완전 제거
+  },
+  noBorderGlass: {
+    borderWidth: 0,
+  },
+  noBorderFrame: {
+    padding: 0,
   },
 });
 
