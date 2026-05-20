@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, Image } from 'react-native';
-import { colors, radius, spacing, typography } from '../../design/tokens';
+import { colors, radius, spacing } from '../../design/tokens';
+import { ds } from '@/design/recipes';
 import { statisticsSharedStyles as sharedStyles } from '../../screens/stats/statisticsShared';
 import type { MemberDetail } from '../../services/statsService';
 import BaseCard from '../ui/BaseCard';
@@ -28,11 +29,11 @@ export default function MonthlyTeamTrendChart({ members }: Props) {
   if (maxWeeks === 0) return null;
 
   return (
-    <BaseCard glassOnly style={sharedStyles.section}>
-      <View style={sharedStyles.cardHeader}>
-        <Text style={sharedStyles.cardName}>주차별 달성률 비교</Text>
+    <>
+      <View style={[sharedStyles.cardHeader, styles.cardHeader]}>
+        <Text style={ds.cardTitle}>Achievement Rate</Text>
       </View>
-      <View>
+      <BaseCard glassOnly>
         {/* Header Row */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft} />
@@ -136,8 +137,8 @@ export default function MonthlyTeamTrendChart({ members }: Props) {
             </View>
           </Animated.View>
         ))}
-      </View>
-    </BaseCard>
+      </BaseCard>
+    </>
   );
 }
 
@@ -151,6 +152,9 @@ function getCellColor(rate: number | null) {
 }
 
 const styles = StyleSheet.create({
+  cardHeader: {
+    marginTop: 26,
+  },
   chart: {
     marginTop: spacing[8],
   },

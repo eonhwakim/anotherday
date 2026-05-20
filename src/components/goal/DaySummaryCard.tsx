@@ -7,14 +7,10 @@ import {
   View,
   type StyleProp,
   type ViewStyle,
-  type TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, G, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
-
-import GlassCard from '../ui/GlassCard';
-import { colors, radius, spacing, typography, ds } from '../../design/recipes';
+import { colors, ds, spacing, typography } from '../../design/recipes';
 
 export interface DaySummaryData {
   totalGoals: number;
@@ -35,7 +31,47 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
   const pulse = useRef(new Animated.Value(0)).current;
   const shimmer = useRef(new Animated.Value(0)).current;
 
+  // 숨쉬는 애니메이션을 위한 값들 (FloatingCameraButton 참고)
+  const scaleAnim1 = useRef(new Animated.Value(1)).current;
+  const scaleAnim2 = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
+    // 첫 번째 겹 (크게 숨쉬는 듯한 애니메이션)
+    const scaleLoop1 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim1, {
+          toValue: 1.15,
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim1, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    // 두 번째 겹 (조금 다르게 숨쉬는 애니메이션)
+    const scaleLoop2 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim2, {
+          toValue: 1.08,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim2, {
+          toValue: 0.95,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
     const spinLoop = Animated.loop(
       Animated.timing(spin, {
         toValue: 1,
@@ -74,16 +110,20 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
       ]),
     );
 
+    scaleLoop1.start();
+    scaleLoop2.start();
     spinLoop.start();
     pulseLoop.start();
     shimmerLoop.start();
 
     return () => {
+      scaleLoop1.stop();
+      scaleLoop2.stop();
       spinLoop.stop();
       pulseLoop.stop();
       shimmerLoop.stop();
     };
-  }, [pulse, spin, shimmer]);
+  }, [pulse, spin, shimmer, scaleAnim1, scaleAnim2]);
 
   const spinRotate = spin.interpolate({
     inputRange: [0, 1],
@@ -93,14 +133,6 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
     inputRange: [0, 1],
     outputRange: ['0deg', '-360deg'],
   });
-  const pulseScale = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.96, 1.06],
-  });
-  const pulseOpacity = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.18, 0.34],
-  });
   const ringGlowScale = pulse.interpolate({
     inputRange: [0, 1],
     outputRange: [0.98, 1.05],
@@ -108,14 +140,6 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
   const ringGlowOpacity = pulse.interpolate({
     inputRange: [0, 1],
     outputRange: [0.4, 0.72],
-  });
-  const shimmerTranslateX = shimmer.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-150, 300],
-  });
-  const sparkleOpacity = shimmer.interpolate({
-    inputRange: [0, 0.18, 0.5, 0.82, 1],
-    outputRange: [0, 0.22, 0.95, 0.2, 0],
   });
 
   if (!stats) return null;
@@ -134,248 +158,224 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
             ? '패스로 오늘 계획을 조정했어요.'
             : '모든 루틴이 깔끔하게 기록됐어요.';
 
-  const orbSize = 164;
-  const strokeWidth = 12;
-  const ringRadius = 58;
+  const orbSize = 176;
+  const strokeWidth = 18;
+  const ringRadius = 66;
   const circumference = 2 * Math.PI * ringRadius;
   const safeTotal = Math.max(stats.totalGoals, 1);
-  const doneLength = circumference * (stats.doneCount / safeTotal);
-  const passLength = circumference * (stats.passCount / safeTotal);
-  const missedLength = circumference * (actualMissedCount / safeTotal);
+
+  const activeSegments =
+    (stats.doneCount > 0 ? 1 : 0) + (stats.passCount > 0 ? 1 : 0) + (actualMissedCount > 0 ? 1 : 0);
+
+  const gap = activeSegments > 1 ? strokeWidth + 10 : 0;
+  const totalGap = activeSegments * gap;
+  const usableCircumference = Math.max(0, circumference - totalGap);
+
+  const doneDash = usableCircumference * (stats.doneCount / safeTotal);
+  const passDash = usableCircumference * (stats.passCount / safeTotal);
+  const missedDash = usableCircumference * (actualMissedCount / safeTotal);
+
+  let currentOffset = 0;
+  const doneOffset = currentOffset;
+  if (stats.doneCount > 0) currentOffset -= doneDash + gap;
+  const passOffset = currentOffset;
+  if (stats.passCount > 0) currentOffset -= passDash + gap;
+  const missedOffset = currentOffset;
 
   return (
-    <GlassCard style={[styles.container, style]}>
-      <View style={styles.heroRow}>
-        <View style={styles.leftColumn}>
-          <View style={styles.header}>
-            <Text style={ds.title as TextStyle}>{summaryTitle}</Text>
-            <Text style={styles.description}>{summaryText}</Text>
-          </View>
-
-          <View style={styles.orbShell}>
-            <LinearGradient
-              colors={[
-                'rgba(255,255,255,0.96)',
-                'rgba(255,244,239,0.78)',
-                'rgba(255,224,209,0.56)',
-              ]}
-              start={{ x: 0.08, y: 0 }}
-              end={{ x: 0.92, y: 1 }}
-              style={styles.orbGradient}
-            >
-              <Animated.View
-                style={[
-                  styles.orbGlow,
-                  {
-                    opacity: pulseOpacity,
-                    transform: [{ scale: pulseScale }],
-                  },
-                ]}
-              />
-              <View style={styles.orbSheen} />
-
-              <View style={[StyleSheet.absoluteFill, { borderRadius: 88, overflow: 'hidden' }]}>
-                <Animated.View
-                  style={{
-                    width: 60,
-                    height: '200%',
-                    top: '-50%',
-                    left: 0,
-                    transform: [{ translateX: shimmerTranslateX }, { rotate: '25deg' }],
-                  }}
-                >
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{ flex: 1 }}
-                  />
-                </Animated.View>
-              </View>
-
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.ringAura,
-                  {
-                    opacity: ringGlowOpacity,
-                    transform: [{ scale: ringGlowScale }],
-                  },
-                ]}
-              >
-                <Svg width={orbSize} height={orbSize} viewBox={`0 0 ${orbSize} ${orbSize}`}>
-                  <G rotation="-90" origin={`${orbSize / 2}, ${orbSize / 2}`}>
-                    <Circle
-                      cx={orbSize / 2}
-                      cy={orbSize / 2}
-                      r={ringRadius}
-                      stroke="rgba(255,255,255,0.12)"
-                      strokeWidth={30}
-                      fill="none"
-                    />
-                    <Circle
-                      cx={orbSize / 2}
-                      cy={orbSize / 2}
-                      r={ringRadius}
-                      stroke="rgba(255,255,255,0.18)"
-                      strokeWidth={22}
-                      fill="none"
-                    />
-                    <Circle
-                      cx={orbSize / 2}
-                      cy={orbSize / 2}
-                      r={ringRadius}
-                      stroke="rgba(255,255,255,0.34)"
-                      strokeWidth={14}
-                      fill="none"
-                    />
-                  </G>
-                </Svg>
-              </Animated.View>
-
-              <Animated.View style={{ transform: [{ rotate: spinRotate }] }}>
-                <Svg width={orbSize} height={orbSize} viewBox={`0 0 ${orbSize} ${orbSize}`}>
-                  <Defs>
-                    <SvgLinearGradient id="doneRing" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <Stop offset="0%" stopColor="#A7F3D0" />
-                      <Stop offset="100%" stopColor="#4ADE80" />
-                    </SvgLinearGradient>
-                    <SvgLinearGradient id="passRing" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <Stop offset="0%" stopColor="#FDE68A" />
-                      <Stop offset="100%" stopColor="#f2c94c" />
-                    </SvgLinearGradient>
-                    <SvgLinearGradient id="missedRing" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <Stop offset="0%" stopColor={colors.brandWarm} />
-                      <Stop offset="100%" stopColor={colors.primary} />
-                    </SvgLinearGradient>
-                  </Defs>
-
-                  <G rotation="-90" origin={`${orbSize / 2}, ${orbSize / 2}`}>
-                    <Circle
-                      cx={orbSize / 2}
-                      cy={orbSize / 2}
-                      r={ringRadius}
-                      stroke="rgba(255,255,255,0.34)"
-                      strokeWidth={strokeWidth}
-                      fill="none"
-                    />
-                    {doneLength > 0 ? (
-                      <Circle
-                        cx={orbSize / 2}
-                        cy={orbSize / 2}
-                        r={ringRadius}
-                        stroke="url(#doneRing)"
-                        strokeWidth={strokeWidth}
-                        strokeDasharray={`${doneLength} ${circumference - doneLength}`}
-                        strokeLinecap="round"
-                        fill="none"
-                      />
-                    ) : null}
-                    {passLength > 0 ? (
-                      <Circle
-                        cx={orbSize / 2}
-                        cy={orbSize / 2}
-                        r={ringRadius}
-                        stroke="url(#passRing)"
-                        strokeWidth={strokeWidth}
-                        strokeDasharray={`${passLength} ${circumference - passLength}`}
-                        strokeDashoffset={-doneLength}
-                        strokeLinecap="round"
-                        fill="none"
-                      />
-                    ) : null}
-                    {missedLength > 0 ? (
-                      <Circle
-                        cx={orbSize / 2}
-                        cy={orbSize / 2}
-                        r={ringRadius}
-                        stroke="url(#missedRing)"
-                        strokeWidth={strokeWidth}
-                        strokeDasharray={`${missedLength} ${circumference - missedLength}`}
-                        strokeDashoffset={-(doneLength + passLength)}
-                        strokeLinecap="round"
-                        fill="none"
-                      />
-                    ) : null}
-                  </G>
-                </Svg>
-              </Animated.View>
-
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.sparkleOrbit,
-                  {
-                    opacity: sparkleOpacity,
-                    transform: [{ rotate: spinRotate }],
-                  },
-                ]}
-              >
-                <View style={styles.sparkleCluster}>
-                  <View style={styles.sparkleBloomLarge} />
-                  <View style={styles.sparkleBloomSmall} />
-                  <View style={styles.sparkleCore} />
-                </View>
-              </Animated.View>
-
-              <Animated.View
-                style={[
-                  styles.orbInnerHalo,
-                  {
-                    transform: [{ rotate: reverseSpinRotate }],
-                  },
-                ]}
-              />
-
-              <View style={styles.orbCenter}>
-                <Text style={styles.orbCount}>{stats.totalGoals}</Text>
-                <Text style={styles.orbLabel}>총 루틴</Text>
-              </View>
-            </LinearGradient>
-          </View>
+    <View style={[styles.heroRow, style]}>
+      <View style={styles.leftColumn}>
+        <View style={styles.header}>
+          <Text style={ds.cardTitle}>{summaryTitle}</Text>
+          <Text style={styles.description}>{summaryText}</Text>
         </View>
 
-        <View style={styles.metricsColumn}>
-          <View style={[styles.metricCard, styles.metricDone]}>
-            <View style={styles.metricTop}>
-              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-              <Text style={styles.metricLabel}>완료</Text>
-            </View>
-            <Text style={styles.metricValue}>{stats.doneCount}</Text>
-          </View>
+        <View style={styles.orbShell}>
+          <View style={styles.orbGradient}>
+            {/* 숨쉬는 무지개빛 비눗방울 효과 추가 */}
+            <Animated.View
+              style={[
+                styles.blob,
+                styles.blob1,
+                { transform: [{ scale: scaleAnim1 }, { rotate: spinRotate }] },
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.blob,
+                styles.blob2,
+                { transform: [{ scale: scaleAnim2 }, { rotate: reverseSpinRotate }] },
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.blob,
+                styles.blobWhite,
+                { transform: [{ scale: scaleAnim1 }, { rotate: spinRotate }] },
+              ]}
+            />
 
-          <View style={[styles.metricCard, styles.metricPass]}>
-            <View style={styles.metricTop}>
-              <Ionicons name="play-forward-circle" size={20} color={colors.warning} />
-              <Text style={styles.metricLabel}>오늘 넘김</Text>
-            </View>
-            <Text style={styles.metricValue}>{stats.passCount}</Text>
-          </View>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.ringAura,
+                {
+                  opacity: ringGlowOpacity,
+                  transform: [{ scale: ringGlowScale }],
+                },
+              ]}
+            >
+              <Svg
+                width={orbSize + 40}
+                height={orbSize + 40}
+                viewBox={`0 0 ${orbSize + 40} ${orbSize + 40}`}
+              >
+                <G rotation="-90" origin={`${(orbSize + 40) / 2}, ${(orbSize + 40) / 2}`}>
+                  <Circle
+                    cx={(orbSize + 40) / 2}
+                    cy={(orbSize + 40) / 2}
+                    r={ringRadius}
+                    stroke={colors.mint}
+                    strokeOpacity={0.2}
+                    strokeWidth={40}
+                    fill="none"
+                  />
+                  <Circle
+                    cx={(orbSize + 40) / 2}
+                    cy={(orbSize + 40) / 2}
+                    r={ringRadius}
+                    stroke={colors.softYellow}
+                    strokeOpacity={0.3}
+                    strokeWidth={25}
+                    fill="none"
+                  />
+                </G>
+              </Svg>
+            </Animated.View>
 
-          <View style={[styles.metricCard, styles.metricMissed]}>
-            <View style={styles.metricTop}>
-              <Ionicons name="alert-circle" size={20} color={colors.primaryLight} />
-              <Text style={styles.metricLabel}>미인증</Text>
+            <Animated.View style={{ transform: [{ rotate: spinRotate }] }}>
+              <Svg width={orbSize} height={orbSize} viewBox={`0 0 ${orbSize} ${orbSize}`}>
+                <Defs>
+                  <SvgLinearGradient id="doneRing" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <Stop offset="0%" stopColor={colors.mint} />
+                    <Stop offset="100%" stopColor={colors.softGreen} />
+                  </SvgLinearGradient>
+                  <SvgLinearGradient id="passRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0%" stopColor={colors.softYellow} />
+                    <Stop offset="100%" stopColor={colors.softPeach} />
+                  </SvgLinearGradient>
+                  <SvgLinearGradient id="missedRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0%" stopColor={colors.softPink} />
+                    <Stop offset="100%" stopColor={colors.softCoral} />
+                  </SvgLinearGradient>
+                </Defs>
+
+                <G rotation="-90" origin={`${orbSize / 2}, ${orbSize / 2}`}>
+                  {/* 흰색 테두리 추가 */}
+                  <Circle
+                    cx={orbSize / 2}
+                    cy={orbSize / 2}
+                    r={ringRadius}
+                    stroke={colors.white}
+                    strokeWidth={strokeWidth + 6}
+                    fill="none"
+                  />
+                  <Circle
+                    cx={orbSize / 2}
+                    cy={orbSize / 2}
+                    r={ringRadius}
+                    stroke="rgba(255,255,255,0.05)"
+                    strokeWidth={strokeWidth}
+                    fill="none"
+                  />
+                  {stats.doneCount > 0 ? (
+                    <Circle
+                      cx={orbSize / 2}
+                      cy={orbSize / 2}
+                      r={ringRadius}
+                      stroke="url(#doneRing)"
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={`${doneDash} ${circumference - doneDash}`}
+                      strokeDashoffset={doneOffset}
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                  ) : null}
+                  {stats.passCount > 0 ? (
+                    <Circle
+                      cx={orbSize / 2}
+                      cy={orbSize / 2}
+                      r={ringRadius}
+                      stroke="url(#passRing)"
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={`${passDash} ${circumference - passDash}`}
+                      strokeDashoffset={passOffset}
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                  ) : null}
+                  {actualMissedCount > 0 ? (
+                    <Circle
+                      cx={orbSize / 2}
+                      cy={orbSize / 2}
+                      r={ringRadius}
+                      stroke="url(#missedRing)"
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={`${missedDash} ${circumference - missedDash}`}
+                      strokeDashoffset={missedOffset}
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                  ) : null}
+                </G>
+              </Svg>
+            </Animated.View>
+
+            <View style={styles.orbCenter}>
+              <Text style={styles.orbCount}>{stats.totalGoals}</Text>
+              <Text style={styles.orbLabel}>총 루틴</Text>
             </View>
-            <Text style={styles.metricValue}>{actualMissedCount}</Text>
           </View>
         </View>
       </View>
-    </GlassCard>
+
+      <View style={styles.metricsColumn}>
+        <View style={[styles.metricCard]}>
+          <View style={styles.metricTop}>
+            <Ionicons name="checkmark-circle" size={22} color={colors.statusSuccessBg} />
+            <Text style={styles.metricLabel}>완료</Text>
+          </View>
+          <Text style={styles.metricValue}>{stats.doneCount}</Text>
+        </View>
+
+        <View style={[styles.metricCard]}>
+          <View style={styles.metricTop}>
+            <Ionicons name="play-forward-circle" size={22} color={colors.statusPassBg} />
+            <Text style={styles.metricLabel}>오늘 넘김</Text>
+          </View>
+          <Text style={styles.metricValue}>{stats.passCount}</Text>
+        </View>
+
+        <View style={[styles.metricCard]}>
+          <View style={styles.metricTop}>
+            <Ionicons name="alert-circle" size={22} color={colors.statusErrorBg} />
+            <Text style={styles.metricLabel}>미인증</Text>
+          </View>
+          <Text style={styles.metricValue}>{actualMissedCount}</Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
 export default memo(DaySummaryCard);
 
 const styles = StyleSheet.create({
-  container: {
-    paddingVertical: spacing[4],
-    paddingHorizontal: spacing[4],
-    borderRadius: radius.xxl,
-  },
   header: {
-    marginBottom: spacing[2],
+    width: '100%',
+    marginBottom: spacing[5],
     gap: spacing[1],
+    alignItems: 'flex-start',
   },
   description: {
     ...typography.caption,
@@ -384,14 +384,23 @@ const styles = StyleSheet.create({
   },
   heroRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: spacing[6],
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 32,
+    paddingVertical: spacing[5],
+    paddingRight: spacing[3],
+    shadowColor: colors.softBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 5,
   },
   leftColumn: {
-    // container for header and orbShell
+    alignItems: 'center',
+    flex: 1,
   },
   orbShell: {
-    width: 200,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -401,87 +410,54 @@ const styles = StyleSheet.create({
     borderRadius: 88,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.58)',
-    shadowColor: '#FFB380',
-    shadowOpacity: 0.24,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 12 },
   },
-  orbGlow: {
+  // 네온 파형 글로우 효과 (blob 재활용)
+  blob: {
     position: 'absolute',
-    width: 132,
-    height: 132,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.42)',
+    width: 160,
+    height: 160,
+  },
+  blob1: {
+    backgroundColor: colors.softPink,
+    opacity: 0.4,
+    borderRadius: 80,
+    borderTopLeftRadius: 90,
+    borderTopRightRadius: 70,
+    borderBottomRightRadius: 85,
+    borderBottomLeftRadius: 60,
+    width: 190,
+    height: 190,
+  },
+  blob2: {
+    backgroundColor: colors.softRed,
+    opacity: 0.4,
+    borderRadius: 80,
+    borderTopLeftRadius: 60,
+    borderTopRightRadius: 90,
+    borderBottomRightRadius: 70,
+    borderBottomLeftRadius: 100,
+    width: 180,
+    height: 180,
+    transform: [{ rotate: '45deg' }],
+  },
+  blobWhite: {
+    backgroundColor: colors.softYellow,
+    opacity: 0.3,
+    borderRadius: 80,
+    borderTopLeftRadius: 90,
+    borderTopRightRadius: 70,
+    borderBottomRightRadius: 100,
+    borderBottomLeftRadius: 60,
+    width: 170,
+    height: 170,
+    transform: [{ rotate: '-20deg' }],
   },
   ringAura: {
     position: 'absolute',
-    width: 164,
-    height: 164,
+    width: 216,
+    height: 216,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  orbSheen: {
-    position: 'absolute',
-    top: 18,
-    left: 26,
-    width: 84,
-    height: 26,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.28)',
-    transform: [{ rotate: '-18deg' }],
-  },
-  orbInnerHalo: {
-    position: 'absolute',
-    width: 118,
-    height: 118,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
-  },
-  sparkleOrbit: {
-    position: 'absolute',
-    width: 164,
-    height: 164,
-    alignItems: 'center',
-  },
-  sparkleCluster: {
-    marginTop: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sparkleBloomLarge: {
-    position: 'absolute',
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    shadowColor: '#FFFFFF',
-    shadowOpacity: 0.55,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  sparkleBloomSmall: {
-    position: 'absolute',
-    width: 18,
-    height: 18,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.32)',
-    shadowColor: '#FFFFFF',
-    shadowOpacity: 0.7,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  sparkleCore: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.98)',
-    shadowColor: '#FFFFFF',
-    shadowOpacity: 0.95,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
   },
   orbCenter: {
     position: 'absolute',
@@ -489,37 +465,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   orbCount: {
-    fontSize: 34,
-    fontWeight: '800',
+    fontSize: 42,
+    fontWeight: '900',
     color: colors.text,
-    lineHeight: 38,
+    lineHeight: 46,
   },
   orbLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: colors.textSecondary,
-    // marginTop: 2,
   },
   metricsColumn: {
+    marginTop: 36,
     gap: spacing[3],
+    justifyContent: 'center',
+    paddingLeft: spacing[2],
   },
   metricCard: {
-    borderRadius: radius.xxl,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderWidth: 1,
-  },
-  metricDone: {
-    backgroundColor: 'rgba(255,255,255,0.52)',
-    borderColor: 'rgba(255,255,255,0.42)',
-  },
-  metricPass: {
-    backgroundColor: 'rgba(255,255,255,0.52)',
-    borderColor: 'rgba(255, 214, 121, 0.4)',
-  },
-  metricMissed: {
-    backgroundColor: 'rgba(255,255,255,0.52)',
-    borderColor: 'rgba(255, 154, 144, 0.42)',
+    alignItems: 'flex-start',
   },
   metricTop: {
     flexDirection: 'row',
@@ -528,14 +491,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing[1],
   },
   metricLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: colors.textSecondary,
   },
   metricValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: colors.text,
-    textAlign: 'center',
+    marginLeft: 26, // 아이콘 너비만큼 들여쓰기
   },
 });

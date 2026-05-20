@@ -51,7 +51,7 @@ export default function RoutineStatusCard({
   const isDaily = frequency === 'daily';
 
   return (
-    <BaseCard glassOnly style={styles.card} contentStyle={styles.cardContent}>
+    <BaseCard style={styles.card} contentStyle={styles.cardContent}>
       <View style={styles.mainRow}>
         <CircularProgress
           size={42}
@@ -118,7 +118,9 @@ export default function RoutineStatusCard({
                 <>
                   <Text style={styles.endedDate}>{endedDateLabel(startDate, endDate)}</Text>
                   <View style={[sharedStyles.badge, sharedStyles.badgeEnded]}>
-                    <Text style={[sharedStyles.badgeText, sharedStyles.badgeTextEnded]}>종료됨</Text>
+                    <Text style={[sharedStyles.badgeText, sharedStyles.badgeTextEnded]}>
+                      종료됨
+                    </Text>
                   </View>
                 </>
               ) : (
@@ -139,7 +141,7 @@ export default function RoutineStatusCard({
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 8,
+    marginBottom: 12,
   },
   cardContent: {
     flexDirection: 'row',

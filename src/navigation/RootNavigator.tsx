@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
@@ -11,7 +11,6 @@ import TeamMemberScreen from '../screens/team/TeamMemberScreen';
 import TeamProfileEditScreen from '../screens/team/TeamProfileEditScreen';
 import ProfileEditScreen from '../screens/mypage/ProfileEditScreen';
 import AppSettingsScreen from '../screens/mypage/AppSettingsScreen';
-import AddRoutineScreen from '../screens/mypage/AddRoutineScreen';
 import { colors } from '../design/tokens';
 import { scheduleDailyNotifications } from '../utils/notifications';
 
@@ -21,6 +20,8 @@ export default function RootNavigator() {
   const { user, isLoading: authLoading, restoreSession } = useAuthStore();
   const teamsQuery = useUserTeamsQuery(user?.id);
   const [isReady, setIsReady] = useState(false);
+  // 앱 세션당 한 번만 알림 스케줄링되도록 방지
+  const notifScheduledRef = useRef(false);
 
   // 1. 세션 복원
   useEffect(() => {
@@ -30,7 +31,8 @@ export default function RootNavigator() {
   // 2. 유저 정보 로드 후, 팀 정보 로드 + 알림 스케줄
   useEffect(() => {
     const init = async () => {
-      if (user) {
+      if (user && !notifScheduledRef.current) {
+        notifScheduledRef.current = true;
         scheduleDailyNotifications().catch(() => {});
       }
       setIsReady(true);
@@ -64,7 +66,6 @@ export default function RootNavigator() {
             <Stack.Screen name="TeamMember" component={TeamMemberScreen} />
             <Stack.Screen name="TeamProfileEdit" component={TeamProfileEditScreen} />
             <Stack.Screen name="AppSettings" component={AppSettingsScreen} />
-            <Stack.Screen name="AddRoutine" component={AddRoutineScreen} />
           </>
         )}
       </Stack.Navigator>
