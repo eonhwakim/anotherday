@@ -8,6 +8,20 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
+      "env": {
+        "APP_VARIANT": "development"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "env": {
+        "APP_VARIANT": "development"
+      },
       "ios": {
         "simulator": true
       }
@@ -15,12 +29,18 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "env": {
+        "APP_VARIANT": "preview"
+      },
       "ios": {
         "simulator": false
       }
     },
     "production": {
       "channel": "production",
+      "env": {
+        "APP_VARIANT": "production"
+      },
       "ios": {
         "autoIncrement": true
       }

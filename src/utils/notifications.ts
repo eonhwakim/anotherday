@@ -98,8 +98,17 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 async function cancelDailyNotifications(): Promise<void> {
+  // 현재 식별자 패턴 취소
   for (let wd = 1; wd <= 7; wd++) {
     await Notifications.cancelScheduledNotificationAsync(`daily-weekday-${wd}`).catch(() => {});
+  }
+  // 이전 버전 앱에서 다른 식별자로 등록됐을 수 있는 매일 오전 8시 알림도 모두 취소
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const notif of scheduled) {
+    const trigger = notif.trigger as Record<string, unknown> | null;
+    if (trigger && trigger['hour'] === 8 && trigger['minute'] === 0) {
+      await Notifications.cancelScheduledNotificationAsync(notif.identifier).catch(() => {});
+    }
   }
 }
 
