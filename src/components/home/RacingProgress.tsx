@@ -34,30 +34,33 @@ interface RacingCharacterProps {
 
 const MY_HIGHLIGHT_COLOR = colors.yellow;
 
-function getMemberStartEnd(index: number, total: number) {
-  // 길을 무조건 2개로 고정
+function getMemberStartEnd(index: number, _total: number) {
   const trackCount = 2;
-  // 각 멤버를 두 개의 길 중 하나에 할당 (홀수/짝수 인덱스로 분배)
   const trackIndex = index % trackCount;
-
-  const maxSpread = 33; // 두 길 사이의 간격
-  const spacing = maxSpread;
-  const offset = (trackIndex - (trackCount - 1) / 2) * spacing;
+  const laneSpread = 33;
+  const laneOffset = (trackIndex - (trackCount - 1) / 2) * laneSpread;
 
   const dx = TRACK_FINISH_X - TRACK_START_X;
   const dy = TRACK_FINISH_Y - TRACK_START_Y;
   const len = Math.sqrt(dx * dx + dy * dy);
-
-  // 직교 벡터 (트랙을 가로지르는 방향)
   const px = -dy / len;
   const py = dx / len;
 
   return {
-    sx: TRACK_START_X + px * offset,
-    sy: TRACK_START_Y + py * offset,
-    fx: TRACK_FINISH_X + px * offset,
-    fy: TRACK_FINISH_Y + py * offset,
+    sx: TRACK_START_X + px * laneOffset,
+    sy: TRACK_START_Y + py * laneOffset,
+    fx: TRACK_FINISH_X + px * laneOffset,
+    fy: TRACK_FINISH_Y + py * laneOffset,
   };
+}
+
+/** 같은 레인에서 뒤에 겹치는 멤버만 시작 시 살짝 위로 (px, 화면 Y 음수) */
+function getStackLift(index: number, total: number) {
+  const slotOnTrack = Math.floor(index / 2);
+  const slotsOnTrack = Math.max(1, Math.ceil(total / 2));
+  if (slotsOnTrack <= 1) return 0;
+  const STACK_STEP = 10;
+  return (slotsOnTrack - 1 - slotOnTrack) * STACK_STEP;
 }
 
 function withAlpha(hexColor: string, alphaHex: string) {
@@ -308,6 +311,7 @@ function RacingCharacter({
   }, [startAnimation, index, bounceAnim]);
 
   const { sx, sy, fx, fy } = getMemberStartEnd(index, totalMembers);
+  const stackLift = getStackLift(index, totalMembers);
 
   const animatedLeft = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -317,6 +321,10 @@ function RacingCharacter({
     inputRange: [0, 1],
     outputRange: [(sy / SVG_H) * CONTAINER_HEIGHT, (fy / SVG_H) * CONTAINER_HEIGHT],
   });
+  const stackLiftAnim = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-stackLift, 0],
+  });
 
   return (
     <Animated.View
@@ -324,7 +332,7 @@ function RacingCharacter({
         styles.characterWrapper,
         {
           left: animatedLeft,
-          top: Animated.add(animatedTop, bounceAnim),
+          top: Animated.add(Animated.add(animatedTop, bounceAnim), stackLiftAnim),
           zIndex: isMe ? 100 : 20 + index,
           elevation: isMe ? 14 : 4,
         },
