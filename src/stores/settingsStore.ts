@@ -12,12 +12,12 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      backgroundTheme: 'racing', // default
+      backgroundTheme: 'mountain', // default
       setBackgroundTheme: (theme) => set({ backgroundTheme: theme }),
     }),
     {
       name: 'app-settings-storage',
       storage: createJSONStorage(() => AsyncStorage),
-    }
-  )
+    },
+  ),
 );
