@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { useAuthStore } from '../stores/authStore';
-import { RootStackParamList } from '../types/navigation';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+
+import { colors } from '../design/tokens';
 import { useUserTeamsQuery } from '../queries/teamQueries';
-import AuthStack from './AuthStack';
-import AppTabs from './AppTabs';
+import AppSettingsScreen from '../screens/mypage/AppSettingsScreen';
+import ProfileEditScreen from '../screens/mypage/ProfileEditScreen';
 import TeamMemberScreen from '../screens/team/TeamMemberScreen';
 import TeamProfileEditScreen from '../screens/team/TeamProfileEditScreen';
-import ProfileEditScreen from '../screens/mypage/ProfileEditScreen';
-import AppSettingsScreen from '../screens/mypage/AppSettingsScreen';
-import { colors } from '../design/tokens';
+import { useAuthStore } from '../stores/authStore';
+import { RootStackParamList } from '../types/navigation';
 import { scheduleDailyNotifications } from '../utils/notifications';
+
+import AppTabs from './AppTabs';
+import AuthStack from './AuthStack';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

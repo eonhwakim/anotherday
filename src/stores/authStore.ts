@@ -1,9 +1,6 @@
-import { create } from 'zustand';
-import type { User } from '../types/domain';
-import { useGoalStore } from './goalStore';
-import { useTeamStore } from './teamStore';
-import { useStatsStore } from './statsStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+
 import {
   deleteUserAccount,
   ensureProfile,
@@ -15,6 +12,10 @@ import {
   signOutAuth,
   signUpWithPassword,
 } from '../services/authService';
+import type { User } from '../types/domain';
+import { useGoalStore } from './goalStore';
+import { useStatsStore } from './statsStore';
+import { useTeamStore } from './teamStore';
 
 export type KakaoSignInResult =
   | { success: true; isNewUser: false }
@@ -40,39 +41,47 @@ interface AuthState {
   clearError: () => void;
 }
 
+/** 로그인·로그아웃·탈퇴 시 goal/team/stats 캐시 스토어 초기화 */
+function resetDependentStores(): void {
+  useGoalStore.getState().reset();
+  useTeamStore.getState().reset();
+  useStatsStore.getState().reset();
+}
+
+function authErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
   error: null,
 
-  /** 프로필만 다시 가져오기 (isLoading 안 건드림, 네비게이션 리셋 방지) */
+  clearError: () => set({ error: null }),
+
+  setUser: (user) => set({ user }),
+
+  /** 프로필만 다시 가져오기 (isLoading 변경 없음 → RootNavigator 로딩 리셋 방지) */
   refreshProfile: async () => {
     try {
       const sessionUser = await getCurrentSessionUser();
-      if (sessionUser) {
-        const profile = await fetchUserProfile(sessionUser.id);
-        if (profile) {
-          set({ user: profile });
-        }
-      }
+      if (!sessionUser) return;
+
+      const profile = await fetchUserProfile(sessionUser.id);
+      if (profile) set({ user: profile });
     } catch (e) {
       console.error('[Auth] refreshProfile error:', e);
     }
   },
 
-  /** 직접 user 객체 세팅 */
-  setUser: (user: User) => set({ user }),
-
+  /** 앱 시작 시 Supabase 세션 복원 후 user 설정 */
   restoreSession: async () => {
     try {
       set({ isLoading: true, error: null });
       const sessionUser = await getCurrentSessionUser();
 
       if (sessionUser) {
-        const profile = await ensureProfile(
-          sessionUser.id,
-          sessionUser.email ?? ''
-        );
+        const profile = await ensureProfile(sessionUser.id, sessionUser.email ?? '');
         set({ user: profile });
       } else {
         set({ user: null });
@@ -88,35 +97,29 @@ export const useAuthStore = create<AuthState>((set) => ({
   signIn: async (email, password) => {
     try {
       set({ isLoading: true, error: null });
-
-      // 이전 유저 데이터 초기화 (로그인 전 스토어 리셋)
-      useGoalStore.getState().reset();
-      useTeamStore.getState().reset();
-      useStatsStore.getState().reset();
+      resetDependentStores();
 
       const { data, error } = await signInWithPassword(email, password);
-
       if (error) {
         set({ error: error.message, isLoading: false });
         return false;
       }
 
-      if (data.user) {
-        const profile = await ensureProfile(data.user.id, email);
-
-        if (!profile) {
-          set({ error: '프로필을 불러올 수 없습니다.', isLoading: false });
-          return false;
-        }
-
-        set({ user: profile, isLoading: false });
-        return true;
+      if (!data.user) {
+        set({ isLoading: false });
+        return false;
       }
 
-      set({ isLoading: false });
-      return false;
+      const profile = await ensureProfile(data.user.id, email);
+      if (!profile) {
+        set({ error: '프로필을 불러올 수 없습니다.', isLoading: false });
+        return false;
+      }
+
+      set({ user: profile, isLoading: false });
+      return true;
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
+      set({ error: authErrorMessage(e), isLoading: false });
       return false;
     }
   },
@@ -124,20 +127,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUp: async (email, password, nickname) => {
     try {
       set({ isLoading: true, error: null });
-
-      // 이전 유저 데이터 초기화
-      useGoalStore.getState().reset();
-      useTeamStore.getState().reset();
-      useStatsStore.getState().reset();
+      resetDependentStores();
 
       const { data, error } = await signUpWithPassword(email, password, nickname);
-
       if (error) {
         set({ error: error.message, isLoading: false });
         return false;
       }
 
-      // 이미 가입된 이메일 감지
       if (data.user?.identities?.length === 0) {
         set({
           error: '이미 가입된 이메일입니다. 로그인을 시도해주세요.',
@@ -146,22 +143,21 @@ export const useAuthStore = create<AuthState>((set) => ({
         return false;
       }
 
-      if (data.user) {
-        const profile = await ensureProfile(data.user.id, email, nickname);
-
-        if (!profile) {
-          set({ error: '프로필 생성에 실패했습니다.', isLoading: false });
-          return false;
-        }
-
-        set({ user: profile, isLoading: false });
-        return true;
+      if (!data.user) {
+        set({ isLoading: false });
+        return false;
       }
 
-      set({ isLoading: false });
-      return false;
+      const profile = await ensureProfile(data.user.id, email, nickname);
+      if (!profile) {
+        set({ error: '프로필 생성에 실패했습니다.', isLoading: false });
+        return false;
+      }
+
+      set({ user: profile, isLoading: false });
+      return true;
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
+      set({ error: authErrorMessage(e), isLoading: false });
       return false;
     }
   },
@@ -169,13 +165,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   signInWithKakao: async () => {
     try {
       set({ isLoading: true, error: null });
-
-      useGoalStore.getState().reset();
-      useTeamStore.getState().reset();
-      useStatsStore.getState().reset();
+      resetDependentStores();
 
       const { data, error } = await signInWithKakaoService();
-
       if (error) {
         set({ error: error.message, isLoading: false });
         return { success: false };
@@ -187,14 +179,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       const existingProfile = await fetchUserProfile(data.user.id);
-
       if (existingProfile) {
-        // 이미 프로필이 있는 user — 카카오 연결한 기존 회원 또는 카카오 재로그인
         set({ user: existingProfile, isLoading: false });
         return { success: true, isNewUser: false };
       }
 
-      // 신규 카카오 user — 프로필 미생성. 사용자 선택 대기 상태로 전환
       set({ isLoading: false });
       return {
         success: true,
@@ -204,7 +193,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       };
     } catch (e) {
       console.error('[Auth] signInWithKakao error:', e);
-      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
+      set({ error: authErrorMessage(e), isLoading: false });
       return { success: false };
     }
   },
@@ -213,10 +202,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       set({ isLoading: true, error: null });
 
-      // 카카오 신규 user는 비즈니스 인증 없으면 email이 null일 수 있음 — placeholder 사용
       const profileEmail = email ?? `${userId}@kakao.local`;
       const profile = await ensureProfile(userId, profileEmail, nickname);
-
       if (!profile) {
         set({ error: '프로필 생성에 실패했습니다.', isLoading: false });
         return false;
@@ -226,7 +213,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       return true;
     } catch (e) {
       console.error('[Auth] finalizeKakaoSignup error:', e);
-      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
+      set({ error: authErrorMessage(e), isLoading: false });
       return false;
     }
   },
@@ -247,7 +234,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   linkKakaoAccount: async () => {
     const result = await linkKakaoIdentity();
     if (result.success) {
-      // 세션이 갱신되었을 수 있으니 프로필도 다시 가져온다
       const sessionUser = await getCurrentSessionUser();
       if (sessionUser) {
         const profile = await fetchUserProfile(sessionUser.id);
@@ -258,15 +244,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
-    // 모든 스토어 초기화 (이전 사용자 데이터 제거)
-    useGoalStore.getState().reset();
-    useTeamStore.getState().reset();
-    useStatsStore.getState().reset();
-    
+    resetDependentStores();
+
     // 테스트용: 로그아웃 시 안내 모달 기록 초기화 (개발 편의성 및 신규 유저 시뮬레이션)
     // 실제 배포 시에는 주석 처리하거나 제거할 수 있음
     await AsyncStorage.removeItem('hasSeenGuide_v4');
-    
+
     await signOutAuth();
     set({ user: null, error: null });
   },
@@ -282,25 +265,20 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       const { error } = await deleteUserAccount(sessionUser.id);
-
       if (error) {
         console.error('[Auth] deleteAccount RPC error:', error.message);
         set({ error: '계정 삭제에 실패했습니다.', isLoading: false });
         return false;
       }
 
-      useGoalStore.getState().reset();
-      useTeamStore.getState().reset();
-      useStatsStore.getState().reset();
+      resetDependentStores();
       await signOutAuth();
       set({ user: null, error: null, isLoading: false });
       return true;
     } catch (e) {
       console.error('[Auth] deleteAccount error:', e);
-      set({ error: e instanceof Error ? e.message : String(e), isLoading: false });
+      set({ error: authErrorMessage(e), isLoading: false });
       return false;
     }
   },
-
-  clearError: () => set({ error: null }),
 }));
