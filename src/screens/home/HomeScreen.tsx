@@ -1,6 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Image, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -101,31 +100,6 @@ export default function HomeScreen() {
   const goalsForCheckinModal = useCheckinGoals({ myGoals, teamGoals, todayStr, userId });
 
   // 5. Effects & Event Handlers
-  //앱업데이트 알림
-  React.useEffect(() => {
-    const checkUpdateNotice = async () => {
-      try {
-        const hasSeen = await AsyncStorage.getItem('hasSeenBgThemeUpdate');
-        if (!hasSeen) {
-          Alert.alert(
-            '업데이트 안내 🎉',
-            '이제 앱 설정에서 홈 화면의 배경 테마(3가지 버전)를 바꿀 수 있습니다!',
-            [
-              {
-                text: '확인',
-                onPress: () => AsyncStorage.setItem('hasSeenBgThemeUpdate', 'true'),
-              },
-            ],
-          );
-        }
-      } catch (e) {
-        console.error('Failed to load update notice status', e);
-      }
-    };
-
-    checkUpdateNotice();
-  }, []);
-
   React.useEffect(() => {
     if (!user) return;
     const myProgress = memberProgress.find((p) => p.userId === user.id);
