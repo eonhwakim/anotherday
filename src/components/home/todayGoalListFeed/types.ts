@@ -23,16 +23,6 @@ export interface FeedHeaderProps {
   memberCount: number;
 }
 
-export interface FeedBadgePanelProps {
-  badgeMembers: MemberProgress[];
-  badgeOpacityAnim: Animated.Value;
-  badgeState: BadgeState;
-  glowOpacity: Animated.AnimatedInterpolation<number>;
-  scale: Animated.AnimatedInterpolation<number>;
-  translateY: Animated.AnimatedInterpolation<number>;
-  isNight: boolean;
-}
-
 export interface PhotoSlideCardProps {
   checkin: CheckinWithGoal;
   index: number;

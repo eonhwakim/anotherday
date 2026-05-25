@@ -10,7 +10,6 @@ import {
   sortMembersForDisplay,
 } from './todayGoalListFeed/feedUtils';
 import type { TodayGoalListFeedProps } from './todayGoalListFeed/types';
-// import { FeedBadgePanel } from './todayGoalListFeed/FeedBadgePanel';
 import { MemberCard } from './todayGoalListFeed/MemberCard';
 import { FeedReactionAvatars } from './todayGoalListFeed/FeedReactionAvatars';
 import { colors, typography } from '@/design/recipes';
