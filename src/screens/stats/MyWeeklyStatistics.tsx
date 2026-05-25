@@ -38,6 +38,7 @@ export default function MyWeeklyStatistics({
     if (!userId) return [];
 
     const weekEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
+    const today = dayjs().format('YYYY-MM-DD');
     const activeGoals = myWeeklyGoalPeriods.filter((goal) => {
       if (goal.start_date && goal.start_date > weekEnd) return false;
       if (goal.end_date && goal.end_date < weekStart) return false;
@@ -57,7 +58,7 @@ export default function MyWeeklyStatistics({
           doneCount: progress.doneCount,
           isAchieved: progress.isAchieved,
           isDaily: progress.isDaily,
-          isEnded: goal.is_active === false || (!!goal.end_date && goal.end_date <= weekEnd),
+          isEnded: goal.is_active === false || (!!goal.end_date && goal.end_date < today),
           startDate: goal.start_date ?? null,
           endDate: goal.end_date ?? null,
         };

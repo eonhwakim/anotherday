@@ -596,6 +596,7 @@ export async function fetchWeeklyStats(params: {
 }): Promise<WeeklyStatsResult> {
   const { teamId, userId, weekStart, goalNameMap } = params;
   const weekEnd = dayjs(weekStart).endOf('isoWeek').format('YYYY-MM-DD');
+  const today = dayjs().format('YYYY-MM-DD');
 
   const { data: members } = await supabase
     .from('team_members')
@@ -617,7 +618,7 @@ export async function fetchWeeklyStats(params: {
 
   const { data: teamUserGoals } = await supabase
     .from('user_goals')
-    .select('user_id, goal_id, frequency, target_count, start_date, end_date')
+    .select('user_id, goal_id, frequency, target_count, start_date, end_date, is_active')
     .in('user_id', memberIds);
 
   const typedCheckins = (teamCheckins ?? []) as CheckinDateRow[];
@@ -655,7 +656,7 @@ export async function fetchWeeklyStats(params: {
           doneCount: progress.doneCount,
           isAchieved: progress.isAchieved,
           isDaily: progress.isDaily,
-          isEnded: !!goal.end_date && goal.end_date <= weekEnd,
+          isEnded: goal.is_active === false || (!!goal.end_date && goal.end_date < today),
           startDate: goal.start_date ?? null,
           endDate: goal.end_date ?? null,
         });
@@ -744,7 +745,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
       .lte('date', dataEnd),
     supabase
       .from('user_goals')
-      .select('goal_id, frequency, target_count, start_date, end_date, goals(name)')
+      .select('goal_id, frequency, target_count, start_date, end_date, is_active, goals(name)')
       .eq('user_id', userId),
   ]);
 
@@ -842,7 +843,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
       name: goal.goals?.name ?? '목표',
       frequency: goal.frequency,
       targetCount: goal.target_count,
-      isEnded: !!goal.end_date && goal.end_date <= today,
+      isEnded: goal.is_active === false || (!!goal.end_date && goal.end_date < today),
       achievedWeeks: 0, // Unused now, but kept for interface compatibility
       totalActiveWeeks: 0, // Unused
       rate,
@@ -901,7 +902,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
       .lte('date', dataEnd),
     supabase
       .from('user_goals')
-      .select('user_id, goal_id, frequency, target_count, start_date, end_date, goals(name)')
+      .select('user_id, goal_id, frequency, target_count, start_date, end_date, is_active, goals(name)')
       .in('user_id', memberIds),
     supabase
       .from('monthly_resolutions')
@@ -1070,7 +1071,7 @@ export async function fetchMonthlyStatisticsSummary(params: {
             name: goal.goals?.name ?? '목표',
             frequency: goal.frequency,
             targetCount: goal.target_count,
-            isEnded: !!goal.end_date && goal.end_date <= today,
+            isEnded: goal.is_active === false || (!!goal.end_date && goal.end_date < today),
             totalTarget,
             totalDone,
             done: goalDone,
