@@ -1,8 +1,6 @@
 import type { Animated } from 'react-native';
 import type { CheckinWithGoal, MemberProgress } from '../../../types/domain';
 
-export type BadgeState = 'START' | 'ALL_CLEAR' | 'FINISHER' | 'LEADER';
-
 export interface MemberCardProps {
   member: MemberProgress;
   isMe: boolean;

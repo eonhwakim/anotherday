@@ -4,17 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import { ds } from '@/design/recipes';
 
-import {
-  getBadgeMeta,
-  getMissionProgress,
-  sortMembersForDisplay,
-} from './todayGoalListFeed/feedUtils';
+import { getMissionProgress, sortMembersForDisplay } from './todayGoalListFeed/feedUtils';
 import type { TodayGoalListFeedProps } from './todayGoalListFeed/types';
 import { MemberCard } from './todayGoalListFeed/MemberCard';
 import { FeedReactionAvatars } from './todayGoalListFeed/FeedReactionAvatars';
 import { colors, typography } from '@/design/recipes';
 
 export { FeedReactionAvatars };
+
+const FINISH_CALLBACK_DELAY_MS = 500;
 
 export default function TodayGoalListFeed({
   members,
@@ -26,22 +24,18 @@ export default function TodayGoalListFeed({
   // 1. Context & Derived Data
   const isFocused = useIsFocused();
   const { progress } = React.useMemo(() => getMissionProgress(members), [members]);
-  const { badgeState } = React.useMemo(() => getBadgeMeta(members), [members]);
   const sortedMembers = React.useMemo(
     () => sortMembersForDisplay(members, currentUserId),
     [members, currentUserId],
   );
 
   // 2. Animation Values & Refs
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const translateYAnim = useRef(new Animated.Value(0)).current;
-  const badgeOpacityAnim = useRef(new Animated.Value(0)).current;
   const memberAnims = useRef(members.map(() => new Animated.Value(0))).current;
 
-  const hasBadgeAnimatedRef = useRef(false);
+  const hasAnimatedRef = useRef(false);
   const staggeredMemberCountRef = useRef(-1);
-  const sequenceAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const staggerAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 4. Callbacks & Handlers
   const carouselDragParentRef = useRef(onPhotoCarouselDragChange);
@@ -51,7 +45,7 @@ export default function TodayGoalListFeed({
     carouselDragParentRef.current?.(active);
   }, []);
 
-  //멤버 카드들이 0.15초(150ms) 간격으로 차례대로 나타나게 하는 애니메이션
+  //멤버 카드들이 0.45초(450ms) 간격으로 차례대로 나타나게 하는 애니메이션
   const startMemberCardStagger = useCallback(() => {
     if (memberAnims.length === 0) {
       staggeredMemberCountRef.current = 0;
@@ -61,7 +55,7 @@ export default function TodayGoalListFeed({
     staggerAnimRef.current?.stop();
     memberAnims.forEach((animation) => animation.setValue(0));
     const stagger = Animated.stagger(
-      150,
+      450,
       memberAnims.map((animation) =>
         Animated.timing(animation, {
           toValue: 1,
@@ -86,86 +80,45 @@ export default function TodayGoalListFeed({
     }
   }, [members, memberAnims]);
 
-  // 5.2. 배지 등장 및 리스트 스태거 애니메이션 시작 (화면 포커스 시 1회)
+  // 5.2. 멤버 카드 스태거 애니메이션 시작 + 완료 콜백 (화면 포커스 시 1회)
   useEffect(() => {
     if (!isFocused) {
-      hasBadgeAnimatedRef.current = false;
+      hasAnimatedRef.current = false;
       staggeredMemberCountRef.current = -1;
-      sequenceAnimRef.current?.stop();
       staggerAnimRef.current?.stop();
+      if (finishTimerRef.current) clearTimeout(finishTimerRef.current);
       return;
     }
 
-    if (hasBadgeAnimatedRef.current) {
+    if (hasAnimatedRef.current) {
       return;
     }
 
-    sequenceAnimRef.current?.stop();
     staggerAnimRef.current?.stop();
     memberAnims.forEach((animation) => animation.setValue(1));
 
-    const timeoutId = setTimeout(() => {
-      hasBadgeAnimatedRef.current = true;
-
-      scaleAnim.setValue(0);
-      translateYAnim.setValue(0);
-      badgeOpacityAnim.setValue(0);
+    const startTimeoutId = setTimeout(() => {
+      hasAnimatedRef.current = true;
       memberAnims.forEach((animation) => animation.setValue(0));
-
-      const sequence = Animated.sequence([
-        Animated.parallel([
-          Animated.timing(scaleAnim, {
-            toValue: 1,
-            duration: 320,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateYAnim, {
-            toValue: 1,
-            duration: 320,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(badgeOpacityAnim, {
-            toValue: 1,
-            duration: 260,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.delay(220),
-        Animated.timing(scaleAnim, {
-          toValue: 2,
-          duration: 180,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]);
-      sequenceAnimRef.current = sequence;
-      sequence.start(({ finished }) => {
-        if (finished) onAnimationFinish?.();
-      });
-
       startMemberCardStagger();
+
+      // 과거 배지 등장 시퀀스가 끝나던 시점에 맞춰 완료를 알린다.
+      // (부모는 이 콜백으로 후속 애니메이션 시작을 트리거함)
+      finishTimerRef.current = setTimeout(() => {
+        onAnimationFinish?.();
+      }, FINISH_CALLBACK_DELAY_MS);
     }, 72);
 
-    return () => clearTimeout(timeoutId);
-  }, [
-    isFocused,
-    members.length,
-    badgeState,
-    memberAnims,
-    scaleAnim,
-    translateYAnim,
-    badgeOpacityAnim,
-    onAnimationFinish,
-    startMemberCardStagger,
-  ]);
+    return () => {
+      clearTimeout(startTimeoutId);
+      if (finishTimerRef.current) clearTimeout(finishTimerRef.current);
+    };
+  }, [isFocused, members.length, memberAnims, onAnimationFinish, startMemberCardStagger]);
 
   // 5.3. 멤버가 추가되었을 때 스태거 애니메이션 재시작 보정
   useEffect(() => {
     if (!isFocused || members.length === 0) return;
-    if (!hasBadgeAnimatedRef.current) return;
+    if (!hasAnimatedRef.current) return;
     if (memberAnims.length !== members.length) return;
 
     if (staggeredMemberCountRef.current === members.length) return;
@@ -204,7 +157,6 @@ export default function TodayGoalListFeed({
                 key={member.userId}
                 member={member}
                 isMe={member.userId === currentUserId}
-                isFirst={index === 0}
                 animVal={memberAnims[index] ?? new Animated.Value(1)}
                 onCarouselDragChange={notifyCarouselDragToParent}
               />
