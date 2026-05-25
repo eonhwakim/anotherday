@@ -5,6 +5,7 @@ import { getCalendarWeekRanges } from '../lib/statsUtils';
 import { ServiceError } from '../lib/serviceError';
 import type { Checkin, Goal, UserGoal } from '../types/domain';
 
+//특정 월의 "캘린더 주 범위"(시작~끝 날짜) 계산
 function getRoutineWindowForMonth(monthStr: string) {
   const { ranges } = getCalendarWeekRanges(monthStr);
   if (ranges.length > 0) {
@@ -106,87 +107,6 @@ export async function fetchExtendableGoalsForMonth(
     (nextMonthGoals ?? []).map((row: { goal_id: string }) => row.goal_id),
   );
   return targets.filter((goal) => !existingGoalIds.has(goal.goal_id));
-}
-
-export async function fetchLastMonthGoals(userId: string): Promise<UserGoal[]> {
-  const today = dayjs().format('YYYY-MM-DD');
-  const lastMonthStart = dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
-
-  const { data, error } = await supabase
-    .from('user_goals')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .is('deleted_at', null)
-    .lt('end_date', today)
-    .gte('end_date', lastMonthStart);
-
-  if (error) {
-    throw new ServiceError(
-      '지난 달 목표를 불러오지 못했습니다.',
-      'fetchLastMonthGoals',
-      error.message,
-    );
-  }
-
-  return (data ?? []) as UserGoal[];
-}
-
-export async function copyGoalsFromLastMonth(userId: string, goals: UserGoal[]): Promise<boolean> {
-  if (goals.length === 0) return true;
-
-  const actorUserId = await requireAuthenticatedUserId(userId);
-  const currentMonthStr = dayjs().format('YYYY-MM');
-  const currentWindow = getRoutineWindowForMonth(currentMonthStr);
-  const targetGoalIds = Array.from(new Set(goals.map((goal) => goal.goal_id)));
-
-  const { data: existingRows, error: existingRowsError } = await supabase
-    .from('user_goals')
-    .select('goal_id')
-    .eq('user_id', actorUserId)
-    .eq('is_active', true)
-    .is('deleted_at', null)
-    .in('goal_id', targetGoalIds)
-    .lte('start_date', currentWindow.end)
-    .or(`end_date.is.null,end_date.gte.${currentWindow.start}`);
-
-  if (existingRowsError) {
-    throw new ServiceError(
-      '목표 복사에 실패했습니다.',
-      'copyGoalsFromLastMonth',
-      existingRowsError.message,
-    );
-  }
-
-  const existingGoalIds = new Set(
-    ((existingRows ?? []) as Pick<UserGoal, 'goal_id'>[]).map((row) => row.goal_id),
-  );
-
-  const inserts = goals
-    .map((goal) => {
-      if (existingGoalIds.has(goal.goal_id)) return null;
-
-      return {
-        user_id: actorUserId,
-        goal_id: goal.goal_id,
-        start_date: dayjs().format('YYYY-MM-DD'),
-        end_date: currentWindow.end,
-        is_active: true,
-        frequency: goal.frequency,
-        target_count: goal.target_count,
-        week_days: goal.week_days ?? null,
-      };
-    })
-    .filter((goal): goal is NonNullable<typeof goal> => goal !== null);
-
-  if (inserts.length === 0) return true;
-
-  const { error } = await supabase.from('user_goals').insert(inserts);
-  if (error) {
-    throw new ServiceError('목표 복사에 실패했습니다.', 'copyGoalsFromLastMonth', error.message);
-  }
-
-  return true;
 }
 
 export async function extendGoalsForNewMonth(
@@ -457,32 +377,6 @@ export async function createCheckin(params: {
     // UNIQUE(user_id, goal_id, date) 위반 — 이미 체크인된 목표
     if (error.code === '23505') return false;
     throw new ServiceError('체크인 저장에 실패했습니다.', 'createCheckin', error.message);
-  }
-
-  return true;
-}
-
-export async function toggleUserGoal(userId: string, goalId: string): Promise<boolean> {
-  const actorUserId = await requireAuthenticatedUserId(userId);
-  const { data: current, error: selectError } = await supabase
-    .from('user_goals')
-    .select('is_active')
-    .eq('user_id', actorUserId)
-    .eq('goal_id', goalId)
-    .single();
-
-  if (selectError) {
-    throw new ServiceError('목표 상태 변경에 실패했습니다.', 'toggleUserGoal', selectError.message);
-  }
-
-  const { error: updateError } = await supabase
-    .from('user_goals')
-    .update({ is_active: !current.is_active })
-    .eq('user_id', actorUserId)
-    .eq('goal_id', goalId);
-
-  if (updateError) {
-    throw new ServiceError('목표 상태 변경에 실패했습니다.', 'toggleUserGoal', updateError.message);
   }
 
   return true;
