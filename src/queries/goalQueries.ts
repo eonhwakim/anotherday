@@ -13,8 +13,20 @@ import { queryKeys } from './queryKeys';
 
 export function useTeamGoalsQuery(teamId: string, userId?: string) {
   return useQuery({
-    queryKey: queryKeys.goals.team(teamId, userId),
-    queryFn: () => fetchTeamGoals(teamId, userId),
+    queryKey:
+      teamId && userId
+        ? queryKeys.goals.team(teamId, userId)
+        : ['goals', 'team', teamId || null, userId ?? null],
+    queryFn: () => {
+      if (!teamId || !userId) {
+        throw new ServiceError(
+          '팀 목표를 불러올 조건이 올바르지 않습니다.',
+          'useTeamGoalsQuery',
+          'teamId and userId are required',
+        );
+      }
+      return fetchTeamGoals(teamId, userId);
+    },
     enabled: !!userId && !!teamId,
   });
 }
