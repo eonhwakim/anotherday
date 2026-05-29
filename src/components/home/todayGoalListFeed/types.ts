@@ -29,4 +29,5 @@ export interface PhotoSlideCardProps {
   width: number;
   marginRight: number;
   onReactionPress: (checkin: CheckinWithGoal) => void;
+  isReactionPending?: boolean;
 }

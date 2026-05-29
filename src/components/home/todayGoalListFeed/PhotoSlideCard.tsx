@@ -27,6 +27,7 @@ export function PhotoSlideCard({
   width,
   marginRight,
   onReactionPress,
+  isReactionPending = false,
 }: PhotoSlideCardProps) {
   const reactions = checkin.reactions ?? [];
   const reacted = !!userId && reactions.some((reaction) => reaction.user_id === userId);
@@ -60,6 +61,7 @@ export function PhotoSlideCard({
             activeOpacity={0.88}
             style={styles.likePill}
             onPress={() => onReactionPress(checkin)}
+            disabled={isReactionPending}
           >
             <Ionicons
               name={likePillAccent ? 'heart' : 'heart-outline'}

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   Animated,
   Image,
@@ -42,9 +42,14 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
   const { cardWidth, carouselPanResponder, carouselX, peekTailWidth, photoCheckins } =
     usePhotoCarousel(member.todayCheckins, screenWidth, onCarouselDragChange);
 
+  const pendingCheckinIds = useRef<Set<string>>(new Set());
+
   const handleReactionPress = useCallback(
     async (checkin: CheckinWithGoal) => {
       if (!user) return;
+      if (pendingCheckinIds.current.has(checkin.id)) return;
+
+      pendingCheckinIds.current.add(checkin.id);
       try {
         await toggleReactionMutation.mutateAsync({
           checkin,
@@ -56,6 +61,8 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
         });
       } catch (e) {
         handleServiceError(e);
+      } finally {
+        pendingCheckinIds.current.delete(checkin.id);
       }
     },
     [toggleReactionMutation, user],
@@ -121,6 +128,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
                     width={cardWidth}
                     marginRight={PHOTO_CARD_GAP}
                     onReactionPress={handleReactionPress}
+                    isReactionPending={toggleReactionMutation.isPending}
                   />
                 ))}
                 {peekTailWidth > 0 ? <PhotoPeekPlaceholder width={peekTailWidth} /> : null}

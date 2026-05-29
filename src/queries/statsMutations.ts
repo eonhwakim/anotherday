@@ -87,6 +87,7 @@ export function useToggleReactionMutation(params: {
       return toggleReaction(checkin.id, user.id, isReacted);
     },
     onMutate: async ({ checkin, user }) => {
+      await queryClient.cancelQueries({ queryKey: memberProgressQueryKey, exact: true });
       const previousMemberProgress = patchMemberProgressCache(
         queryClient,
         user,
