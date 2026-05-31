@@ -89,8 +89,13 @@ export default function TodayGoalListFeed({
       return;
     }
 
+    // 데이터가 아직 로드되지 않은 경우 대기
+    // members.length가 deps에 있으므로 로드 완료 시 effect가 재실행됨
+    if (members.length === 0) {
+      return;
+    }
+
     staggerAnimRef.current?.stop();
-    memberAnims.forEach((animation) => animation.setValue(1));
 
     const startTimeoutId = setTimeout(() => {
       hasAnimatedRef.current = true;

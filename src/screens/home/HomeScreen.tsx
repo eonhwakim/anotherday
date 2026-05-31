@@ -79,6 +79,11 @@ export default function HomeScreen() {
   const { isDay, isNight, isSunset, timePeriod, updateTime } = useHomeTimePeriod();
   const refreshHomeQueries = useHomeRefresh({ currentTeamId, todayStr, userId });
   const backgroundTheme = useSettingsStore((s) => s.backgroundTheme);
+  const updateTimeRef = useRef(updateTime);
+  const refreshHomeQueriesRef = useRef(refreshHomeQueries);
+
+  updateTimeRef.current = updateTime;
+  refreshHomeQueriesRef.current = refreshHomeQueries;
 
   // 4.2 Todo Actions
   // const {
@@ -114,9 +119,9 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       setIsStampFinished(false);
-      updateTime();
-      void refreshHomeQueries();
-    }, [refreshHomeQueries, setIsStampFinished, updateTime]),
+      updateTimeRef.current();
+      void refreshHomeQueriesRef.current();
+    }, []),
   );
 
   const onRefresh = async () => {
