@@ -359,7 +359,7 @@ function ClimbingCharacter({
           toValue: progress,
           duration: 2400 + progress * 2200,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
+          useNativeDriver: true,
         }).start();
         Animated.timing(displayPercent, {
           toValue: progress * 100,
@@ -393,7 +393,7 @@ function ClimbingCharacter({
         toValue: progress,
         duration: 1200,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
+        useNativeDriver: true,
       }).start();
       Animated.timing(displayPercent, {
         toValue: progress * 100,
@@ -415,13 +415,13 @@ function ClimbingCharacter({
               toValue: -4,
               duration: 800,
               easing: Easing.inOut(Easing.quad),
-              useNativeDriver: false,
+              useNativeDriver: true,
             }),
             Animated.timing(bounceAnim, {
               toValue: 0,
               duration: 800,
               easing: Easing.inOut(Easing.quad),
-              useNativeDriver: false,
+              useNativeDriver: true,
             }),
           ]),
         ).start();
@@ -444,8 +444,10 @@ function ClimbingCharacter({
       style={[
         styles.characterWrapper,
         {
-          left: animatedLeft,
-          top: Animated.add(animatedTop, bounceAnim),
+          transform: [
+            { translateX: animatedLeft },
+            { translateY: Animated.add(animatedTop, bounceAnim) },
+          ],
           zIndex: isMe ? 100 : 20 + index,
           elevation: isMe ? 14 : 4,
         },
