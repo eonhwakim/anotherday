@@ -33,7 +33,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
   const { width: screenWidth } = useWindowDimensions();
   const user = useAuthStore((s) => s.user);
   const currentTeamId = useTeamStore((s) => s.currentTeam?.id);
-  const todayStr = dayjs().format('YYYY-MM-DD');
+  const todayStr = React.useMemo(() => dayjs().format('YYYY-MM-DD'), []);
   const toggleReactionMutation = useToggleReactionMutation({
     teamId: currentTeamId,
     userId: user?.id,
