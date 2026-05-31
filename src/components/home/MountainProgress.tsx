@@ -493,10 +493,16 @@ function ClimbingCharacter({
 /** 퍼센트 숫자가 올라가는 라벨 */
 function PercentLabel({ value, color }: { value: Animated.Value; color: string }) {
   const [display, setDisplay] = useState('0%');
+  const lastFlooredRef = useRef(-1);
 
   useEffect(() => {
+    lastFlooredRef.current = -1;
     const id = value.addListener(({ value: v }) => {
-      setDisplay(`${Math.floor(v)}%`);
+      const floored = Math.floor(v);
+      if (floored !== lastFlooredRef.current) {
+        lastFlooredRef.current = floored;
+        setDisplay(`${floored}%`);
+      }
     });
     return () => value.removeListener(id);
   }, [value]);
