@@ -21,7 +21,6 @@ export default function TodayGoalListFeed({
   isNight = false,
   onPhotoCarouselDragChange,
 }: TodayGoalListFeedProps) {
-  // 1. Context & Derived Data
   const isFocused = useIsFocused();
   const { progress } = React.useMemo(() => getMissionProgress(members), [members]);
   const sortedMembers = React.useMemo(
@@ -29,15 +28,12 @@ export default function TodayGoalListFeed({
     [members, currentUserId],
   );
 
-  // 2. Animation Values & Refs
   const memberAnims = useRef(members.map(() => new Animated.Value(0))).current;
-
   const hasAnimatedRef = useRef(false);
   const staggeredMemberCountRef = useRef(-1);
   const staggerAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 4. Callbacks & Handlers
   const carouselDragParentRef = useRef(onPhotoCarouselDragChange);
   carouselDragParentRef.current = onPhotoCarouselDragChange;
 
@@ -70,8 +66,7 @@ export default function TodayGoalListFeed({
     staggeredMemberCountRef.current = memberAnims.length;
   }, [memberAnims]);
 
-  // 5. Lifecycle Effects (Animation Orchestration)
-  // 5.1. 멤버 수 변경 시 애니메이션 배열 동기화
+  // 멤버 수 변경 시 애니메이션 배열 동기화
   useEffect(() => {
     if (members.length !== memberAnims.length) {
       const wasEmpty = memberAnims.length === 0;
@@ -80,7 +75,7 @@ export default function TodayGoalListFeed({
     }
   }, [members, memberAnims]);
 
-  // 5.2. 멤버 카드 스태거 애니메이션 시작 + 완료 콜백 (화면 포커스 시 1회)
+  // 멤버 카드 스태거 애니메이션 시작 + 완료 콜백 (화면 포커스 시 1회)
   useEffect(() => {
     if (!isFocused) {
       hasAnimatedRef.current = false;
@@ -115,7 +110,7 @@ export default function TodayGoalListFeed({
     };
   }, [isFocused, members.length, memberAnims, onAnimationFinish, startMemberCardStagger]);
 
-  // 5.3. 멤버가 추가되었을 때 스태거 애니메이션 재시작 보정
+  // 멤버가 추가되었을 때 스태거 애니메이션 재시작 보정
   useEffect(() => {
     if (!isFocused || members.length === 0) return;
     if (!hasAnimatedRef.current) return;
