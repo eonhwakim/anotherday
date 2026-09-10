@@ -75,7 +75,7 @@ export const colors = {
   softRed: 'rgba(255, 68, 58, 0.35)',
   darkGreen: '#004c63',
 
-  background: '#e9f2f5',
+  background: '#F8F4EE',
   bgSoft: 'rgba(248, 193, 176, 0.17)',
 } as const;
 
