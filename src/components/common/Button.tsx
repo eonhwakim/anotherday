@@ -83,9 +83,10 @@ const styles = StyleSheet.create({
     ...shadows.button,
   },
   secondary: {
-    backgroundColor: colors.glass,
+    // 다른 화면의 카드 표면과 같은 반투명 흰색
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.hairline,
   },
   outline: {
     backgroundColor: 'transparent',

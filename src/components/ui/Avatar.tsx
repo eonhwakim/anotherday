@@ -34,13 +34,13 @@ export default function Avatar({ uri, size = 48, icon = 'person' }: AvatarProps)
 
 const styles = StyleSheet.create({
   base: {
-    backgroundColor: colors.brandLight,
+    backgroundColor: colors.bgSoft,
     overflow: 'hidden',
   },
   placeholder: {
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.brandPale,
+    borderColor: colors.softPeach,
   },
 });

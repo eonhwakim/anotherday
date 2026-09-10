@@ -8,7 +8,6 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
 import { handleServiceError } from '../../lib/serviceError';
 import dayjs from '../../lib/dayjs';
-import BaseCard from '../../components/ui/BaseCard';
 import ReviewModal from '../../components/stats/ReviewModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
@@ -181,7 +180,11 @@ export default function StatisticsScreen() {
                 style={[styles.scopeTabButton, activeScope === 'my' && styles.scopeTabButtonActive]}
                 onPress={() => setActiveScope('my')}
               >
-                <Ionicons name="fitness-outline" size={18} color={colors.textSecondary} />
+                <Ionicons
+                  name="fitness-outline"
+                  size={16}
+                  color={activeScope === 'my' ? colors.primary : colors.textMuted}
+                />
                 <Text
                   style={[styles.scopeTabText, activeScope === 'my' && styles.scopeTabTextActive]}
                 >
@@ -195,7 +198,11 @@ export default function StatisticsScreen() {
                 ]}
                 onPress={() => setActiveScope('team')}
               >
-                <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
+                <Ionicons
+                  name="people-outline"
+                  size={16}
+                  color={activeScope === 'team' ? colors.primary : colors.textMuted}
+                />
                 <Text
                   style={[styles.scopeTabText, activeScope === 'team' && styles.scopeTabTextActive]}
                 >
@@ -204,12 +211,7 @@ export default function StatisticsScreen() {
               </TouchableOpacity>
             </View>
 
-            <BaseCard
-              glassOnly
-              style={styles.tabFrame}
-              contentStyle={styles.tabContent}
-              padded={false}
-            >
+            <View style={styles.tabFrame}>
               <TouchableOpacity
                 style={[styles.tabBtn, activeTab === 'weekly' && styles.tabBtnActive]}
                 onPress={() => setActiveTab('weekly')}
@@ -226,7 +228,7 @@ export default function StatisticsScreen() {
                   Monthly
                 </Text>
               </TouchableOpacity>
-            </BaseCard>
+            </View>
 
             {activeScope === 'my' && activeTab === 'weekly' ? (
               <MyWeeklyStatistics
@@ -326,49 +328,48 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   scopeTabButtonActive: {
-    borderBottomWidth: 2,
+    borderBottomWidth: 1.5,
     borderBottomColor: colors.primary,
   },
   scopeTabText: {
-    ...typography.bodyStrong,
-    color: colors.darkGreen,
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textMuted,
   },
   scopeTabTextActive: {
-    color: colors.darkGreen,
-    fontWeight: '800',
+    color: colors.text,
+    fontWeight: '600',
   },
 
+  /** Weekly / Monthly 세그먼트 */
   tabFrame: {
-    marginBottom: spacing[4],
-    borderRadius: radius.xxl,
-  },
-  tabContent: {
+    ...ds.card,
     flexDirection: 'row',
-    padding: 6,
+    padding: 4,
+    borderRadius: radius.pill,
+    marginBottom: spacing[4],
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: 'center',
-    borderRadius: radius.xxl,
+    borderRadius: radius.pill,
   },
   tabBtnActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2,
+    backgroundColor: colors.white,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   tabText: {
-    ...typography.bodyStrong,
-    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textMuted,
   },
   tabTextActive: {
     color: colors.text,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

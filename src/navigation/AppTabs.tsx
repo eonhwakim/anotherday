@@ -114,9 +114,9 @@ function SlidingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                     style={isFocused ? styles.activeIcon : styles.inactiveIcon}
                   />
                 </View>
-                <Text style={[styles.tabLabel, isFocused && styles.tabLabelFocused, { color }]}>
+                {/* <Text style={[styles.tabLabel, isFocused && styles.tabLabelFocused, { color }]}>
                   {meta.label}
-                </Text>
+                </Text> */}
               </Pressable>
             );
           })}
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.34)',
     minHeight: 56,
     paddingHorizontal: TAB_BAR_HORIZONTAL_PAD,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: 'rgba(235, 244, 250, 0.78)',
     shadowColor: colors.shadow,
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   },
   activeIndicator: {
     position: 'absolute',
-    top: 7,
+    top: 10,
     height: 34,
     borderRadius: 999,
     backgroundColor: 'rgba(255, 107, 61, 0.12)',

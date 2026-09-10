@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.brand,
+    color: colors.primary,
     letterSpacing: 0.3,
   },
   modalSectionTitle: {
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   },
   modalTodoRowSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.brandLight,
+    backgroundColor: colors.primaryStrong,
   },
   modalTodoTextWrap: {
     flex: 1,
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   togglePillActive: {
-    backgroundColor: colors.brandLight,
+    backgroundColor: colors.primaryStrong,
     borderColor: colors.primary,
   },
   toggleThumb: {
@@ -729,7 +729,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: colors.brandLight,
+    backgroundColor: colors.primaryStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   },
   reminderChipActive: {
     borderColor: colors.primary,
-    backgroundColor: colors.brandLight,
+    backgroundColor: colors.primaryStrong,
   },
   reminderChipText: {
     ...typography.body,

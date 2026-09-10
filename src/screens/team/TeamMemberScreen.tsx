@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -22,10 +21,9 @@ import { useTeamStore } from '../../stores/teamStore';
 import { useDeleteTeamMutation, useLeaveTeamMutation } from '../../queries/teamMutations';
 import { useTeamMembersQuery } from '../../queries/teamQueries';
 import SectionHeader from '../../components/ui/SectionHeader';
-import BaseCard from '../../components/ui/BaseCard';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
-import { colors, ds, radius, spacing, typography } from '../../design/recipes';
+import { colors, ds, radius, spacing } from '../../design/recipes';
 import GradientBackground from '../../components/ui/GradientBackground';
 import PageHeader from '../../components/ui/PageHeader';
 
@@ -137,11 +135,7 @@ export default function TeamMemberScreen() {
                   activeOpacity={myRole === 'leader' ? 0.7 : 1}
                   disabled={myRole !== 'leader'}
                 >
-                  <BaseCard
-                    style={styles.teamProfileFrame}
-                    contentStyle={styles.teamProfileRow as ViewStyle}
-                    padded={false}
-                  >
+                  <View style={styles.teamProfileRow as ViewStyle}>
                     <View>
                       {/* @ts-ignore */}
                       <Avatar
@@ -157,13 +151,13 @@ export default function TeamMemberScreen() {
                       </Text>
                     </View>
                     {myRole === 'leader' && (
-                      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                     )}
-                  </BaseCard>
+                  </View>
                 </TouchableOpacity>
 
                 {currentTeamInfo?.invite_code && (
-                  <BaseCard style={styles.inviteCardFrame} padded={false}>
+                  <View style={styles.inviteCardFrame}>
                     <View style={styles.inviteCardContent}>
                       <View style={styles.inviteTextBlock}>
                         <Text style={styles.inviteLabel}>참여 코드</Text>
@@ -181,18 +175,13 @@ export default function TeamMemberScreen() {
                         <Text style={styles.inviteCopyText}>복사</Text>
                       </TouchableOpacity>
                     </View>
-                  </BaseCard>
+                  </View>
                 )}
 
                 <View style={styles.section as ViewStyle}>
                   <SectionHeader title={`팀 멤버 (${sortedMembers.length})`} />
                   {sortedMembers.map((member) => (
-                    <BaseCard
-                      key={member.id}
-                      style={styles.memberCardFrame}
-                      contentStyle={styles.memberCardContent}
-                      padded={false}
-                    >
+                    <View key={member.id} style={styles.memberCardFrame}>
                       <View style={styles.memberRow}>
                         <View style={styles.memberProfile}>
                           <Avatar uri={member.user.profile_image_url} size={48} />
@@ -219,37 +208,24 @@ export default function TeamMemberScreen() {
                           </View>
                         </View>
                       </View>
-                    </BaseCard>
+                    </View>
                   ))}
                 </View>
 
                 {myRole && (
                   <View style={styles.dangerZone}>
-                    <View style={styles.dangerDivider} />
-                    {myRole === 'leader' ? (
-                      <TouchableOpacity onPress={handleDeleteTeam}>
-                        <BaseCard
-                          style={styles.dangerFrame}
-                          contentStyle={styles.dangerBtn}
-                          padded={false}
-                        >
-                          <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                          <Text style={styles.dangerBtnText}>팀 삭제</Text>
-                        </BaseCard>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity onPress={handleLeaveTeam}>
-                        <BaseCard
-                          glassOnly
-                          style={styles.dangerFrame}
-                          contentStyle={styles.dangerBtn}
-                          padded={false}
-                        >
-                          <Ionicons name="exit-outline" size={16} color="#EF4444" />
-                          <Text style={styles.dangerBtnText}>팀 탈퇴</Text>
-                        </BaseCard>
-                      </TouchableOpacity>
-                    )}
+                    <TouchableOpacity
+                      onPress={myRole === 'leader' ? handleDeleteTeam : handleLeaveTeam}
+                      style={styles.dangerLinkWrap}
+                      activeOpacity={0.6}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel={myRole === 'leader' ? '팀 삭제' : '팀 탈퇴'}
+                    >
+                      <Text style={styles.dangerLink}>
+                        {myRole === 'leader' ? '팀 삭제' : '팀 탈퇴'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </>
@@ -274,30 +250,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
   },
-  teamProfileFrame: {
-    marginBottom: spacing[4],
-    borderRadius: radius.lg,
-  },
+  /** 다른 탭과 같은 반투명 흰 카드 규격 */
   teamProfileRow: {
     ...(ds.rowCenter as ViewStyle),
     gap: spacing[4],
-    padding: spacing[5],
+    marginBottom: spacing[3],
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[4],
   },
   teamProfileInfo: {
     flex: 1,
   },
   teamProfileName: {
-    ...typography.titleMd,
+    fontSize: 17,
     fontWeight: '600',
+    letterSpacing: -0.2,
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 3,
   },
   teamProfileHint: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 12,
+    color: colors.textMuted,
   },
   inviteCardFrame: {
     marginBottom: spacing[6],
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   inviteCardContent: {
     flexDirection: 'row',
@@ -310,12 +294,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inviteLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: 2,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    color: colors.textFaint,
+    marginBottom: 3,
   },
   inviteCode: {
-    ...typography.titleSm,
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.text,
     letterSpacing: 3,
     fontVariant: ['tabular-nums'],
@@ -324,22 +311,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 6,
+    height: 30,
     paddingHorizontal: spacing[3],
-    borderRadius: radius.sm,
-    backgroundColor: 'rgba(0,0,0,0.04)',
+    borderRadius: radius.pill,
+    backgroundColor: colors.chipNeutral,
   },
   inviteCopyText: {
-    ...typography.label,
+    fontSize: 12,
+    fontWeight: '600',
     color: colors.primary,
   },
   section: ds.section as ViewStyle,
   memberCardFrame: {
-    marginBottom: spacing[3],
-    borderRadius: radius.md,
-  },
-  memberCardContent: {
-    padding: spacing[3],
+    marginBottom: spacing[2],
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    padding: spacing[3] + 2,
   },
   memberRow: {
     ...(ds.rowBetween as ViewStyle),
@@ -358,38 +347,29 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   nickname: {
-    ...typography.titleSm,
-    color: colors.text,
+    fontSize: 14,
     fontWeight: '600',
+    letterSpacing: -0.1,
+    color: colors.text,
   },
   memberDetail: {
-    ...typography.label,
-    color: colors.textSecondary,
-    textTransform: 'none',
-    marginTop: 4,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 3,
   },
   dangerZone: {
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: spacing[5],
+    marginBottom: spacing[2],
   },
-  dangerDivider: {
-    width: '100%',
-    height: 1,
-    backgroundColor: colors.borderMuted,
-    marginBottom: spacing[4],
+  /** 팀 삭제·탈퇴는 카드가 아니라 조용한 텍스트 링크로 */
+  dangerLinkWrap: {
+    alignItems: 'center',
+    paddingVertical: spacing[3],
   },
-  dangerFrame: {
-    borderRadius: radius.md,
-  },
-  dangerBtn: {
-    ...(ds.rowCenter as ViewStyle),
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    paddingHorizontal: spacing[5],
-  },
-  dangerBtnText: {
-    ...(typography.bodyStrong as TextStyle),
-    color: colors.error,
+  dangerLink: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
   },
 });

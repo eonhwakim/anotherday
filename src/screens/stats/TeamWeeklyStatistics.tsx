@@ -7,7 +7,6 @@ import { ds } from '@/design/recipes';
 import type { UserGoal } from '../../types/domain';
 import { getWeekLabelParts, statisticsSharedStyles as sharedStyles } from './statisticsShared';
 
-import BaseCard from '../../components/ui/BaseCard';
 import TeamMemberCard from '../../components/stats/TeamMemberCard';
 import type { WeeklyTeamMember } from '../../services/statsService';
 
@@ -84,20 +83,23 @@ export default function TeamWeeklyStatistics({
             <Text style={sharedStyles.emptySmall}>팀원 데이터가 없습니다</Text>
           ) : (
             <>
+              {/* 소제목 제거 — 아래 멤버 리스트가 스스로 설명함
               <View style={styles.cardHeader}>
                 <Text style={ds.cardTitle}>Weekly Status Report</Text>
               </View>
-              <BaseCard glassOnly>
+              */}
+              <View style={[ds.card, styles.memberListCard]}>
                 {weeklyTeamData.map((member, index) => (
                   <TeamMemberCard
                     key={member.userId}
                     member={member}
+                    showDivider={index > 0}
                     rank={memberRanks[index]}
                     isWeekEnded={isWeekEnded}
                     variant="weekly"
                   />
                 ))}
-              </BaseCard>
+              </View>
             </>
           )}
         </>
@@ -107,6 +109,10 @@ export default function TeamWeeklyStatistics({
 }
 
 const styles = StyleSheet.create({
+  memberListCard: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
   cardHeader: {
     marginTop: 26,
     marginBottom: 16,

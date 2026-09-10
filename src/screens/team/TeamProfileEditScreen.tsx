@@ -21,7 +21,6 @@ import GradientBackground from '../../components/ui/GradientBackground';
 import PageHeader from '../../components/ui/PageHeader';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
-import BaseCard from '../../components/ui/BaseCard';
 import { RootStackParamList } from '../../types/navigation';
 
 type TeamProfileEditRouteProp = RouteProp<RootStackParamList, 'TeamProfileEdit'>;
@@ -92,23 +91,23 @@ export default function TeamProfileEditScreen() {
                 <Image source={{ uri: imageUri }} style={styles.profileImage} />
               ) : (
                 <View style={[styles.profileImage, styles.placeholderImage]}>
-                  <Ionicons name="people" size={36} color={colors.primaryLight} />
+                  <Ionicons name="people" size={36} color={colors.textMuted} />
                 </View>
               )}
               <View style={styles.cameraIcon}>
-                <Ionicons name="camera" size={14} color="#FFF" />
+                <Ionicons name="camera" size={14} color={colors.white} />
               </View>
             </TouchableOpacity>
           </View>
 
-          <BaseCard style={styles.formFrame} contentStyle={styles.form}>
+          <View style={styles.form}>
             <Input
               label="팀 이름"
               value={name}
               onChangeText={setName}
               placeholder="팀 이름을 입력하세요"
             />
-          </BaseCard>
+          </View>
         </ScrollView>
 
         <View style={styles.footer}>
@@ -126,7 +125,8 @@ export default function TeamProfileEditScreen() {
 const styles = StyleSheet.create({
   profileImageContainer: {
     alignItems: 'center',
-    paddingVertical: 24,
+    marginTop: 20,
+    marginBottom: 28,
   },
   imageWrapper: {
     position: 'relative',
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   placeholderImage: {
-    backgroundColor: 'rgba(255, 107, 61, 0.12)',
+    backgroundColor: colors.chipNeutral,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -145,20 +145,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
   },
-  formFrame: {
-    marginBottom: 16,
-    borderRadius: 16,
-  },
+  /** 프로필 수정 페이지와 같은 반투명 흰 카드 규격 */
   form: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    marginBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    padding: 20,
   },
   footer: {
     paddingTop: 16,

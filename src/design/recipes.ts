@@ -115,6 +115,13 @@ export const ds = StyleSheet.create({
     paddingHorizontal: spacing[5],
     paddingTop: spacing[6],
   },
+  /** 콘텐츠 카드 표면 — 앱 전체 공통 (반투명 흰 카드 + 헤어라인) */
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
   /** 섹션 구분용 소문자 라벨 */
   eyebrow: {
     ...typography.label,

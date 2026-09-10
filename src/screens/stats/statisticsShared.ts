@@ -33,6 +33,15 @@ export function freqLabel(frequency: string, targetCount: number | null): string
 
 export const statisticsSharedStyles = StyleSheet.create({
   container: { flex: 1 },
+  /** 목표 행들을 하나로 묶는 카드의 안쪽 여백 */
+  goalListCard: {
+    paddingHorizontal: 16,
+  },
+  /** 내용이 없을 때 쓰는 카드 안쪽 여백 */
+  emptyCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
   section: {
     paddingVertical: 16,
   },
@@ -85,22 +94,22 @@ export const statisticsSharedStyles = StyleSheet.create({
     color: '#888',
   },
   dividerSection: {
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingTop: 12,
+    marginTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.hairline,
   },
   subLabel: {
-    fontSize: 15,
+    fontSize: 11,
     fontWeight: '700',
-    color: 'rgba(26,26,26,0.40)',
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    color: colors.textFaint,
+    marginBottom: 5,
   },
   reviewText: {
     ...typography.body,
     color: colors.text,
-    lineHeight: 20,
-    marginLeft: 8,
+    lineHeight: 19,
   },
   //배찌
   scoreBox: {

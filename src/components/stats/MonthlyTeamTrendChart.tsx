@@ -30,9 +30,11 @@ export default function MonthlyTeamTrendChart({ members }: Props) {
 
   return (
     <>
+      {/* 소제목 제거 — 차트 자체가 달성률을 보여줌
       <View style={[sharedStyles.cardHeader, styles.cardHeader]}>
         <Text style={ds.cardTitle}>Achievement Rate</Text>
       </View>
+      */}
       <BaseCard glassOnly>
         {/* Header Row */}
         <View style={styles.headerRow}>

@@ -15,17 +15,13 @@ import { useTeamStore } from '../../stores/teamStore';
 import { useCreateTeamMutation, useJoinTeamMutation } from '../../queries/teamMutations';
 import { useUserTeamsQuery } from '../../queries/teamQueries';
 import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
-import { colors, ds, spacing, typography } from '../../design/recipes';
+import { colors, ds, spacing } from '../../design/recipes';
 
 import Input from '../../components/common/Input';
 import GlassModal from '../../components/ui/GlassModal';
 import MyPageProfileCard from '../../components/mypage/MyPageProfileCard';
 import GradientBackground from '../../components/ui/GradientBackground';
-import BaseCard from '../../components/ui/BaseCard';
 import PageHeader from '../../components/ui/PageHeader';
-const ROW_ICON = '#4A4A4A';
-const CHEVRON = '#BDBDBD';
-const DIVIDER = 'rgba(0,0,0,0.06)';
 
 type Ion = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -46,13 +42,13 @@ function SettingsRow({
     <>
       <TouchableOpacity style={styles.settingsRow} onPress={onPress} activeOpacity={0.65}>
         <View style={styles.iconCol}>
-          <Ionicons name={icon} size={22} color={ROW_ICON} />
+          <Ionicons name={icon} size={20} color={colors.textSecondary} />
         </View>
         <View style={styles.settingsTextWrap}>
           <Text style={styles.settingsTitle}>{title}</Text>
           <Text style={styles.settingsSubtitle}>{subtitle}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={CHEVRON} />
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </TouchableOpacity>
       {showDivider ? <View style={styles.settingsDivider} /> : null}
     </>
@@ -220,7 +216,7 @@ export default function MyPageScreen() {
 
             <MyPageProfileCard user={user} onPress={() => navigation.navigate('ProfileEdit')} />
 
-            <BaseCard padded={false} style={styles.section}>
+            <View style={styles.section}>
               <SettingsRow
                 icon="settings-outline"
                 title="설정"
@@ -255,20 +251,18 @@ export default function MyPageScreen() {
                 onPress={() => Alert.alert('도움말', 'FAQ는 곧 제공될 예정이에요.')}
                 showDivider={false}
               />
-            </BaseCard>
+            </View>
 
-            <BaseCard padded={false} style={styles.logoutCardFrame}>
-              <TouchableOpacity
-                style={styles.logoutCard}
-                onPress={handleLogout}
-                activeOpacity={0.65}
-                accessibilityRole="button"
-                accessibilityLabel="로그아웃"
-              >
-                <Ionicons name="log-out-outline" size={22} color={colors.error} />
-                <Text style={styles.logoutText}>로그아웃</Text>
-              </TouchableOpacity>
-            </BaseCard>
+            <TouchableOpacity
+              style={styles.logoutLinkWrap}
+              onPress={handleLogout}
+              activeOpacity={0.6}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="로그아웃"
+            >
+              <Text style={styles.logoutLink}>로그아웃</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
 
@@ -316,39 +310,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingsTitle: {
-    ...typography.bodyStrong,
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.1,
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   settingsSubtitle: {
-    ...typography.caption,
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.textMuted,
   },
   settingsDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: DIVIDER,
+    backgroundColor: colors.hairline,
     marginLeft: spacing[4] + 28 + spacing[3],
     marginRight: spacing[4],
   },
-  logoutCard: {
-    flexDirection: 'row',
+  /** 로그아웃은 카드가 아니라 조용한 텍스트 링크로 */
+  logoutLinkWrap: {
     alignItems: 'center',
-    gap: spacing[3],
-    paddingVertical: spacing[4] + 2,
-    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
   },
-  logoutText: {
-    ...typography.bodyStrong,
-    fontSize: 16,
-    color: colors.error,
+  logoutLink: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
   },
   section: {
     marginBottom: spacing[4],
-  },
-  logoutCardFrame: {
-    marginTop: spacing[8],
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    overflow: 'hidden',
   },
 });

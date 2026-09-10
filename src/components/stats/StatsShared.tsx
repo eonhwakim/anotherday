@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
+import { colors } from '../../design/recipes';
 import Svg, {
   Path,
   Defs,
@@ -46,8 +47,8 @@ export function AreaChart({ data }: { data: { label: string; value: number }[] }
     <Svg width={CHART_W} height={CHART_H}>
       <Defs>
         <LinearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor="#FF6B3D" stopOpacity="0.35" />
-          <Stop offset="100%" stopColor="#FF6B3D" stopOpacity="0.03" />
+          <Stop offset="0%" stopColor={colors.primary} stopOpacity="0.35" />
+          <Stop offset="100%" stopColor={colors.primary} stopOpacity="0.03" />
         </LinearGradient>
       </Defs>
       {gridValues
@@ -81,14 +82,21 @@ export function AreaChart({ data }: { data: { label: string; value: number }[] }
       <Path
         d={linePath}
         fill="none"
-        stroke="#FF6B3D"
+        stroke={colors.primary}
         strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       {pts.map((p, i) => (
         <G key={i}>
-          <SvgCircle cx={p.x} cy={p.y} r={4.5} fill="#FFF" stroke="#FF6B3D" strokeWidth={2.5} />
+          <SvgCircle
+            cx={p.x}
+            cy={p.y}
+            r={4.5}
+            fill="#FFF"
+            stroke={colors.primary}
+            strokeWidth={2.5}
+          />
           <SvgText
             x={p.x}
             y={CHART_PAD.top + plotH + 16}
@@ -103,7 +111,7 @@ export function AreaChart({ data }: { data: { label: string; value: number }[] }
             x={p.x}
             y={p.y - 10}
             fontSize={10}
-            fill="#FF6B3D"
+            fill={colors.primary}
             textAnchor="middle"
             fontWeight="700"
           >
@@ -120,12 +128,12 @@ export function MountainBg({ width, height }: { width: number; height: number })
     <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
       <Defs>
         <LinearGradient id="mt1" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor="#FF6B3D" stopOpacity="0.10" />
-          <Stop offset="100%" stopColor="#FF6B3D" stopOpacity="0.02" />
+          <Stop offset="0%" stopColor={colors.primary} stopOpacity="0.10" />
+          <Stop offset="100%" stopColor={colors.primary} stopOpacity="0.02" />
         </LinearGradient>
         <LinearGradient id="mt2" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor="#FF6B3D" stopOpacity="0.06" />
-          <Stop offset="100%" stopColor="#FF6B3D" stopOpacity="0.01" />
+          <Stop offset="0%" stopColor={colors.primary} stopOpacity="0.06" />
+          <Stop offset="100%" stopColor={colors.primary} stopOpacity="0.01" />
         </LinearGradient>
       </Defs>
       <Path
@@ -143,7 +151,7 @@ export function MountainBg({ width, height }: { width: number; height: number })
 export function ProgressBar({
   rate,
   height = 8,
-  color = '#FF6B3D',
+  color = colors.primary,
 }: {
   rate: number;
   height?: number;

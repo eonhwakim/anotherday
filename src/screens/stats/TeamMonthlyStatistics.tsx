@@ -5,7 +5,6 @@ import { colors } from '../../design/tokens';
 import type { MemberDetail } from '../../services/statsService';
 import { statisticsSharedStyles as sharedStyles } from './statisticsShared';
 import { ds } from '@/design/recipes';
-import BaseCard from '../../components/ui/BaseCard';
 import MonthlySummaryCards from '../../components/ui/MonthlySummaryCards';
 import MonthlyTeamTrendChart from '../../components/stats/MonthlyTeamTrendChart';
 import TeamMemberCard from '../../components/stats/TeamMemberCard';
@@ -91,12 +90,14 @@ export default function TeamMonthlyStatistics({
       <View>
         {hasTeam && memberDetails.length > 0 && (
           <>
+            {/* 소제목 제거 — 아래 멤버 카드가 스스로 설명함
             <Text style={[ds.cardTitle, styles.detailsTitle]}>Details</Text>
-            <View style={{ gap: 20 }}>
+            */}
+            <View style={{ gap: 12 }}>
               {memberDetails.map((member, index) => {
                 const rank = memberRanks[index];
                 return (
-                  <BaseCard key={member.userId}>
+                  <View key={member.userId} style={[ds.card, styles.memberCard]}>
                     {/* 루틴상세 */}
                     <TeamMemberCard
                       member={member}
@@ -104,22 +105,24 @@ export default function TeamMonthlyStatistics({
                       variant="monthly"
                       monthTotalDays={monthTotalDays}
                     />
-                    {/* 한마디 / 회고 */}
-                    <View>
-                      <View style={sharedStyles.dividerSection}>
-                        <Text style={sharedStyles.subLabel}>한마디</Text>
-                        <Text style={sharedStyles.reviewText}>
-                          {member.hanmadi ? member.hanmadi : '-'}
-                        </Text>
+                    {/* 한마디 / 회고 — 작성된 것만 */}
+                    {member.hanmadi || member.hoego ? (
+                      <View>
+                        {member.hanmadi ? (
+                          <View style={sharedStyles.dividerSection}>
+                            <Text style={sharedStyles.subLabel}>한마디</Text>
+                            <Text style={sharedStyles.reviewText}>{member.hanmadi}</Text>
+                          </View>
+                        ) : null}
+                        {member.hoego ? (
+                          <View style={sharedStyles.dividerSection}>
+                            <Text style={sharedStyles.subLabel}>회고</Text>
+                            <Text style={sharedStyles.reviewText}>{member.hoego}</Text>
+                          </View>
+                        ) : null}
                       </View>
-                      <View style={sharedStyles.dividerSection}>
-                        <Text style={sharedStyles.subLabel}>회고</Text>
-                        <Text style={sharedStyles.reviewText}>
-                          {member.hoego ? member.hoego : '-'}
-                        </Text>
-                      </View>
-                    </View>
-                  </BaseCard>
+                    ) : null}
+                  </View>
                 );
               })}
             </View>
@@ -131,6 +134,10 @@ export default function TeamMonthlyStatistics({
 }
 
 const styles = StyleSheet.create({
+  memberCard: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
   detailsTitle: {
     marginTop: 26,
     marginBottom: 16,

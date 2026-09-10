@@ -9,7 +9,6 @@ import type { WeeklyStatsResult } from '../../services/statsService';
 import type { UserGoal } from '../../types/domain';
 import { getWeekLabelParts, statisticsSharedStyles as sharedStyles } from './statisticsShared';
 
-import BaseCard from '../../components/ui/BaseCard';
 import RoutineStatusCard from '../../components/stats/RoutineStatusCard';
 import { ds } from '@/design/recipes';
 
@@ -90,23 +89,19 @@ export default function MyWeeklyStatistics({
       {/* ── 집계 한마디 카드 ── */}
       <View>
         {isAllClear ? (
-          <BaseCard
-            glassOnly
-            style={sharedStyles.allClearBox}
-            contentStyle={sharedStyles.allClearBoxContent}
-          >
+          <View style={[ds.card, sharedStyles.allClearBox, sharedStyles.allClearBoxContent]}>
             <Text style={sharedStyles.allClearEmoji}>🏆</Text>
             <Text style={sharedStyles.allClearTitle}>이번 주 올클리어 달성!</Text>
             <Text style={sharedStyles.allClearSub}>모든 루틴을 완벽하게 해냈어요</Text>
-          </BaseCard>
+          </View>
         ) : null}
       </View>
 
       {/* 루틴 현황 카드 */}
       {myWeeklyGoals.length === 0 ? (
-        <BaseCard>
+        <View style={[ds.card, sharedStyles.emptyCard]}>
           <Text style={sharedStyles.emptySmall}>이번 주 진행 중인 루틴이 없어요</Text>
-        </BaseCard>
+        </View>
       ) : (
         <View style={sharedStyles.section}>
           <View style={sharedStyles.cardHeader}>
@@ -115,7 +110,7 @@ export default function MyWeeklyStatistics({
                 gap: 8,
               }}
             >
-              <Text style={ds.cardTitle}>Routine Status</Text>
+              {/* <Text style={ds.cardTitle}>Routine Status</Text> */}
               <Text style={sharedStyles.cardSubText}>총 루틴 {myTotalGoals}개</Text>
             </View>
             <View style={sharedStyles.scoreBox}>
@@ -140,23 +135,26 @@ export default function MyWeeklyStatistics({
               )}
             </View>
           </View>
-          {/* 목표리스트 */}
-          {myWeeklyGoals.map((goal) => (
-            <RoutineStatusCard
-              key={goal.goalId}
-              name={goal.name}
-              frequency={goal.isDaily ? 'daily' : 'weekly_count'}
-              targetCount={goal.target}
-              rate={goal.target > 0 ? (goal.doneCount / goal.target) * 100 : 0}
-              isAchieved={goal.isAchieved}
-              isEnded={goal.isEnded}
-              startDate={goal.startDate}
-              endDate={goal.endDate}
-              doneCount={goal.doneCount}
-              target={goal.target}
-              variant="weekly"
-            />
-          ))}
+          {/* 목표리스트 — 행마다 카드를 두지 않고 하나로 묶는다 */}
+          <View style={[ds.card, sharedStyles.goalListCard]}>
+            {myWeeklyGoals.map((goal, index) => (
+              <RoutineStatusCard
+                key={goal.goalId}
+                showDivider={index > 0}
+                name={goal.name}
+                frequency={goal.isDaily ? 'daily' : 'weekly_count'}
+                targetCount={goal.target}
+                rate={goal.target > 0 ? (goal.doneCount / goal.target) * 100 : 0}
+                isAchieved={goal.isAchieved}
+                isEnded={goal.isEnded}
+                startDate={goal.startDate}
+                endDate={goal.endDate}
+                doneCount={goal.doneCount}
+                target={goal.target}
+                variant="weekly"
+              />
+            ))}
+          </View>
         </View>
       )}
     </View>

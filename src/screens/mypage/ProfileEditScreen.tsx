@@ -17,7 +17,6 @@ import { pickProfileImage, uploadProfileImage, updateProfile } from '../../servi
 import { colors, ds } from '../../design/recipes';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import BaseCard from '../../components/ui/BaseCard';
 import { SelectableCard, SelectableCardGroup } from '../../components/ui/SelectableCard';
 import GradientBackground from '../../components/ui/GradientBackground';
 import PageHeader from '../../components/ui/PageHeader';
@@ -151,7 +150,7 @@ export default function ProfileEditScreen() {
             </TouchableOpacity>
           </View>
 
-          <BaseCard style={styles.formFrame} contentStyle={styles.form}>
+          <View style={styles.form}>
             <Input
               label="닉네임"
               value={nickname}
@@ -187,17 +186,18 @@ export default function ProfileEditScreen() {
               placeholder="나이를 입력하세요"
               keyboardType="number-pad"
             />
-          </BaseCard>
+          </View>
 
-          <BaseCard style={styles.dangerFrame} contentStyle={styles.dangerContent}>
-            <TouchableOpacity style={styles.accountRow} onPress={handleDeleteAccount}>
-              <View style={styles.accountRowLeft}>
-                <Ionicons name="trash-outline" size={20} color={colors.error} />
-                <Text style={[styles.accountRowText, { color: colors.error }]}>탈퇴하기</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.error} />
-            </TouchableOpacity>
-          </BaseCard>
+          <TouchableOpacity
+            style={styles.deleteLinkWrap}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.6}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="탈퇴하기"
+          >
+            <Text style={styles.deleteLink}>탈퇴하기</Text>
+          </TouchableOpacity>
 
           <Text style={styles.accountDeleteHint}>
             탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
@@ -231,7 +231,8 @@ const styles = StyleSheet.create({
   },
   profileImageContainer: {
     alignItems: 'center',
-    marginVertical: 28,
+    marginTop: 20,
+    marginBottom: 28,
   },
   imageWrapper: {
     position: 'relative',
@@ -242,74 +243,61 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   placeholderImage: {
-    backgroundColor: 'rgba(255, 107, 61, 0.06)',
+    backgroundColor: colors.chipNeutral,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.18)',
   },
   cameraIcon: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#FF6B3D',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    backgroundColor: colors.primary,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: colors.white,
   },
-  formFrame: {
-    marginBottom: 16,
-    borderRadius: 16,
-  },
+  /** 다른 탭과 같은 반투명 흰 카드 규격 */
   form: {
+    marginBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
     padding: 20,
     gap: 12,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(26,26,26,0.50)',
-    marginBottom: 4,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    color: colors.textFaint,
+    marginBottom: 6,
   },
   genderContainer: {
     marginBottom: 16,
   },
-  dangerFrame: {
-    marginBottom: 8,
-    borderRadius: 16,
-  },
-  dangerContent: {
-    paddingHorizontal: 0,
-    paddingVertical: 8,
-  },
-  accountRow: {
-    flexDirection: 'row',
+  /** 탈퇴도 카드가 아니라 조용한 텍스트 링크로 */
+  deleteLinkWrap: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 10,
+    marginTop: 4,
   },
-  accountRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  accountRowText: {
-    fontSize: 15,
+  deleteLink: {
+    fontSize: 13,
     fontWeight: '500',
-    color: '#1A1A1A',
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
   },
   accountDeleteHint: {
-    fontSize: 12,
-    color: 'rgba(26,26,26,0.35)',
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.textMuted,
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 6,
     marginBottom: 40,
   },
   footer: {

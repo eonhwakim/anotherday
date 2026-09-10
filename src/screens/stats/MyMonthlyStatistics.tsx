@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import BaseCard from '../../components/ui/BaseCard';
 import { colors, ds } from '../../design/recipes';
 import type { MemberDetail, MyGoalDetail } from '../../services/statsService';
 import { statisticsSharedStyles as sharedStyles } from './statisticsShared';
@@ -80,12 +79,13 @@ export default function MyMonthlyStatistics({
         rateLabel="월간 평균"
       />
 
-      {/* 주차별 달성률 차트 */}
+      {/* 주차별 달성률 차트 — 소제목 없이 카드만
       <View style={[sharedStyles.cardHeader, styles.cardHeader]}>
         <Text style={ds.cardTitle}>Weekly Achievement Rate</Text>
       </View>
+      */}
 
-      <BaseCard glassOnly style={styles.weeklyBarsContainer}>
+      <View style={[ds.card, styles.weeklyBarsContainer]}>
         {myWeeklyRates.map((w) => (
           <View key={w.week} style={styles.weeklyBarRow}>
             <View style={styles.weeklyBarHeader}>
@@ -104,19 +104,20 @@ export default function MyMonthlyStatistics({
             </View>
           </View>
         ))}
-      </BaseCard>
+      </View>
       {/* 루틴 카드 */}
       <View style={sharedStyles.section}>
         {myGoalDetails.length > 0 && (
           <>
             <View style={[sharedStyles.cardHeader, styles.cardHeader]}>
-              <Text style={ds.cardTitle}>Routine Status</Text>
+              {/* <Text style={ds.cardTitle}>Routine Status</Text> */}
               <Text style={sharedStyles.cardSubText}>통계 기준 총 일수: {monthTotalDays}일</Text>
             </View>
-            <View>
-              {myGoalDetails.map((goal) => (
+            <View style={[ds.card, styles.goalListCard]}>
+              {myGoalDetails.map((goal, index) => (
                 <RoutineStatusCard
                   key={goal.goalId}
+                  showDivider={index > 0}
                   name={goal.name}
                   frequency={goal.frequency}
                   targetCount={goal.targetCount}
@@ -156,8 +157,15 @@ const styles = StyleSheet.create({
   cardHeader: {
     marginTop: 26,
   },
+  goalListCard: {
+    paddingHorizontal: 16,
+  },
   weeklyBarsContainer: {
     gap: 16,
+    // BaseCard 가 주던 내부 패딩을 직접 갖는다
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
   },
   weeklyBarRow: {
     marginBottom: 14,
