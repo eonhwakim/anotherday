@@ -331,7 +331,7 @@ export default function GoalSetting({
                                   </Text>
                                   <View style={styles.goalSubtitleItem}>
                                     <Ionicons
-                                      name="time-outline"
+                                      name="caret-forward-circle-outline"
                                       size={14}
                                       color={isEnded ? colors.textFaint : colors.textSecondary}
                                     />

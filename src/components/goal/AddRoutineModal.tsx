@@ -36,10 +36,7 @@ interface AddRoutineModalProps {
 
 export default function AddRoutineModal({ visible, onClose, onDone }: AddRoutineModalProps) {
   const { height: winH } = useWindowDimensions();
-  const scrollMaxHeight = useMemo(
-    () => Math.max(170, Math.round(winH * 0.75 - 220)),
-    [winH],
-  );
+  const scrollMaxHeight = useMemo(() => Math.max(170, Math.round(winH * 0.75 - 220)), [winH]);
 
   const { user } = useAuthStore();
   const { currentTeam } = useTeamStore();
@@ -154,15 +151,13 @@ export default function AddRoutineModal({ visible, onClose, onDone }: AddRoutine
     if (!user) return;
 
     if (duration === 'this_month') {
-      const { targetMonth, endDateStr } = currentMonthGuide;
-      const today = dayjs();
-      const calendarMonth = today.format('M월');
-      const statMonth = dayjs(`${targetMonth}-01`).format('M월');
+      const { endDateStr } = currentMonthGuide;
+      // const { targetMonth, endDateStr } = currentMonthGuide;
+      // const today = dayjs();
+      // const calendarMonth = today.format('M월');
+      // const statMonth = dayjs(`${targetMonth}-01`).format('M월');
 
-      const message =
-        calendarMonth !== statMonth
-          ? `현재 날짜는 캘린더상 ${calendarMonth}이지만, 통계 주차 규칙(4일 이상 포함)에 따라 ${statMonth} 통계로 편입됩니다.\n\n따라서 이 루틴은 ${statMonth}의 마지막 통계 주차인 [${endDateStr}]까지 적용됩니다. 추가하시겠습니까?`
-          : `월초/월말 통계 주차 편입 규칙에 따라,\n이 루틴은 이번 달 마지막 통계 주차인\n[${endDateStr}]까지 적용됩니다. 추가하시겠습니까?`;
+      const message = `이번 달 마지막 통계 주차인 [${endDateStr}]까지 적용됩니다. \n\n추가하시겠습니까?`;
 
       Alert.alert('이번달까지 루틴 추가', message, [
         { text: '취소', style: 'cancel' },
