@@ -1,5 +1,5 @@
-/** BaseCard contentPad — 캐러셀 좌측 정렬 기준 */
-export const CARD_CONTENT_HORIZONTAL_PAD = 18;
+/** 시트 좌우 패딩 — 캐러셀 좌측 정렬 기준 (ds.sheet paddingHorizontal와 동일) */
+export const CARD_CONTENT_HORIZONTAL_PAD = 20;
 
 /** 다음 카드가 살짝 보이는 너비 (작을수록 메인 카드가 넓어짐) */
 export const PHOTO_CARD_PEEK = 32;

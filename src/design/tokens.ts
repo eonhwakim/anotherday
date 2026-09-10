@@ -77,6 +77,18 @@ export const colors = {
 
   background: '#fdfcfb', //#F8F4EE',
   bgSoft: 'rgba(248, 193, 176, 0.17)',
+
+  // sheet-over-hero 레이아웃용 표면 색
+  /** 히어로(배경 사진) 위를 덮는 콘텐츠 시트 — 컴팩트 바와 같은 블러 위에 얹는 틴트 */
+  sheet: 'rgba(255, 255, 255, 0.42)',
+  /** 블러 시트 상단의 밝은 헤어라인 */
+  glassBorder: 'rgba(255, 255, 255, 0.70)',
+  /** 시트 위 카드의 1px 헤어라인 */
+  hairline: 'rgba(26, 26, 26, 0.07)',
+  /** 진행 트랙(빈 구간) */
+  track: 'rgba(26, 26, 26, 0.07)',
+  /** 흰 카드 위에서 읽히는 중립 칩 배경 */
+  chipNeutral: '#F1F2F4',
 } as const;
 
 export const spacing = {
@@ -103,6 +115,16 @@ export const radius = {
 } as const;
 
 export const typography = {
+  /** 화면 최상단 인사말 등 — 큰 대비를 만드는 헤드라인 */
+  display: {
+    fontSize: 30,
+    fontWeight: '600' as const,
+    lineHeight: 38,
+  },
+  titleXl: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+  },
   titleLg: {
     fontSize: 24,
     fontWeight: '600' as const,
@@ -137,6 +159,14 @@ export const typography = {
     fontWeight: '700' as const,
   },
 } as const;
+
+/**
+ * 숫자(3/5, 60% 등)에 붙이는 등폭 숫자 스타일.
+ * `typography`가 as const라 배열 타입이 readonly가 되는 것을 피하려고 분리해 둔다.
+ */
+export const numericFont = {
+  fontVariant: ['tabular-nums'] as 'tabular-nums'[],
+};
 
 export const shadows = {
   brandSm: {

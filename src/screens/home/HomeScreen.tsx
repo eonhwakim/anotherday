@@ -1,9 +1,18 @@
 import React, { useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  Image,
+  Animated,
+  Pressable,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
@@ -34,8 +43,7 @@ import { useHomeTimePeriod } from './hooks/useHomeTimePeriod';
 import { useMonthlyGoalPrompt } from './hooks/useMonthlyGoalPrompt';
 
 // 5. Components & UI Tokens
-import { colors, radius, typography } from '../../design/tokens';
-import BaseCard from '../../components/ui/BaseCard';
+import { colors, numericFont, typography } from '../../design/tokens';
 import MountainProgress from '../../components/home/MountainProgress';
 import RacingProgress from '../../components/home/RacingProgress';
 import ClimbingProgress from '../../components/home/ClimbingProgress';
@@ -47,8 +55,15 @@ import FloatingCameraButton from '../../components/home/FloatingCameraButton';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { ds } from '@/design/recipes';
 
-const HEADER_TOP_GAP = 10;
-const HEADER_HEIGHT = 122;
+const HERO_TOP_GAP = 10;
+/** 상단 고정 컴팩트 바 높이 (safe area 제외) */
+const COMPACT_BAR_HEIGHT = 46;
+/** 컴팩트 바와 콘텐츠 시트가 공유하는 블러 강도 — 같은 재질로 보이게 */
+const SHEET_BLUR_INTENSITY = 30;
+/** 히어로가 사라지고 컴팩트 바가 나타나는 스크롤 구간 */
+const HERO_FADE_END = 90;
+const COMPACT_FADE_START = 70;
+const COMPACT_FADE_END = 130;
 
 export default function HomeScreen() {
   // 1. Global State & Base Context
@@ -80,6 +95,9 @@ export default function HomeScreen() {
   // 3. UI State & Navigation
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  // 콘텐츠가 짧아도 시트가 화면 아래까지 덮도록 최소 높이를 잡는다
+  const sheetMinHeight = Math.max(420, Math.round(windowHeight * 0.5));
   const scrollRef = useRef<ScrollView>(null);
   useTabDoubleTapScrollTop({ navigation, scrollRef });
 
@@ -87,6 +105,37 @@ export default function HomeScreen() {
   const [isStampFinished, setIsStampFinished] = React.useState(false);
   const [checkinModalVisible, setCheckinModalVisible] = React.useState(false);
   const [photoCarouselDragging, setPhotoCarouselDragging] = React.useState(false);
+
+  // 3.1 스크롤 연동 헤더 (sheet-over-hero)
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const heroOpacity = scrollY.interpolate({
+    inputRange: [0, HERO_FADE_END],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const heroTranslateY = scrollY.interpolate({
+    inputRange: [0, HERO_FADE_END],
+    outputRange: [0, -18],
+    extrapolate: 'clamp',
+  });
+  const compactOpacity = scrollY.interpolate({
+    inputRange: [COMPACT_FADE_START, COMPACT_FADE_END],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  // 배경 사진 패럴랙스 — 콘텐츠보다 훨씬 천천히 위로 밀려 깊이를 만든다
+  const backgroundTranslateY = scrollY.interpolate({
+    inputRange: [0, 400],
+    outputRange: [0, -60],
+    extrapolate: 'clamp',
+  });
+  const onScroll = React.useMemo(
+    () =>
+      Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+        useNativeDriver: true,
+      }),
+    [scrollY],
+  );
 
   // 4. Custom Feature Hooks (Business Logic)
   // 4.1 Time & Refresh
@@ -146,6 +195,13 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  const openCheckinModal = useCallback(() => setCheckinModalVisible(true), []);
+
+  /** 시트 핸들 탭 — 맨 위로 */
+  const scrollToTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, []);
+
   // 6. Render
   return (
     <View style={ds.screen}>
@@ -159,7 +215,10 @@ export default function HomeScreen() {
         isSubmitting={isContinuingMonthlyPrompt}
       />
 
-      <View style={styles.bgLayer}>
+      <Animated.View
+        style={[styles.bgLayer, { transform: [{ translateY: backgroundTranslateY }] }]}
+        pointerEvents="none"
+      >
         <Image
           source={
             timePeriod === 'DAY'
@@ -172,16 +231,32 @@ export default function HomeScreen() {
           resizeMode="cover"
         />
         {timePeriod === 'NIGHT' && <View style={styles.nightOverlay} pointerEvents="none" />}
-      </View>
+        {/* 히어로 텍스트 가독성용 스크림 — 배경 사진이 무엇이든 대비를 보장한다 */}
+        <LinearGradient
+          colors={
+            isNight
+              ? ['rgba(6, 10, 18, 0.55)', 'rgba(6, 10, 18, 0)']
+              : ['rgba(255, 255, 255, 0.62)', 'rgba(255, 255, 255, 0)']
+          }
+          style={styles.heroScrim}
+          pointerEvents="none"
+        />
+      </Animated.View>
 
       <SafeAreaView style={ds.safe} edges={[]}>
-        <ScrollView
+        <Animated.ScrollView
           ref={scrollRef}
           style={ds.scroll}
-          contentContainerStyle={[ds.tabScrollContent, { paddingTop: insets.top + HEADER_HEIGHT }]}
+          contentContainerStyle={[
+            ds.tabScrollContent,
+            // 하단 여백은 시트 안쪽에서 처리한다 (시트 아래로 배경이 다시 보이지 않도록)
+            { paddingTop: insets.top + HERO_TOP_GAP, paddingBottom: 0 },
+          ]}
           scrollEnabled={!photoCarouselDragging}
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -190,6 +265,27 @@ export default function HomeScreen() {
             />
           }
         >
+          {/* 히어로 — 카드 없이 배경 위에 큰 타이포로 */}
+          <Animated.View
+            style={[
+              styles.heroBlock,
+              { opacity: heroOpacity, transform: [{ translateY: heroTranslateY }] },
+            ]}
+          >
+            <Text style={[styles.dateText, isNight && styles.dateTextNight]}>{todayLabel}</Text>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.greeting,
+                isDay && styles.greetingDay,
+                isSunset && styles.greetingSunset,
+                isNight && styles.greetingNight,
+              ]}
+            >
+              {displayName}, Have a good day!
+            </Text>
+          </Animated.View>
+
           <View style={styles.mountainSection}>
             {backgroundTheme === 'racing' ? (
               <RacingProgress
@@ -212,94 +308,53 @@ export default function HomeScreen() {
             )}
           </View>
 
-          <View style={styles.goalSection}>
-            <TodayGoalList
-              members={memberProgress}
-              currentUserId={user?.id}
-              onAnimationFinish={() => setIsStampFinished(true)}
-              isNight={isNight}
-              onPhotoCarouselDragChange={setPhotoCarouselDragging}
-            />
-          </View>
-        </ScrollView>
-
-        <View
-          style={[styles.header, { paddingTop: insets.top + HEADER_TOP_GAP }]}
-          pointerEvents="box-none"
-        >
-          <BaseCard glassOnly noBorder padded={false} style={styles.heroCard}>
+          {/* 콘텐츠 시트 — 상단 컴팩트 바와 같은 블러 재질 */}
+          <View style={[styles.sheetClip, { minHeight: sheetMinHeight }]}>
             <BlurView
-              intensity={isNight ? 18 : 28}
-              tint={isNight ? 'dark' : 'light'}
-              style={styles.heroBlur}
-            >
-              <LinearGradient
-                colors={
-                  isNight
-                    ? ['rgba(10, 14, 22, 0.34)', 'rgba(10, 14, 22, 0.08)']
-                    : ['rgba(255, 255, 255, 0.28)', 'rgba(255, 255, 255, 0.08)']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.heroGradient}
+              intensity={SHEET_BLUR_INTENSITY}
+              tint="light"
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[ds.sheet, styles.sheet]}>
+              <Pressable
+                onPress={scrollToTop}
+                hitSlop={{ top: 14, bottom: 14, left: 40, right: 40 }}
+                accessibilityRole="button"
+                accessibilityLabel="맨 위로 이동"
+                style={({ pressed }) => [
+                  styles.sheetHandleHit,
+                  pressed && styles.sheetHandlePressed,
+                ]}
               >
-                <View style={styles.heroTopRow}>
-                  <View style={styles.greetingWrap}>
-                    <Text style={[styles.dateText, isNight && styles.dateTextLight]}>
-                      {todayLabel}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.greeting,
-                        isDay && styles.greetingDay,
-                        isSunset && styles.greetingSunset,
-                        isNight && styles.greetingNight,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {displayName}님 좋은 하루에요
-                    </Text>
-                  </View>
+                <View style={styles.sheetHandle} />
+              </Pressable>
+              <TodayGoalList
+                members={memberProgress}
+                currentUserId={user?.id}
+                onAnimationFinish={() => setIsStampFinished(true)}
+                onPhotoCarouselDragChange={setPhotoCarouselDragging}
+              />
+            </View>
+          </View>
+        </Animated.ScrollView>
 
-                  <View style={[styles.todayBadge, isNight && styles.todayBadgeNight]}>
-                    <Ionicons
-                      name={totalGoals > 0 && completedGoals === totalGoals ? 'checkmark' : 'sunny'}
-                      size={15}
-                      color={isNight ? colors.white90 : colors.primary}
-                    />
-                  </View>
-                </View>
+        {/* 스크롤 시 나타나는 컴팩트 바 */}
+        <Animated.View
+          style={[styles.compactBar, { paddingTop: insets.top, opacity: compactOpacity }]}
+          pointerEvents="none"
+        >
+          <BlurView intensity={SHEET_BLUR_INTENSITY} tint="light" style={StyleSheet.absoluteFill} />
+          <View style={styles.compactInner}>
+            <Text style={styles.compactTitle} numberOfLines={1}>
+              {todayLabel}
+            </Text>
+            <View style={styles.compactPill}>
+              <Text style={styles.compactPillText}>내 루틴 {progressLabel}</Text>
+            </View>
+          </View>
+        </Animated.View>
 
-                <View style={styles.summaryRow}>
-                  <View style={[styles.summaryPill, isNight && styles.summaryPillNight]}>
-                    <Ionicons
-                      name="grid-outline"
-                      size={13}
-                      color={isNight ? colors.white80 : colors.darkGreen}
-                    />
-                    <Text style={[styles.summaryText, isNight && styles.summaryTextNight]}>
-                      내 루틴 {progressLabel}
-                    </Text>
-                  </View>
-                  {memberProgress.length > 1 && (
-                    <View style={[styles.summaryPill, isNight && styles.summaryPillNight]}>
-                      <Ionicons
-                        name="people-outline"
-                        size={13}
-                        color={isNight ? colors.white80 : colors.darkGreen}
-                      />
-                      <Text style={[styles.summaryText, isNight && styles.summaryTextNight]}>
-                        함께 {memberProgress.length}명
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </LinearGradient>
-            </BlurView>
-          </BaseCard>
-        </View>
-
-        <FloatingCameraButton onPress={() => setCheckinModalVisible(true)} />
+        <FloatingCameraButton onPress={openCheckinModal} />
       </SafeAreaView>
 
       <CheckinModal
@@ -315,63 +370,31 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   bgLayer: {
     ...StyleSheet.absoluteFillObject,
+    // 패럴랙스로 위로 밀렸을 때 아래쪽이 비지 않도록 여유를 둔다
+    bottom: -80,
   },
   nightOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.overlayBackdrop,
   },
-  header: {
+  heroScrim: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    height: 260,
+  },
+  heroBlock: {
     paddingHorizontal: 20,
-    paddingTop: 10,
-    minHeight: 122,
-    zIndex: 1000,
-    elevation: 1000,
-  },
-  heroCard: {
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.26)',
-    shadowOpacity: 0.035,
-  },
-  heroBlur: {
-    overflow: 'hidden',
-  },
-  heroGradient: {
-    paddingHorizontal: 16,
-    paddingTop: 13,
-    paddingBottom: 12,
-  },
-  heroTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  greetingWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  rightColumn: {
-    position: 'absolute',
-    top: 10,
-    right: 20,
-    maxWidth: '55%',
-    width: '55%',
-    gap: 10,
-    zIndex: 30,
+    paddingTop: 6,
+    paddingBottom: 4,
   },
   greeting: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: colors.white,
-    lineHeight: 24,
-    letterSpacing: 0,
+    lineHeight: 26,
+    letterSpacing: -0.2,
+    color: colors.text,
   },
   greetingDay: {
     color: colors.text,
@@ -383,58 +406,51 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   dateText: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.textSecondary,
-    letterSpacing: 0,
-    marginBottom: 5,
+    marginBottom: 6,
   },
-  dateTextLight: {
+  dateTextNight: {
     color: colors.white60,
   },
-  todayBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.28)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.42)',
+  compactBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    overflow: 'hidden',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.hairline,
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  compactInner: {
+    height: COMPACT_BAR_HEIGHT,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  compactTitle: {
+    ...typography.titleSm,
+    color: colors.text,
+    flexShrink: 1,
+  },
+  compactPill: {
+    minHeight: 26,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.hairline,
     justifyContent: 'center',
   },
-  todayBadgeNight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.10)',
-    borderColor: 'rgba(255, 255, 255, 0.16)',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  summaryPill: {
-    minHeight: 27,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.24)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.32)',
-  },
-  summaryPillNight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  summaryText: {
+  compactPillText: {
     ...typography.caption,
+    ...numericFont,
     color: colors.darkGreen,
     fontWeight: '700',
-    letterSpacing: 0,
-  },
-  summaryTextNight: {
-    color: colors.white80,
   },
   mountainSection: {
     alignItems: 'center',
@@ -444,10 +460,35 @@ const styles = StyleSheet.create({
   todoSection: {
     width: '100%',
   },
-  goalSection: {
-    paddingHorizontal: 20,
-    paddingTop: 34,
-    width: '100%',
-    alignItems: 'stretch',
+  /** 블러를 담는 컨테이너 — 라운드 클리핑 담당 */
+  sheetClip: {
+    marginTop: -12,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.glassBorder,
+    zIndex: 20,
+  },
+  /** 블러 위에 얹는 틴트 + 여백 (탭바에 가리지 않도록 하단 여백을 직접 갖는다) */
+  sheet: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    paddingBottom: 140,
+  },
+  sheetHandleHit: {
+    alignSelf: 'center',
+    paddingVertical: 6,
+    marginTop: -16,
+    marginBottom: 12,
+  },
+  sheetHandlePressed: {
+    opacity: 0.5,
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(26, 26, 26, 0.18)',
   },
 });

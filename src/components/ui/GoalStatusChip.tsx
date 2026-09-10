@@ -43,9 +43,9 @@ export default function GoalStatusChip({ goalName, status }: GoalStatusChipProps
 const styles = StyleSheet.create({
   chip: {
     borderWidth: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: colors.white50,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: colors.chipNeutral,
   },
   chipDone: {
     backgroundColor: colors.softGreen,
@@ -55,16 +55,17 @@ const styles = StyleSheet.create({
   },
   chipIcon: {
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: '400',
     color: colors.textSecondary,
     maxWidth: 120,
   },
   chipTextDone: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   chipTextPass: {
     color: colors.textMuted,

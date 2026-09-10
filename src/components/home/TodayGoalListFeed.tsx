@@ -1,32 +1,43 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import { ds } from '@/design/recipes';
 
+import { useTeamStore } from '../../stores/teamStore';
 import { getMissionProgress, sortMembersForDisplay } from './todayGoalListFeed/feedUtils';
 import type { TodayGoalListFeedProps } from './todayGoalListFeed/types';
-import { MemberCard } from './todayGoalListFeed/MemberCard';
+import { MemberRow } from './todayGoalListFeed/MemberRow';
 import { FeedReactionAvatars } from './todayGoalListFeed/FeedReactionAvatars';
-import { colors, typography } from '@/design/recipes';
+import { colors, numericFont, typography } from '@/design/recipes';
 
 export { FeedReactionAvatars };
 
-const FINISH_CALLBACK_DELAY_MS = 500;
+/** 카드 등장 간격 — 기다림이 느껴지지 않는 범위로 짧게 */
+const MEMBER_STAGGER_MS = 90;
+const FINISH_CALLBACK_DELAY_MS = 220;
 
 export default function TodayGoalListFeed({
   members,
   currentUserId,
   onAnimationFinish,
-  isNight = false,
   onPhotoCarouselDragChange,
 }: TodayGoalListFeedProps) {
   const isFocused = useIsFocused();
+  const teamName = useTeamStore((s) => s.currentTeam?.name);
   const { progress } = React.useMemo(() => getMissionProgress(members), [members]);
   const progressPercent = Math.round(progress * 100);
   const sortedMembers = React.useMemo(
     () => sortMembersForDisplay(members, currentUserId),
     [members, currentUserId],
+  );
+  const myMember = React.useMemo(
+    () => sortedMembers.find((member) => member.userId === currentUserId),
+    [sortedMembers, currentUserId],
+  );
+  const teamMembers = React.useMemo(
+    () => sortedMembers.filter((member) => member.userId !== currentUserId),
+    [sortedMembers, currentUserId],
   );
 
   const memberAnims = useRef(members.map(() => new Animated.Value(0))).current;
@@ -42,7 +53,7 @@ export default function TodayGoalListFeed({
     carouselDragParentRef.current?.(active);
   }, []);
 
-  //멤버 카드들이 0.45초(450ms) 간격으로 차례대로 나타나게 하는 애니메이션
+  //멤버 카드들이 90ms 간격으로 차례대로 스프링으로 나타나게 하는 애니메이션
   const startMemberCardStagger = useCallback(() => {
     if (memberAnims.length === 0) {
       staggeredMemberCountRef.current = 0;
@@ -52,12 +63,13 @@ export default function TodayGoalListFeed({
     staggerAnimRef.current?.stop();
     memberAnims.forEach((animation) => animation.setValue(0));
     const stagger = Animated.stagger(
-      450,
+      MEMBER_STAGGER_MS,
       memberAnims.map((animation) =>
-        Animated.timing(animation, {
+        Animated.spring(animation, {
           toValue: 1,
-          duration: 350,
-          easing: Easing.out(Easing.back(1.1)),
+          stiffness: 190,
+          damping: 20,
+          mass: 1,
           useNativeDriver: true,
         }),
       ),
@@ -103,7 +115,7 @@ export default function TodayGoalListFeed({
       memberAnims.forEach((animation) => animation.setValue(0));
       startMemberCardStagger();
 
-      // 과거 배지 등장 시퀀스가 끝나던 시점에 맞춰 완료를 알린다.
+      // 카드 등장이 끝나가는 시점에 맞춰 완료를 알린다.
       // (부모는 이 콜백으로 후속 애니메이션 시작을 트리거함)
       finishTimerRef.current = setTimeout(() => {
         onAnimationFinish?.();
@@ -132,131 +144,101 @@ export default function TodayGoalListFeed({
     startMemberCardStagger();
   }, [isFocused, members, members.length, memberAnims.length, startMemberCardStagger]);
 
+  const fallbackAnim = useRef(new Animated.Value(1)).current;
+  const animForIndex = (index: number) => memberAnims[index] ?? fallbackAnim;
+
+  if (sortedMembers.length === 0) {
+    return (
+      <View style={styles.emptyTrail}>
+        <Ionicons name="flag-outline" size={24} color={colors.black20} />
+        <Text style={styles.emptyText}>목표를 추가해보세요.</Text>
+      </View>
+    );
+  }
+
   return (
     <View>
-      {/*헤더 */}
-      <View style={styles.headerBlock}>
-        <View style={styles.headerTextBlock}>
-          <View style={styles.titleGroup}>
-            <Text style={[styles.eyebrow, isNight && styles.eyebrowNight]}>TODAY'S MISSION</Text>
-            {/* <Text style={[ds.cardTitle, styles.sectionTitle, isNight && styles.titleNight]}>
-              TODAY'S MISSION
-            </Text> */}
-          </View>
-          <View style={[styles.progressPill, isNight && styles.progressPillNight]}>
-            <Ionicons
-              name="trending-up-outline"
-              size={13}
-              color={isNight ? colors.white80 : colors.darkGreen}
-            />
-            <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
-              {sortedMembers.length}명 · {progressPercent}%
+      {/* 내 오늘 — 팀원 카드와 같은 형태, 테두리와 '나' 배지로만 구분 */}
+      {myMember ? (
+        <MemberRow
+          member={myMember}
+          isMe
+          animVal={animForIndex(0)}
+          onCarouselDragChange={notifyCarouselDragToParent}
+        />
+      ) : null}
+
+      {/* 함께하는 사람들 */}
+      {teamMembers.length > 0 ? (
+        <View>
+          <View style={styles.sectionHeader}>
+            <Text style={ds.eyebrow} numberOfLines={1}>
+              {teamName ?? '함께하는 사람들'}
             </Text>
+            {/* <Text style={[ds.cardTitle, styles.sectionTitle]}>TODAY'S MISSION</Text> */}
+            <View style={styles.progressPill}>
+              <Ionicons name="trending-up-outline" size={13} color={colors.darkGreen} />
+              <Text style={styles.hintText}>
+                {sortedMembers.length}명 · {progressPercent}%
+              </Text>
+            </View>
           </View>
+
+          {teamMembers.map((member, index) => (
+            <MemberRow
+              key={member.userId}
+              member={member}
+              isMe={false}
+              showDivider={index > 0}
+              animVal={animForIndex(myMember ? index + 1 : index)}
+              onCarouselDragChange={notifyCarouselDragToParent}
+            />
+          ))}
         </View>
-      </View>
+      ) : null}
 
-      {/*목표 리스트 */}
-      <View style={styles.trailContainer}>
-        {sortedMembers.length === 0 ? (
-          <View style={styles.emptyTrail}>
-            <Ionicons name="flag-outline" size={24} color={colors.black20} />
-            <Text style={styles.emptyText}>목표를 추가해보세요.</Text>
+      {progress === 1 && members.length > 0 && (
+        <View style={styles.summitRow}>
+          <View style={styles.trailNodeSummit}>
+            <Ionicons name="flag" size={14} color="#000" />
           </View>
-        ) : (
-          <View>
-            {sortedMembers.map((member, index) => (
-              <MemberCard
-                key={member.userId}
-                member={member}
-                isMe={member.userId === currentUserId}
-                animVal={memberAnims[index] ?? new Animated.Value(1)}
-                onCarouselDragChange={notifyCarouselDragToParent}
-              />
-            ))}
-
-            {progress === 1 && members.length > 0 && (
-              <View style={styles.summitRow}>
-                <View style={styles.trailNodeSummit}>
-                  <Ionicons name="flag" size={14} color="#000" />
-                </View>
-                <Text style={styles.summitText}>모두 완료!</Text>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
+          <Text style={styles.summitText}>모두 완료!</Text>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerBlock: {
-    width: '100%',
-  },
-  headerTextBlock: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginTop: 16,
+    marginBottom: 12,
     gap: 14,
-  },
-  titleGroup: {
-    flex: 1,
-    minWidth: 0,
-  },
-  eyebrow: {
-    ...typography.titleSm,
-    color: colors.textFaint,
-    fontWeight: '800',
-    letterSpacing: 0,
-    marginBottom: 3,
-  },
-  eyebrowNight: {
-    color: colors.white60,
   },
   sectionTitle: {
     lineHeight: 25,
     letterSpacing: 0,
   },
-  titleNight: {
-    color: colors.white90,
-  },
   progressPill: {
-    minHeight: 30,
+    minHeight: 28,
     paddingHorizontal: 10,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.56)',
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.74)',
+    borderColor: colors.hairline,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
   },
-  progressPillNight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.10)',
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-  },
   hintText: {
     ...typography.caption,
+    ...numericFont,
     color: colors.darkGreen,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0,
-  },
-  hintTextNight: {
-    color: colors.white80,
-  },
-  metaText: {
-    ...typography.label,
-    color: colors.white60,
-    alignSelf: 'flex-end',
-  },
-  metaTextNight: {
-    color: colors.white60,
-  },
-  trailContainer: {
-    position: 'relative',
-    width: '100%',
   },
   emptyTrail: {
     alignItems: 'center',

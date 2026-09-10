@@ -545,15 +545,15 @@ const styles = StyleSheet.create({
   },
   bubble: {
     backgroundColor: 'rgba(5, 5, 16, 0.62)',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
     borderWidth: 1.2,
     marginBottom: 0,
   },
   bubbleText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '600',
     color: colors.text,
     flexShrink: 0,
   },
@@ -576,8 +576,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   avatar: {
-    width: 40,
-    height: 40,
+    width: 34,
+    height: 34,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
@@ -585,13 +585,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   avatarImage: {
-    width: 38,
-    height: 38,
+    width: 30,
+    height: 30,
     borderRadius: 16,
   },
   avatarText: {
-    fontWeight: '800',
-    fontSize: 16,
+    fontWeight: '600',
+    fontSize: 14,
   },
   shadow: {
     width: 28,
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
     maxWidth: 70,
   },
   nicknameText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.80)',
     textAlign: 'center',

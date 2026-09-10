@@ -67,12 +67,19 @@ export function usePhotoCarousel(
 
   const cardWidth = useMemo(() => {
     if (photoViewportWidth <= 0) return 0;
+    // 사진이 한 장이면 다음 카드를 보여줄 필요가 없으므로 좌우 여백을 대칭으로 맞춘다
+    if (photoCheckins.length <= 1) {
+      return Math.max(photoViewportWidth - CARD_CONTENT_HORIZONTAL_PAD, 160);
+    }
     return Math.max(photoViewportWidth - PHOTO_CARD_PEEK, 160);
-  }, [photoViewportWidth]);
+  }, [photoViewportWidth, photoCheckins.length]);
 
   const peekTailWidth = useMemo(() => {
     if (photoViewportWidth <= 0 || photoCheckins.length === 0) return 0;
-    return Math.max(100, Math.round(photoViewportWidth * SINGLE_PHOTO_PULL_RATIO) + PHOTO_CARD_PEEK);
+    return Math.max(
+      100,
+      Math.round(photoViewportWidth * SINGLE_PHOTO_PULL_RATIO) + PHOTO_CARD_PEEK,
+    );
   }, [photoViewportWidth, photoCheckins.length]);
 
   const snapInterval = cardWidth > 0 ? cardWidth + PHOTO_CARD_GAP : 0;

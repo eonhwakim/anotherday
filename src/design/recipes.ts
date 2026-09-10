@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, radius, shadows, spacing, typography } from './tokens';
+import { colors, numericFont, radius, shadows, spacing, typography } from './tokens';
 
 export const ds = StyleSheet.create({
   screen: {
@@ -104,6 +104,25 @@ export const ds = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
   },
+  /** 배경 사진 위를 덮는 콘텐츠 시트 (sheet-over-hero) */
+  sheet: {
+    backgroundColor: colors.sheet,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: spacing[5],
+    paddingTop: spacing[6],
+  },
+  /** 섹션 구분용 소문자 라벨 */
+  eyebrow: {
+    ...typography.label,
+    color: colors.textFaint,
+    fontWeight: '700' as const,
+    letterSpacing: 0.4,
+  },
+  /** 숫자 강조 (등폭) */
+  numeric: {
+    ...numericFont,
+  },
   //----
   rowBetween: {
     flexDirection: 'row',
@@ -116,4 +135,4 @@ export const ds = StyleSheet.create({
   },
 });
 
-export { colors, radius, shadows, spacing, typography };
+export { colors, numericFont, radius, shadows, spacing, typography };

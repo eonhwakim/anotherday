@@ -1,18 +1,9 @@
-import type { Animated } from 'react-native';
 import type { CheckinWithGoal, MemberProgress } from '../../../types/domain';
-
-export interface MemberCardProps {
-  member: MemberProgress;
-  isMe: boolean;
-  animVal: Animated.Value;
-  onCarouselDragChange?: (dragging: boolean) => void;
-}
 
 export interface TodayGoalListFeedProps {
   members: MemberProgress[];
   currentUserId?: string;
   onAnimationFinish?: () => void;
-  isNight?: boolean;
   onPhotoCarouselDragChange?: (dragging: boolean) => void;
 }
 
