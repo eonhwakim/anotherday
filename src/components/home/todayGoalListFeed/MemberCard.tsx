@@ -1,13 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import {
-  Animated,
-  Image,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-  Dimensions,
-} from 'react-native';
+import { Animated, Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import dayjs from '../../../lib/dayjs';
 import { colors, radius, spacing, typography } from '@/design/recipes';
 
@@ -28,6 +20,7 @@ import { PhotoPeekPlaceholder, PhotoSlideCard } from './PhotoSlideCard';
 
 export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: MemberCardProps) {
   const allDone = member.totalGoals > 0 && member.completedGoals >= member.totalGoals;
+  const progressRatio = member.totalGoals > 0 ? member.completedGoals / member.totalGoals : 0;
   const animOpacity = animVal.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   const animSlide = animVal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
   const { width: screenWidth } = useWindowDimensions();
@@ -72,7 +65,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
     <Animated.View
       style={[styles.memberRow, { opacity: animOpacity, transform: [{ translateY: animSlide }] }]}
     >
-      <BaseCard glassOnly wide style={styles.memberCard}>
+      <BaseCard glassOnly wide style={[styles.memberCard, { width: screenWidth }]}>
         <View style={styles.memberHeader}>
           <View style={styles.memberIdentity}>
             <View style={[styles.memberAvatarWrap, allDone && styles.memberAvatarWrapDone]}>
@@ -87,14 +80,32 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
               )}
             </View>
 
-            <Text style={styles.memberName} numberOfLines={1}>
-              {member.nickname}
-              {isMe ? ' (나)' : ''}
-            </Text>
+            <View style={styles.nameBlock}>
+              <View style={styles.nameRow}>
+                <Text style={styles.memberName} numberOfLines={1}>
+                  {member.nickname}
+                </Text>
+                {isMe ? (
+                  <View style={styles.meBadge}>
+                    <Text style={styles.meBadgeText}>나</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
           </View>
           <Text style={styles.memberCount}>
             {member.completedGoals}/{member.totalGoals}
           </Text>
+        </View>
+
+        <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressFill,
+              allDone && styles.progressFillDone,
+              { width: `${Math.min(progressRatio * 100, 100)}%` },
+            ]}
+          />
         </View>
 
         {member.goalDetails.length > 0 ? (
@@ -143,13 +154,12 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
 
 const styles = StyleSheet.create({
   memberRow: {
-    marginBottom: 22, //멤버간간격
+    marginBottom: 18,
     width: '100%',
   },
   memberCard: {
     flex: 1,
-    width: Dimensions.get('window').width, // 화면 전체 너비로 강제 고정
-    marginLeft: -20, // 부모의 좌측 여백 상쇄
+    marginLeft: -20,
     borderRadius: radius.xxl,
   },
 
@@ -162,10 +172,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
   },
   memberAvatarWrap: {
-    width: 34,
-    height: 34,
+    width: 38,
+    height: 38,
     borderRadius: 50,
     backgroundColor: colors.white80,
     borderWidth: 2,
@@ -199,20 +210,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     fontStyle: 'italic',
+    marginTop: 12,
   },
   goalChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 10,
+    marginTop: 12,
+  },
+  nameBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
   },
   memberName: {
     ...typography.titleSm,
-    flex: 1,
+    color: colors.text,
+    flexShrink: 1,
+    lineHeight: 22,
   },
   memberCount: {
-    ...typography.bodyStrong,
-    color: colors.textFaint,
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.darkGreen,
+    letterSpacing: 0,
+    marginLeft: 12,
+  },
+  meBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: colors.primaryStrong,
+  },
+  meBadgeText: {
+    ...typography.caption,
+    color: colors.primaryDark,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
+  progressTrack: {
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(26, 26, 26, 0.08)',
+    overflow: 'hidden',
+    marginTop: 12,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: colors.primaryWarm,
+  },
+  progressFillDone: {
+    backgroundColor: colors.successBright,
   },
   photoCarouselClip: {
     width: '100%',

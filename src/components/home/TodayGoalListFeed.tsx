@@ -23,6 +23,7 @@ export default function TodayGoalListFeed({
 }: TodayGoalListFeedProps) {
   const isFocused = useIsFocused();
   const { progress } = React.useMemo(() => getMissionProgress(members), [members]);
+  const progressPercent = Math.round(progress * 100);
   const sortedMembers = React.useMemo(
     () => sortMembersForDisplay(members, currentUserId),
     [members, currentUserId],
@@ -136,10 +137,22 @@ export default function TodayGoalListFeed({
       {/*헤더 */}
       <View style={styles.headerBlock}>
         <View style={styles.headerTextBlock}>
-          <Text style={[ds.cardTitle, isNight && styles.titleNight]}>TODAY'S MISSION</Text>
-          <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
-            참여 멤버 {sortedMembers.length}명
-          </Text>
+          <View style={styles.titleGroup}>
+            <Text style={[styles.eyebrow, isNight && styles.eyebrowNight]}>TODAY'S MISSION</Text>
+            {/* <Text style={[ds.cardTitle, styles.sectionTitle, isNight && styles.titleNight]}>
+              TODAY'S MISSION
+            </Text> */}
+          </View>
+          <View style={[styles.progressPill, isNight && styles.progressPillNight]}>
+            <Ionicons
+              name="trending-up-outline"
+              size={13}
+              color={isNight ? colors.white80 : colors.darkGreen}
+            />
+            <Text style={[styles.hintText, isNight && styles.hintTextNight]}>
+              {sortedMembers.length}명 · {progressPercent}%
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -183,22 +196,52 @@ const styles = StyleSheet.create({
   },
   headerTextBlock: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 14,
+    gap: 14,
   },
-  title: {
-    fontSize: 20,
+  titleGroup: {
+    flex: 1,
+    minWidth: 0,
+  },
+  eyebrow: {
+    ...typography.titleSm,
+    color: colors.textFaint,
     fontWeight: '800',
-    color: colors.black70,
-    letterSpacing: 2,
+    letterSpacing: 0,
+    marginBottom: 3,
+  },
+  eyebrowNight: {
+    color: colors.white60,
+  },
+  sectionTitle: {
+    lineHeight: 25,
+    letterSpacing: 0,
   },
   titleNight: {
     color: colors.white90,
   },
+  progressPill: {
+    minHeight: 30,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.56)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.74)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  progressPillNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+  },
   hintText: {
-    ...typography.bodyStrong,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.darkGreen,
+    fontWeight: '700',
+    letterSpacing: 0,
   },
   hintTextNight: {
     color: colors.white80,

@@ -1,8 +1,11 @@
 import React, { useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 // 1. Types & Stores
 import { AppTabParamList } from '../../types/navigation';
@@ -44,6 +47,9 @@ import FloatingCameraButton from '../../components/home/FloatingCameraButton';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { ds } from '@/design/recipes';
 
+const HEADER_TOP_GAP = 10;
+const HEADER_HEIGHT = 122;
+
 export default function HomeScreen() {
   // 1. Global State & Base Context
   const user = useAuthStore((s) => s.user);
@@ -52,7 +58,7 @@ export default function HomeScreen() {
   const userId = user?.id;
 
   const todayStr = dayjs().format('YYYY-MM-DD');
-  const todayLabel = dayjs().format('YY년 M월 D일');
+  const todayLabel = dayjs().format('M월 D일 dddd');
 
   // 2. Data Fetching (React Query)
   const { data: myGoals = [] } = useMyGoalsQuery(userId);
@@ -63,9 +69,17 @@ export default function HomeScreen() {
   //   todayStr,
   // );
   const { data: memberProgress = [] } = useMemberProgressQuery(currentTeamId, userId, todayStr);
+  const myProgress = React.useMemo(
+    () => memberProgress.find((member) => member.userId === userId),
+    [memberProgress, userId],
+  );
+  const completedGoals = myProgress?.completedGoals ?? 0;
+  const totalGoals = myProgress?.totalGoals ?? 0;
+  const progressLabel = totalGoals > 0 ? `${completedGoals}/${totalGoals}` : '0/0';
 
   // 3. UI State & Navigation
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   useTabDoubleTapScrollTop({ navigation, scrollRef });
 
@@ -103,6 +117,8 @@ export default function HomeScreen() {
     showMonthlyPrompt,
   } = useMonthlyGoalPrompt({ currentTeamId, userId });
   const goalsForCheckinModal = useCheckinGoals({ myGoals, teamGoals, todayStr, userId });
+  const displayName =
+    user?.nickname ?? (currentTeam?.name ? `${currentTeam.name} 팀원` : '오늘의 나');
 
   // 5. Effects & Event Handlers
   React.useEffect(() => {
@@ -158,11 +174,11 @@ export default function HomeScreen() {
         {timePeriod === 'NIGHT' && <View style={styles.nightOverlay} pointerEvents="none" />}
       </View>
 
-      <SafeAreaView style={ds.safe} edges={['top']}>
+      <SafeAreaView style={ds.safe} edges={[]}>
         <ScrollView
           ref={scrollRef}
           style={ds.scroll}
-          contentContainerStyle={ds.tabScrollContent}
+          contentContainerStyle={[ds.tabScrollContent, { paddingTop: insets.top + HEADER_HEIGHT }]}
           scrollEnabled={!photoCarouselDragging}
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
@@ -174,50 +190,6 @@ export default function HomeScreen() {
             />
           }
         >
-          <View style={styles.header}>
-            <View style={styles.heroTopRow}>
-              <View style={styles.greetingWrap}>
-                <Text
-                  style={[
-                    styles.greeting,
-                    isDay && styles.greetingDay,
-                    isSunset && styles.greetingSunset,
-                  ]}
-                >
-                  HELLO,
-                  {user?.nickname
-                    ? ` ${user?.nickname}`
-                    : currentTeam?.name
-                      ? ` ${currentTeam?.name} 팀원`
-                      : ''}
-                </Text>
-                <View style={styles.frameRow}>
-                  <BaseCard glassOnly noBorder padded={false} style={styles.teamCard}>
-                    <Text style={[styles.dateText, isNight && styles.dateTextLight]}>
-                      {todayLabel}
-                    </Text>
-                    <Text style={[styles.teamName, isNight && styles.teamNameLight]}>
-                      {currentTeam?.name ? `${currentTeam?.name}` : '오늘의 목표'}
-                    </Text>
-                  </BaseCard>
-                </View>
-              </View>
-            </View>
-
-            {/* <View style={styles.rightColumn}>
-              <View style={styles.todoSection}>
-                <TodayTodoSection
-                  todos={dailyTodos}
-                  isLoading={isDailyTodosLoading}
-                  onAddTodo={handleAddDailyTodo}
-                  onUpdateTodo={handleUpdateDailyTodo}
-                  onToggleTodo={handleToggleDailyTodo}
-                  onDeleteTodo={handleDeleteDailyTodo}
-                />
-              </View>
-            </View> */}
-          </View>
-
           <View style={styles.mountainSection}>
             {backgroundTheme === 'racing' ? (
               <RacingProgress
@@ -251,6 +223,82 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
 
+        <View
+          style={[styles.header, { paddingTop: insets.top + HEADER_TOP_GAP }]}
+          pointerEvents="box-none"
+        >
+          <BaseCard glassOnly noBorder padded={false} style={styles.heroCard}>
+            <BlurView
+              intensity={isNight ? 18 : 28}
+              tint={isNight ? 'dark' : 'light'}
+              style={styles.heroBlur}
+            >
+              <LinearGradient
+                colors={
+                  isNight
+                    ? ['rgba(10, 14, 22, 0.34)', 'rgba(10, 14, 22, 0.08)']
+                    : ['rgba(255, 255, 255, 0.28)', 'rgba(255, 255, 255, 0.08)']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.heroGradient}
+              >
+                <View style={styles.heroTopRow}>
+                  <View style={styles.greetingWrap}>
+                    <Text style={[styles.dateText, isNight && styles.dateTextLight]}>
+                      {todayLabel}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.greeting,
+                        isDay && styles.greetingDay,
+                        isSunset && styles.greetingSunset,
+                        isNight && styles.greetingNight,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {displayName}님 좋은 하루에요
+                    </Text>
+                  </View>
+
+                  <View style={[styles.todayBadge, isNight && styles.todayBadgeNight]}>
+                    <Ionicons
+                      name={totalGoals > 0 && completedGoals === totalGoals ? 'checkmark' : 'sunny'}
+                      size={15}
+                      color={isNight ? colors.white90 : colors.primary}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.summaryRow}>
+                  <View style={[styles.summaryPill, isNight && styles.summaryPillNight]}>
+                    <Ionicons
+                      name="grid-outline"
+                      size={13}
+                      color={isNight ? colors.white80 : colors.darkGreen}
+                    />
+                    <Text style={[styles.summaryText, isNight && styles.summaryTextNight]}>
+                      내 루틴 {progressLabel}
+                    </Text>
+                  </View>
+                  {memberProgress.length > 1 && (
+                    <View style={[styles.summaryPill, isNight && styles.summaryPillNight]}>
+                      <Ionicons
+                        name="people-outline"
+                        size={13}
+                        color={isNight ? colors.white80 : colors.darkGreen}
+                      />
+                      <Text style={[styles.summaryText, isNight && styles.summaryTextNight]}>
+                        함께 {memberProgress.length}명
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </LinearGradient>
+            </BlurView>
+          </BaseCard>
+        </View>
+
         <FloatingCameraButton onPress={() => setCheckinModalVisible(true)} />
       </SafeAreaView>
 
@@ -273,22 +321,41 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlayBackdrop,
   },
   header: {
-    position: 'relative',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 20,
-    paddingTop: 16,
-    minHeight: 132,
+    paddingTop: 10,
+    minHeight: 122,
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  heroCard: {
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.26)',
+    shadowOpacity: 0.035,
+  },
+  heroBlur: {
+    overflow: 'hidden',
+  },
+  heroGradient: {
+    paddingHorizontal: 16,
+    paddingTop: 13,
+    paddingBottom: 12,
   },
   heroTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 16,
   },
   greetingWrap: {
     flex: 1,
-    minHeight: 120,
-    paddingRight: '0%',
-  },
-  frameRow: {
-    width: '100%',
+    minWidth: 0,
   },
   rightColumn: {
     position: 'absolute',
@@ -299,20 +366,12 @@ const styles = StyleSheet.create({
     gap: 10,
     zIndex: 30,
   },
-  teamCard: {
-    alignSelf: 'flex-start',
-    marginTop: 6,
-    maxWidth: 158,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: radius.sm,
-  },
   greeting: {
-    ...typography.titleSm,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.white,
-    marginLeft: 6,
-    lineHeight: 28,
+    lineHeight: 24,
+    letterSpacing: 0,
   },
   greetingDay: {
     color: colors.text,
@@ -320,26 +379,62 @@ const styles = StyleSheet.create({
   greetingSunset: {
     color: colors.text,
   },
+  greetingNight: {
+    color: colors.white,
+  },
   dateText: {
-    fontSize: 14,
+    fontSize: 12,
+    fontWeight: '600',
     color: colors.textSecondary,
-    fontWeight: '700',
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    marginBottom: 6,
+    letterSpacing: 0,
+    marginBottom: 5,
   },
   dateTextLight: {
     color: colors.white60,
   },
-  teamName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.black90,
-    letterSpacing: 0.2,
-    textAlign: 'center',
+  todayBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.42)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  teamNameLight: {
-    color: colors.white90,
+  todayBadgeNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  summaryPill: {
+    minHeight: 27,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.24)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.32)',
+  },
+  summaryPillNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  summaryText: {
+    ...typography.caption,
+    color: colors.darkGreen,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
+  summaryTextNight: {
+    color: colors.white80,
   },
   mountainSection: {
     alignItems: 'center',
@@ -351,7 +446,7 @@ const styles = StyleSheet.create({
   },
   goalSection: {
     paddingHorizontal: 20,
-    paddingTop: 40,
+    paddingTop: 34,
     width: '100%',
     alignItems: 'stretch',
   },

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Defs, G, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
-import { colors, ds, spacing, typography } from '../../design/recipes';
+import { colors, ds, spacing } from '../../design/recipes';
 
 export interface DaySummaryData {
   totalGoals: number;
@@ -147,16 +147,6 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
   const actualMissedCount = isFuture ? 0 : stats.missedCount;
 
   const summaryTitle = isToday ? 'Today Summary' : 'Selected Date Summary';
-  const summaryText =
-    stats.totalGoals === 0
-      ? '이 날에는 등록된 루틴이 없어요.'
-      : isFuture
-        ? '아직 다가오지 않은 날이에요.'
-        : actualMissedCount > 0
-          ? `${actualMissedCount}개를 인증해주세요.`
-          : stats.passCount > 0
-            ? '패스로 오늘 계획을 조정했어요.'
-            : '모든 루틴이 깔끔하게 기록됐어요.';
 
   const orbSize = 176;
   const strokeWidth = 18;
@@ -187,7 +177,6 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
       <View style={styles.leftColumn}>
         <View style={styles.header}>
           <Text style={ds.cardTitle}>{summaryTitle}</Text>
-          <Text style={styles.description}>{summaryText}</Text>
         </View>
 
         <View style={styles.orbShell}>
@@ -373,14 +362,9 @@ export default memo(DaySummaryCard);
 const styles = StyleSheet.create({
   header: {
     width: '100%',
-    marginBottom: spacing[5],
+    marginBottom: spacing[7],
     gap: spacing[1],
     alignItems: 'flex-start',
-  },
-  description: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    lineHeight: 18,
   },
   heroRow: {
     flexDirection: 'row',

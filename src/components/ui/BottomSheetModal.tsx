@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   Modal,
+  Animated,
+  Easing,
   TouchableOpacity,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
@@ -12,6 +14,7 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../design/tokens';
 
 const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
@@ -38,43 +41,90 @@ export default function BottomSheetModal({
   showHandle = true,
   disableClose = false,
 }: BottomSheetModalProps) {
+  const insets = useSafeAreaInsets();
+  const [shouldRender, setShouldRender] = React.useState(visible);
+  const transition = React.useRef(new Animated.Value(visible ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      setShouldRender(true);
+    }
+
+    Animated.timing(transition, {
+      toValue: visible ? 1 : 0,
+      duration: visible ? 220 : 160,
+      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished && !visible) {
+        setShouldRender(false);
+      }
+    });
+  }, [transition, visible]);
+
   const handleClose = () => {
     if (disableClose) return;
     onClose();
   };
 
+  if (!shouldRender) return null;
+
+  const backdropOpacity = transition.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+  const sheetTranslateY = transition.interpolate({
+    inputRange: [0, 1],
+    outputRange: [72, 0],
+  });
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+    <Modal
+      visible={shouldRender}
+      transparent
+      animationType="none"
+      presentationStyle="overFullScreen"
+      onRequestClose={handleClose}
+    >
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
-          <View style={styles.overlayBg} />
+          <Animated.View style={[styles.overlayBg, { opacity: backdropOpacity }]} />
         </TouchableWithoutFeedback>
-        <SafeBlurView intensity={blurIntensity} tint="light" style={[styles.sheet, { maxHeight }]}>
-          {showHandle ? <View style={styles.handleBar} /> : null}
-          <View style={styles.header}>
-            <View style={styles.headerSpacer} />
-            <View style={styles.headerTitleWrap}>
-              {typeof title === 'string' || typeof title === 'number' ? (
-                <Text style={styles.headerTitle}>{title}</Text>
-              ) : (
-                title
-              )}
+        <Animated.View
+          pointerEvents="box-none"
+          style={[styles.sheetMotion, { transform: [{ translateY: sheetTranslateY }] }]}
+        >
+          <SafeBlurView
+            intensity={blurIntensity}
+            tint="light"
+            style={[styles.sheet, { maxHeight, paddingBottom: Math.max(insets.bottom + 18, 34) }]}
+          >
+            {showHandle ? <View style={styles.handleBar} /> : null}
+            <View style={styles.header}>
+              <View style={styles.headerSpacer} />
+              <View style={styles.headerTitleWrap}>
+                {typeof title === 'string' || typeof title === 'number' ? (
+                  <Text style={styles.headerTitle}>{title}</Text>
+                ) : (
+                  title
+                )}
+              </View>
+              <TouchableOpacity
+                onPress={handleClose}
+                style={styles.closeBtn}
+                accessibilityRole="button"
+                accessibilityLabel="닫기"
+                disabled={disableClose}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={handleClose}
-              style={styles.closeBtn}
-              accessibilityRole="button"
-              accessibilityLabel="닫기"
-              disabled={disableClose}
-            >
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-          {children}
-        </SafeBlurView>
+            {children}
+          </SafeBlurView>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -84,16 +134,27 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   overlayBg: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  sheetMotion: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'flex-end',
+    zIndex: 10,
+    elevation: 10,
   },
   sheet: {
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 34,
+    minHeight: 260,
     borderWidth: 1,
     borderBottomWidth: 0,
     borderColor: 'rgba(255, 255, 255, 0.9)',

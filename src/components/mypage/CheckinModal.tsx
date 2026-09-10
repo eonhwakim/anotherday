@@ -10,7 +10,7 @@ import {
   useCreatePhotoCheckinMutation,
   useDeleteCheckinMutation,
 } from '../../queries/goalMutations';
-import { takePhoto } from '../../services/checkinService';
+import { pickImage, takePhoto } from '../../services/checkinService';
 
 import { useAuthStore } from '../../stores/authStore';
 import { useTeamStore } from '../../stores/teamStore';
@@ -148,7 +148,7 @@ export default function CheckinModal({
 
     let imageUri: string | null = null;
     try {
-      imageUri = await takePhoto();
+      imageUri = __DEV__ ? await pickImage() : await takePhoto();
     } catch (cameraErr) {
       handleServiceError(cameraErr);
       return;
@@ -191,22 +191,27 @@ export default function CheckinModal({
           <Text style={styles.loadingText}>처리 중...</Text>
         </View>
       ) : (
-        <ScrollView style={styles.body} bounces={false}>
+        <>
           {goalsWithFrequency.length === 0 ? (
-            <Text style={styles.emptyText}>오늘 인증할 목표가 없어요</Text>
+            <View style={styles.emptyState}>
+              <Ionicons name="checkmark-done-circle-outline" size={28} color={colors.textMuted} />
+              <Text style={styles.emptyText}>오늘 인증할 목표가 없어요</Text>
+            </View>
           ) : (
-            goalsWithFrequency.map((item) => (
-              <GoalCheckinCard
-                key={item.goal.id}
-                item={item}
-                checkins={checkins}
-                onCancelPass={handleCancelPass}
-                onPassToggle={handlePassToggle}
-                onSuccess={handleSuccess}
-              />
-            ))
+            <ScrollView contentContainerStyle={styles.body} bounces={false}>
+              {goalsWithFrequency.map((item) => (
+                <GoalCheckinCard
+                  key={item.goal.id}
+                  item={item}
+                  checkins={checkins}
+                  onCancelPass={handleCancelPass}
+                  onPassToggle={handlePassToggle}
+                  onSuccess={handleSuccess}
+                />
+              ))}
+            </ScrollView>
           )}
-        </ScrollView>
+        </>
       )}
     </BottomSheetModal>
   );
@@ -340,6 +345,14 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 8,
+  },
+  emptyState: {
+    minHeight: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 24,
   },
   loadingWrap: {
     paddingVertical: 48,
