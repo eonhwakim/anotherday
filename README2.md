@@ -369,7 +369,7 @@ src/
 git clone https://github.com/username/anotherday.git
 
 # 2. Install Dependencies
-npm install
+yarn install
 
 # 3. Environment Setup
 cp .env.example .env

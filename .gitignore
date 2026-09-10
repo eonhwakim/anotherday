@@ -3,6 +3,12 @@
 # dependencies
 node_modules/
 
+# 패키지 매니저: yarn(classic) 사용. 다른 락파일은 커밋 금지
+package-lock.json
+pnpm-lock.yaml
+.yarn/
+.pnp.*
+
 # Expo
 .expo/
 dist/
