@@ -110,7 +110,7 @@ export default function FloatingCameraButton({ onPress }: FloatingCameraButtonPr
 
         {/* 카메라 아이콘 */}
         <View style={styles.iconContainer}>
-          <Ionicons name="camera" size={38} color={colors.white} style={styles.iconShadow} />
+          <Ionicons name="camera" size={28} color={colors.white} style={styles.iconShadow} />
         </View>
       </TouchableOpacity>
     </View>
@@ -120,15 +120,15 @@ export default function FloatingCameraButton({ onPress }: FloatingCameraButtonPr
 const styles = StyleSheet.create({
   outerContainer: {
     position: 'absolute',
-    right: 16,
-    bottom: 148,
+    right: 20,
+    bottom: 100,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 100,
   },
   container: {
-    width: 76, // 구슬 크기 축소 (100 -> 76)
-    height: 76,
+    width: 56, // 구슬 크기 축소 (100 -> 76)
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
     // 전체가 떠있는 듯한 메인 그림자
@@ -145,8 +145,8 @@ const styles = StyleSheet.create({
   },
   blob: {
     position: 'absolute',
-    width: 68, // 90 -> 68
-    height: 68,
+    width: 56, // 90 -> 68
+    height: 56,
   },
   // 무지개빛 비눗방울 효과를 위해 각 겹의 색상을 다르게 설정
   blob1: {
@@ -157,8 +157,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     borderBottomRightRadius: 50,
     borderBottomLeftRadius: 35,
-    width: 72, // 96 -> 72
-    height: 72,
+    width: 52, // 96 -> 72
+    height: 52,
   },
   blob2: {
     backgroundColor: colors.white,
@@ -168,8 +168,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 50,
     borderBottomRightRadius: 40,
     borderBottomLeftRadius: 55,
-    width: 66, // 88 -> 66
-    height: 66,
+    width: 56, // 88 -> 66
+    height: 56,
     transform: [{ rotate: '45deg' }],
   },
   blobWhite: {
@@ -188,8 +188,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary, // 반투명한 흰색 유리구슬
     opacity: 0.9,
     borderRadius: 45,
-    width: 64, //크기
-    height: 64,
+    width: 54, //크기
+    height: 54,
     borderWidth: 1,
     borderColor: colors.softRed,
     shadowColor: colors.softOrange,

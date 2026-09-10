@@ -8,6 +8,7 @@ interface YellowRoomBackgroundProps {
   curve?: boolean;
   padded?: boolean;
 }
+const bgcolor = '#e2d1c3';
 
 export default function GradientBackground({
   children,
@@ -21,7 +22,7 @@ export default function GradientBackground({
       <>
         {!curve && (
           <LinearGradient
-            colors={[colors.bgSoft, colors.background]}
+            colors={[bgcolor, colors.background]}
             style={styles.topHeader}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
@@ -30,7 +31,7 @@ export default function GradientBackground({
 
         {curve && (
           <LinearGradient
-            colors={[colors.bgSoft, colors.background]}
+            colors={[bgcolor, colors.background]}
             style={[styles.blobTop]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -57,7 +58,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: '35%',
+    height: '25%',
   },
   blobTop: {
     position: 'absolute',

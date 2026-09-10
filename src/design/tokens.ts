@@ -75,7 +75,7 @@ export const colors = {
   softRed: 'rgba(255, 68, 58, 0.35)',
   darkGreen: '#004c63',
 
-  background: '#F8F4EE',
+  background: '#fdfcfb', //#F8F4EE',
   bgSoft: 'rgba(248, 193, 176, 0.17)',
 } as const;
 
@@ -104,37 +104,37 @@ export const radius = {
 
 export const typography = {
   titleLg: {
-    fontSize: 26,
-    fontWeight: '700' as const,
+    fontSize: 24,
+    fontWeight: '600' as const,
   },
   titleMd: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-  },
-  titleSm: {
     fontSize: 16,
     fontWeight: '600' as const,
   },
-  body: {
+  titleSm: {
     fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  body: {
+    fontSize: 13,
     fontWeight: '400' as const,
   },
   bodyStrong: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500' as const,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    letterSpacing: 0.5,
+    fontSize: 12,
+    fontWeight: '500' as const,
+    letterSpacing: 0,
   },
   caption: {
-    fontSize: 11,
-    fontWeight: '500' as const,
+    fontSize: 10,
+    fontWeight: '400' as const,
   },
   badge: {
     fontSize: 10,
-    fontWeight: '800' as const,
+    fontWeight: '700' as const,
   },
 } as const;
 

@@ -9,18 +9,18 @@ const GRAD_MAIN = 'mountainTrailNeonMain';
 const GRAD_GLOW = 'mountainTrailNeonGlow';
 
 const DEFAULT_CONTAINER_WIDTH = Dimensions.get('window').width;
-const SVG_W = 310;
-const SVG_H = 400;
+const SVG_W = 320;
+const SVG_H = 430;
 /** 산 영역 세로 높이(이미지·SVG·캐릭터 Y 스케일 공통). 너비는 100% 유지, 산 PNG만 세로로 늘리려면 `mountainImage.resizeMode: 'stretch'` 유지 */
 const CONTAINER_HEIGHT = 390;
 
 const TRAIL_POINTS = [
   { x: 230, y: 310 },
-  { x: 70, y: 270 },
-  { x: 80, y: 240 },
-  { x: 240, y: 200 },
-  { x: 190, y: 150 },
-  { x: 120, y: 110 },
+  { x: 60, y: 260 },
+  { x: 100, y: 230 },
+  { x: 245, y: 200 },
+  { x: 180, y: 145 },
+  { x: 130, y: 110 },
   { x: 170, y: 65 },
 ] as const;
 
@@ -522,8 +522,8 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   mountainScene: {
-    width: '90%',
-    height: '98%',
+    width: '85%',
+    height: '90%',
     alignSelf: 'center',
     alignItems: 'center',
   },

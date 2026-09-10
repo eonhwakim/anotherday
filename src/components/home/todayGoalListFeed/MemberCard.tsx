@@ -24,6 +24,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
   const animOpacity = animVal.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   const animSlide = animVal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
   const { width: screenWidth } = useWindowDimensions();
+  const feedContentWidth = Math.max(screenWidth - 40, 0);
   const user = useAuthStore((s) => s.user);
   const currentTeamId = useTeamStore((s) => s.currentTeam?.id);
   const todayStr = React.useMemo(() => dayjs().format('YYYY-MM-DD'), []);
@@ -33,7 +34,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
     date: todayStr,
   });
   const { cardWidth, carouselPanResponder, carouselX, peekTailWidth, photoCheckins } =
-    usePhotoCarousel(member.todayCheckins, screenWidth, onCarouselDragChange);
+    usePhotoCarousel(member.todayCheckins, feedContentWidth, onCarouselDragChange);
 
   const pendingCheckinIds = useRef<Set<string>>(new Set());
 
@@ -65,7 +66,7 @@ export function MemberCard({ member, isMe, animVal, onCarouselDragChange }: Memb
     <Animated.View
       style={[styles.memberRow, { opacity: animOpacity, transform: [{ translateY: animSlide }] }]}
     >
-      <BaseCard glassOnly wide style={[styles.memberCard, { width: screenWidth }]}>
+      <BaseCard glassOnly style={styles.memberCard}>
         <View style={styles.memberHeader}>
           <View style={styles.memberIdentity}>
             <View style={[styles.memberAvatarWrap, allDone && styles.memberAvatarWrapDone]}>
@@ -159,7 +160,6 @@ const styles = StyleSheet.create({
   },
   memberCard: {
     flex: 1,
-    marginLeft: -20,
     borderRadius: radius.xxl,
   },
 

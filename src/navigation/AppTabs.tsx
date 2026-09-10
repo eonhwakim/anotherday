@@ -22,6 +22,8 @@ import { colors } from '../design/tokens';
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 const SafeBlurView = Platform.OS === 'android' ? View : BlurView;
+const TAB_BAR_SIDE_MARGIN = 18;
+const TAB_BAR_HORIZONTAL_PAD = 8;
 
 const TAB_META: Record<
   keyof AppTabParamList,
@@ -37,32 +39,24 @@ const TAB_META: Record<
 function SlidingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const horizontalInset = styles.glassShell.paddingHorizontal;
-  const availableWidth = width - (typeof horizontalInset === 'number' ? horizontalInset * 2 : 24);
+  const availableWidth = width - TAB_BAR_SIDE_MARGIN * 2 - TAB_BAR_HORIZONTAL_PAD * 2;
   const tabWidth = availableWidth / state.routes.length;
-  const indicatorWidth = 42;
+  const indicatorWidth = 46;
   const indicatorTranslateX = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     Animated.spring(indicatorTranslateX, {
-      toValue:
-        (typeof horizontalInset === 'number' ? horizontalInset : 12) +
-        state.index * tabWidth +
-        (tabWidth - indicatorWidth) / 2,
+      toValue: TAB_BAR_HORIZONTAL_PAD + state.index * tabWidth + (tabWidth - indicatorWidth) / 2,
       useNativeDriver: true,
       damping: 18,
       stiffness: 180,
       mass: 0.9,
     }).start();
-  }, [horizontalInset, indicatorTranslateX, state.index, tabWidth]);
+  }, [indicatorTranslateX, state.index, tabWidth]);
 
   return (
-    <View style={styles.tabBarWrap}>
-      <SafeBlurView
-        intensity={50}
-        tint="light"
-        style={[styles.glassShell, { paddingBottom: Math.max(insets.bottom, 10) }]}
-      >
+    <View style={[styles.tabBarWrap, { bottom: Math.max(insets.bottom - 12, 4) }]}>
+      <SafeBlurView intensity={36} tint="light" style={styles.glassShell}>
         <View style={styles.edgeHighlight} />
         <Animated.View
           style={[
@@ -115,7 +109,7 @@ function SlidingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                   {isFocused ? <View style={styles.activeGlow} /> : null}
                   <Ionicons
                     name={meta.icon}
-                    size={22}
+                    size={20}
                     color={color}
                     style={isFocused ? styles.activeIcon : styles.inactiveIcon}
                   />
@@ -153,45 +147,43 @@ export default function AppTabs() {
 const styles = StyleSheet.create({
   tabBarWrap: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
+    left: TAB_BAR_SIDE_MARGIN,
+    right: TAB_BAR_SIDE_MARGIN,
     backgroundColor: 'transparent',
   },
   glassShell: {
     overflow: 'hidden',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    backgroundColor: 'rgba(255,255,255,0.42)',
-    minHeight: 58,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    shadowColor: colors.primary,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.34)',
+    minHeight: 56,
+    paddingHorizontal: TAB_BAR_HORIZONTAL_PAD,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(235, 244, 250, 0.78)',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 10,
   },
   edgeHighlight: {
     position: 'absolute',
     top: 0,
-    left: 18,
-    right: 18,
+    left: 20,
+    right: 20,
     height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.74)',
   },
   activeIndicator: {
     position: 'absolute',
-    top: 0,
-    height: 4,
-    borderBottomLeftRadius: 999,
-    borderBottomRightRadius: 999,
-    backgroundColor: colors.primary,
+    top: 7,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 107, 61, 0.12)',
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.28,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
   },
   tabRow: {
     flexDirection: 'row',
@@ -201,29 +193,30 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 2,
+    minHeight: 44,
   },
   iconWrap: {
-    width: 46,
-    height: 34,
+    width: 36,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   activeGlow: {
     position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 107, 61, 0.1)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 107, 61, 0.08)',
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.42,
-    shadowRadius: 12,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   activeIcon: {
-    textShadowColor: 'rgba(255, 107, 61, 0.55)',
+    textShadowColor: 'rgba(255, 107, 61, 0.22)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
+    textShadowRadius: 8,
   },
   inactiveIcon: {
     textShadowColor: 'transparent',
@@ -231,14 +224,14 @@ const styles = StyleSheet.create({
     textShadowRadius: 0,
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0.3,
-    paddingTop: 4,
+    fontSize: 10,
+    fontWeight: '400',
+    letterSpacing: 0,
+    paddingTop: 1,
   },
   tabLabelFocused: {
-    fontWeight: '700',
-    textShadowColor: 'rgba(255, 107, 61, 0.22)',
+    fontWeight: '600',
+    textShadowColor: 'rgba(255, 107, 61, 0.12)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },

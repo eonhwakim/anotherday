@@ -98,26 +98,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cell: {
-    minWidth: 38,
+    minWidth: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
   },
   cellCompact: {
     minWidth: 32,
-    paddingHorizontal: 4,
   },
   cellDivider: {
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
   },
   labelText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 9,
+    fontWeight: '500',
     marginBottom: 3,
   },
   valueText: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: '700',
   },
   valueTextCompact: {
