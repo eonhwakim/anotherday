@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   text: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

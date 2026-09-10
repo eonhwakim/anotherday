@@ -31,8 +31,9 @@ export const ds = StyleSheet.create({
   },
   //카드 타이틀
   cardTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.1,
     color: colors.darkGreen,
   },
   titleMd: {
@@ -62,15 +63,17 @@ export const ds = StyleSheet.create({
   },
   //목록 헤더 타이틀
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '700',
+    letterSpacing: -0.5,
     color: colors.text,
   },
   //뒤로가기가 있는 페이지 헤더 타이틀
   headerTitleNav: {
     flex: 1,
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: -0.2,
     color: colors.text,
     textAlign: 'center',
   },

@@ -8,7 +8,7 @@ interface YellowRoomBackgroundProps {
   curve?: boolean;
   padded?: boolean;
 }
-const bgcolor = '#e2d1c3';
+const bgcolor = '#fdfcfb'; //'#e2d1c3';
 
 export default function GradientBackground({
   children,

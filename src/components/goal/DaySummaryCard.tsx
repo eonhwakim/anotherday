@@ -8,7 +8,6 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Defs, G, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { colors, ds, spacing } from '../../design/recipes';
 
@@ -35,12 +34,20 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
   const scaleAnim1 = useRef(new Animated.Value(1)).current;
   const scaleAnim2 = useRef(new Animated.Value(1)).current;
 
+  // stats가 없으면 아래에서 null을 반환해 Animated.View가 하나도 렌더되지 않는다.
+  // 그 상태로 네이티브 드라이버 루프를 시작하면 붙일 뷰가 없어 애니메이션이 그대로 얼어붙으므로,
+  // 뷰가 실제로 그려지는 시점(=stats 도착)에 맞춰 시작한다.
+  const hasStats = !!stats;
+
   useEffect(() => {
+    if (!hasStats) return;
+
     // 첫 번째 겹 (크게 숨쉬는 듯한 애니메이션)
     const scaleLoop1 = Animated.loop(
       Animated.sequence([
         Animated.timing(scaleAnim1, {
-          toValue: 1.15,
+          // 오브를 줄인 만큼 배율을 키워야 같은 정도로 '숨쉬어' 보인다
+          toValue: 1.22,
           duration: 2000,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
@@ -58,13 +65,13 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
     const scaleLoop2 = Animated.loop(
       Animated.sequence([
         Animated.timing(scaleAnim2, {
-          toValue: 1.08,
+          toValue: 1.13,
           duration: 1500,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(scaleAnim2, {
-          toValue: 0.95,
+          toValue: 0.92,
           duration: 1500,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
@@ -123,7 +130,7 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
       pulseLoop.stop();
       shimmerLoop.stop();
     };
-  }, [pulse, spin, shimmer, scaleAnim1, scaleAnim2]);
+  }, [hasStats, pulse, spin, shimmer, scaleAnim1, scaleAnim2]);
 
   const spinRotate = spin.interpolate({
     inputRange: [0, 1],
@@ -135,11 +142,11 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
   });
   const ringGlowScale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.98, 1.05],
+    outputRange: [0.96, 1.09],
   });
   const ringGlowOpacity = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.4, 0.72],
+    outputRange: [0.34, 0.8],
   });
 
   if (!stats) return null;
@@ -148,9 +155,9 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
 
   const summaryTitle = isToday ? 'Today Summary' : 'Selected Date Summary';
 
-  const orbSize = 176;
-  const strokeWidth = 18;
-  const ringRadius = 66;
+  const orbSize = 140;
+  const strokeWidth = 14;
+  const ringRadius = 53;
   const circumference = 2 * Math.PI * ringRadius;
   const safeTotal = Math.max(stats.totalGoals, 1);
 
@@ -175,9 +182,9 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
   return (
     <View style={[styles.heroRow, style]}>
       <View style={styles.leftColumn}>
-        <View style={styles.header}>
+        {/* <View style={styles.header}>
           <Text style={ds.cardTitle}>{summaryTitle}</Text>
-        </View>
+        </View> */}
 
         <View style={styles.orbShell}>
           <View style={styles.orbGradient}>
@@ -326,33 +333,30 @@ function DaySummaryCard({ stats, isToday = true, isFuture = false, style }: DayS
             </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.metricsColumn}>
-        <View style={[styles.metricCard]}>
-          <View style={styles.metricTop}>
-            <Ionicons name="checkmark-circle" size={22} color={colors.statusSuccessBg} />
-            <Text style={styles.metricLabel}>완료</Text>
-          </View>
-          <Text style={styles.metricValue}>{stats.doneCount}</Text>
-        </View>
-
-        <View style={[styles.metricCard]}>
-          <View style={styles.metricTop}>
-            <Ionicons name="play-forward-circle" size={22} color={colors.statusPassBg} />
-            <Text style={styles.metricLabel}>오늘 넘김</Text>
-          </View>
-          <Text style={styles.metricValue}>{stats.passCount}</Text>
-        </View>
-
-        <View style={[styles.metricCard]}>
-          <View style={styles.metricTop}>
-            <Ionicons name="alert-circle" size={22} color={colors.statusErrorBg} />
-            <Text style={styles.metricLabel}>미인증</Text>
-          </View>
-          <Text style={styles.metricValue}>{actualMissedCount}</Text>
+        {/* 오브 아래 가로 범례 — 세 숫자는 결국 링의 범례이므로 링과 같은 색 점으로 잇는다 */}
+        <View style={styles.legendRow}>
+          <LegendItem color={colors.softGreen} label="완료" value={stats.doneCount} />
+          <LegendItem color={colors.softYellow} label="패스" value={stats.passCount} />
+          <LegendItem color={colors.softCoral} label="미인증" value={actualMissedCount} />
         </View>
       </View>
+    </View>
+  );
+}
+
+interface LegendItemProps {
+  color: string;
+  label: string;
+  value: number;
+}
+
+function LegendItem({ color, label, value }: LegendItemProps) {
+  return (
+    <View style={styles.legendItem}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <Text style={styles.legendLabel}>{label}</Text>
+      <Text style={styles.legendValue}>{value}</Text>
     </View>
   );
 }
@@ -367,12 +371,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   heroRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 32,
+    borderRadius: 28,
+    // 타이틀이 빠져서 오브 위아래 여백을 균등하게
     paddingVertical: spacing[5],
-    paddingRight: spacing[3],
     shadowColor: colors.softBlue,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -388,18 +389,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  /** 오브 아래 한 줄로 놓이는 범례 */
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    // 세 항목은 한 덩어리로 읽혀야 하므로 간격을 좁게
+    columnGap: spacing[3],
+    rowGap: spacing[2],
+    // 오브와 충분히 떨어뜨려 별개의 줄로 읽히게
+    marginTop: spacing[7],
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  legendLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  legendValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
   orbGradient: {
-    width: 176,
-    height: 176,
-    borderRadius: 88,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     alignItems: 'center',
     justifyContent: 'center',
   },
   // 네온 파형 글로우 효과 (blob 재활용)
   blob: {
     position: 'absolute',
-    width: 160,
-    height: 160,
+    width: 140,
+    height: 140,
   },
   blob1: {
     backgroundColor: colors.softPink,
@@ -409,8 +442,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 70,
     borderBottomRightRadius: 85,
     borderBottomLeftRadius: 60,
-    width: 190,
-    height: 190,
+    width: 168,
+    height: 168,
   },
   blob2: {
     backgroundColor: colors.softRed,
@@ -420,8 +453,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 90,
     borderBottomRightRadius: 70,
     borderBottomLeftRadius: 100,
-    width: 180,
-    height: 180,
+    width: 160,
+    height: 160,
     transform: [{ rotate: '45deg' }],
   },
   blobWhite: {
@@ -432,14 +465,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 70,
     borderBottomRightRadius: 100,
     borderBottomLeftRadius: 60,
-    width: 170,
-    height: 170,
+    width: 152,
+    height: 152,
     transform: [{ rotate: '-20deg' }],
   },
   ringAura: {
     position: 'absolute',
-    width: 216,
-    height: 216,
+    width: 180,
+    height: 180,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -449,40 +482,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   orbCount: {
-    fontSize: 42,
-    fontWeight: '900',
+    fontSize: 34,
+    fontWeight: '600',
+    letterSpacing: -0.5,
     color: colors.text,
-    lineHeight: 46,
+    lineHeight: 38,
   },
   orbLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '500',
     color: colors.textSecondary,
-  },
-  metricsColumn: {
-    marginTop: 36,
-    gap: spacing[3],
-    justifyContent: 'center',
-    paddingLeft: spacing[2],
-  },
-  metricCard: {
-    alignItems: 'flex-start',
-  },
-  metricTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    marginBottom: spacing[1],
-  },
-  metricLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  metricValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text,
-    marginLeft: 26, // 아이콘 너비만큼 들여쓰기
   },
 });

@@ -10,7 +10,7 @@ import CircularProgress from '../ui/CircularProgress';
 import BaseCard from '../ui/BaseCard';
 import Button from '../common/Button';
 
-type SelectedDayGoalStatus = 'done' | 'pass' | 'pending';
+export type SelectedDayGoalStatus = 'done' | 'pass' | 'pending';
 
 interface GoalSettingProps {
   teamGoals: Goal[];
@@ -112,6 +112,8 @@ function getSelectedDayStatusMeta(status: SelectedDayGoalStatus | undefined) {
   if (status === 'done') {
     return {
       label: '완료',
+      // Today Summary 범례와 같은 색 체계
+      dotColor: colors.softGreen,
       color: colors.successBright,
       iconName: 'checkmark-circle' as const,
       backgroundColor: 'rgba(134, 239, 172, 0.18)',
@@ -122,6 +124,7 @@ function getSelectedDayStatusMeta(status: SelectedDayGoalStatus | undefined) {
   if (status === 'pass') {
     return {
       label: '패스',
+      dotColor: colors.softYellow,
       color: colors.warning,
       iconName: 'play-forward-circle' as const,
       backgroundColor: 'rgba(253, 230, 138, 0.2)',
@@ -131,6 +134,7 @@ function getSelectedDayStatusMeta(status: SelectedDayGoalStatus | undefined) {
 
   return {
     label: '미인증',
+    dotColor: colors.softCoral,
     color: colors.primaryLight,
     iconName: 'alert-circle' as const,
     backgroundColor: 'rgba(252, 165, 165, 0.18)',
@@ -236,17 +240,19 @@ export default function GoalSetting({
           </View>
         ) : (
           <>
+            {/* 페이지 헤더가 이미 'Routine'이라 섹션 타이틀은 중복 — 안내만 목록 아래 각주로 둔다
             <View style={styles.goalSection}>
               <View style={styles.sectionHeading}>
                 <View style={styles.sectionTitleRow}>
                   <Text style={ds.cardTitle as TextStyle}>My routine</Text>
                 </View>
-                <Text style={styles.sectionHint}>길게 눌러 종료하거나 삭제할 수 있어요.</Text>
               </View>
             </View>
+            */}
 
+            {/* 루틴 목록 — 카드 하나에 행을 쌓고 구분선으로만 나눈다 */}
             <View style={styles.goalList}>
-              {sortedGoals.map((goal) => {
+              {sortedGoals.map((goal, index) => {
                 const userGoal = getMyGoal(goal.id);
                 const isEnded =
                   !!userGoal &&
@@ -270,138 +276,92 @@ export default function GoalSetting({
                 const selectedDayStatusMeta = getSelectedDayStatusMeta(
                   selectedDayGoalStatusById[goal.id],
                 );
+                // 빈도는 매일 참조하는 정보, 기간은 참고용 — 같은 줄에서 톤으로만 구분한다
+                const freqText = userGoal ? freqLabel(userGoal) : null;
+                const periodText = userGoal
+                  ? isEnded
+                    ? periodLabel(userGoal)
+                    : startLabel(userGoal)
+                  : null;
 
                 return (
                   <TouchableOpacity
                     key={goal.id}
                     onLongPress={isEnded ? undefined : () => handleLongPress(goal)}
-                    activeOpacity={0.7}
+                    activeOpacity={0.6}
                     delayLongPress={500}
                     disabled={isEnded}
+                    style={[styles.goalRow, index > 0 && styles.goalRowDivided]}
                   >
-                    <BaseCard padded={false}>
-                      <View style={styles.goalRowContentBox}>
-                        <View style={styles.goalRowContent}>
-                          <View style={styles.goalMainInfo}>
-                            <View style={styles.goalLeading}>
-                              <CircularProgress
-                                size={52}
-                                strokeWidth={4}
-                                progress={progress}
-                                color={progressColor}
-                                trackColor={
-                                  isEnded ? 'rgba(26,26,26,0.08)' : 'rgba(255, 107, 61, 0.15)'
-                                }
-                                label={progressLabel}
-                              />
-                            </View>
-                            <View style={styles.goalTextWrap}>
-                              <View style={styles.goalTitleRow}>
-                                <Text
-                                  style={[styles.goalRowName, isEnded && styles.goalRowNameEnded]}
-                                  numberOfLines={1}
-                                >
-                                  {goal.name}
-                                </Text>
-                              </View>
-                              {userGoal ? (
-                                <View style={styles.goalSubtitleRow}>
-                                  <View style={styles.goalSubtitleItem}>
-                                    <Ionicons
-                                      name="repeat"
-                                      size={14}
-                                      color={isEnded ? colors.textFaint : colors.textSecondary}
-                                    />
-                                    <Text
-                                      style={[
-                                        styles.goalSubtitleText,
-                                        isEnded && styles.goalSubtitleTextEnded,
-                                      ]}
-                                    >
-                                      {freqLabel(userGoal)}
-                                    </Text>
-                                  </View>
-                                  <Text
-                                    style={[
-                                      styles.goalSubtitleDot,
-                                      isEnded && styles.goalSubtitleTextEnded,
-                                    ]}
-                                  >
-                                    ·
-                                  </Text>
-                                  <View style={styles.goalSubtitleItem}>
-                                    <Ionicons
-                                      name="calendar-outline"
-                                      size={14}
-                                      color={isEnded ? colors.textFaint : colors.textSecondary}
-                                    />
-                                    <Text
-                                      style={[
-                                        styles.goalSubtitleText,
-                                        isEnded && styles.goalSubtitleTextEnded,
-                                      ]}
-                                    >
-                                      {isEnded ? periodLabel(userGoal) : startLabel(userGoal)}
-                                    </Text>
-                                  </View>
-                                </View>
-                              ) : null}
-                              {userGoal
-                                ? renderPassIndicator(
-                                    userGoal,
-                                    weeklyDoneCounts[goal.id] || 0,
-                                    isEnded,
-                                  )
-                                : null}
-                            </View>
-                          </View>
-                          {userGoal ? (
-                            <View style={styles.goalMetaRight}>
-                              <View
-                                style={[
-                                  styles.selectedDayStatusIcon,
-                                  {
-                                    backgroundColor: isEnded
-                                      ? 'rgba(255,255,255,0.42)'
-                                      : selectedDayStatusMeta.backgroundColor,
-                                    borderColor: isEnded
-                                      ? 'rgba(255,255,255,0.48)'
-                                      : selectedDayStatusMeta.borderColor,
-                                  },
-                                ]}
-                              >
-                                <Ionicons
-                                  name={selectedDayStatusMeta.iconName}
-                                  size={18}
-                                  color={isEnded ? colors.textMuted : selectedDayStatusMeta.color}
-                                />
-                              </View>
-                              {userGoal ? (
-                                <View style={styles.goalPeriodRow}>
-                                  {isMergedWeekGoal ? (
-                                    <Badge
-                                      label="편입주"
-                                      tone="neutral"
-                                      style={styles.mergedBadge}
-                                      textStyle={styles.mergedBadgeText}
-                                    />
-                                  ) : null}
-                                  {isEnded ? (
-                                    <View style={styles.endedBadge}>
-                                      <Text style={styles.endedBadgeText}>종료됨</Text>
-                                    </View>
-                                  ) : null}
-                                </View>
-                              ) : null}
-                            </View>
+                    {/* 리딩 슬롯 — 선택한 날짜의 상태 (Today Summary 범례와 같은 점) */}
+                    <View style={styles.statusLeading}>
+                      <View
+                        style={[
+                          styles.statusDot,
+                          {
+                            backgroundColor: isEnded
+                              ? colors.borderMuted
+                              : selectedDayStatusMeta.dotColor,
+                          },
+                        ]}
+                      />
+                    </View>
+
+                    <View style={styles.goalTextWrap}>
+                      <Text
+                        style={[styles.goalRowName, isEnded && styles.goalRowNameEnded]}
+                        numberOfLines={1}
+                      >
+                        {goal.name}
+                      </Text>
+                      {freqText ? (
+                        <Text
+                          style={[styles.goalMetaText, isEnded && styles.goalMetaTextEnded]}
+                          numberOfLines={1}
+                        >
+                          {freqText}
+                          {periodText ? (
+                            <Text style={styles.goalMetaPeriod}> · {periodText}</Text>
                           ) : null}
-                        </View>
+                        </Text>
+                      ) : null}
+                      {userGoal
+                        ? renderPassIndicator(userGoal, weeklyDoneCounts[goal.id] || 0, isEnded)
+                        : null}
+                    </View>
+
+                    {userGoal ? (
+                      <View style={styles.goalMetaRight}>
+                        {isMergedWeekGoal ? (
+                          <Badge
+                            label="편입주"
+                            tone="neutral"
+                            style={styles.mergedBadge}
+                            textStyle={styles.mergedBadgeText}
+                          />
+                        ) : null}
+                        {isEnded ? (
+                          <View style={styles.endedBadge}>
+                            <Text style={styles.endedBadgeText}>종료됨</Text>
+                          </View>
+                        ) : null}
+                        {/* 트레일링 슬롯 — 누적 진행률 */}
+                        <CircularProgress
+                          size={32}
+                          strokeWidth={3}
+                          progress={progress}
+                          color={progressColor}
+                          trackColor={isEnded ? colors.track : 'rgba(255, 107, 61, 0.14)'}
+                          label={progressLabel}
+                        />
                       </View>
-                    </BaseCard>
+                    ) : null}
                   </TouchableOpacity>
                 );
               })}
             </View>
+
+            <Text style={styles.sectionHint}>길게 눌러 종료하거나 삭제할 수 있어요.</Text>
           </>
         )}
 
@@ -471,10 +431,14 @@ export default function GoalSetting({
 }
 
 const styles = StyleSheet.create({
+  /** 목록 아래 각주 — 롱프레스 동작 안내 */
   sectionHint: {
     ...typography.caption,
-    color: colors.textSecondary,
-    lineHeight: 18,
+    color: colors.textFaint,
+    lineHeight: 16,
+    paddingHorizontal: spacing[1],
+    marginTop: -spacing[2],
+    marginBottom: spacing[4],
   },
   section: {
     marginBottom: spacing[6],
@@ -496,13 +460,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing[5],
   },
   innerTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     color: colors.textSecondary,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.text,
   },
   subtitle: {
@@ -543,58 +507,65 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   emptyText: {
-    ...typography.bodyStrong,
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
 
+  /** 루틴 목록 카드 — 행마다 카드를 두지 않고 하나로 묶는다 */
   goalList: {
-    gap: spacing[4],
-    marginBottom: spacing[4],
-  },
-  goalLeading: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    position: 'relative',
-    gap: spacing[2],
-  },
-  goalRowContentBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[4],
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
+    marginBottom: spacing[4],
+    overflow: 'hidden',
   },
-  goalRowContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    flex: 1,
-    gap: spacing[2],
-  },
-  goalMainInfo: {
+  goalRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    flex: 1,
-    minWidth: 0,
+    paddingVertical: spacing[4],
+  },
+  /** 상태 점이 행마다 같은 x축에 정렬되도록 폭을 고정 */
+  statusLeading: {
+    width: 7,
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  goalRowDivided: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.hairline,
+  },
+  goalMetaText: {
+    fontSize: 11,
+    lineHeight: 15,
+    color: colors.textSecondary,
+    marginTop: 3,
+  },
+  goalMetaTextEnded: {
+    color: colors.textFaint,
+  },
+  /** 기간은 참고용이라 한 톤 더 흐리게 */
+  goalMetaPeriod: {
+    color: colors.textMuted,
   },
   goalTextWrap: {
     flex: 1,
     justifyContent: 'center',
     minWidth: 0,
   },
-  goalTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    minWidth: 0,
-    marginBottom: 4,
-  },
+
   goalRowName: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.1,
     color: colors.text,
     lineHeight: 20,
     flexShrink: 1,
@@ -602,40 +573,11 @@ const styles = StyleSheet.create({
   goalRowNameEnded: {
     color: colors.textSecondary,
   },
-  goalSubtitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  goalSubtitleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  goalSubtitleText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  goalSubtitleTextEnded: {
-    color: colors.textFaint,
-  },
-  goalSubtitleDot: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginHorizontal: 2,
-    fontWeight: '600',
-  },
   goalMetaRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-start',
-    gap: spacing[2],
-  },
-  goalPeriodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
+    flexShrink: 0,
   },
   endedBadge: {
     paddingHorizontal: spacing[2] + 2,
@@ -648,14 +590,6 @@ const styles = StyleSheet.create({
   endedBadgeText: {
     ...typography.caption,
     color: colors.textSecondary,
-  },
-  selectedDayStatusIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
   },
   mergedBadge: {
     paddingHorizontal: spacing[2],
@@ -674,6 +608,6 @@ const styles = StyleSheet.create({
   },
   indicatorText: {
     ...typography.caption,
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });

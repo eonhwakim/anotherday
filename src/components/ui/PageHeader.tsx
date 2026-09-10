@@ -54,7 +54,7 @@ const NAV_SIDE_WIDTH = 32;
 const styles = StyleSheet.create({
   header: {
     paddingTop: spacing[4],
-    paddingBottom: spacing[7],
+    paddingBottom: spacing[5],
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',

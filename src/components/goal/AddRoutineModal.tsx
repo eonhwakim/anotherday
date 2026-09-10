@@ -295,14 +295,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   firstLabel: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: '#1A1A1A',
     marginBottom: 16,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: '#1A1A1A',
     marginBottom: 16,
   },

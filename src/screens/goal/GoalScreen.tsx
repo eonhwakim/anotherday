@@ -32,7 +32,7 @@ import { colors, ds, spacing } from '../../design/recipes';
 
 import GradientBackground from '../../components/ui/GradientBackground';
 import PageHeader from '../../components/ui/PageHeader';
-import GoalSetting from '../../components/goal/GoalSetting';
+import GoalSetting, { type SelectedDayGoalStatus } from '../../components/goal/GoalSetting';
 import AddRoutineModal from '../../components/goal/AddRoutineModal';
 import DaySummaryCard from '../../components/goal/DaySummaryCard';
 import GlassModal from '../../components/ui/GlassModal';
@@ -160,14 +160,14 @@ export default function GoalScreen() {
       ),
     [memberProgress, user?.id],
   );
-  const selectedDayGoalStatusById = useMemo(() => {
+  const selectedDayGoalStatusById = useMemo<Record<string, SelectedDayGoalStatus>>(() => {
     if (!user) return {};
 
     const me = memberProgress.find((progress) => progress.userId === user.id);
     if (!me) return {};
 
     return Object.fromEntries(
-      (me.goalDetails ?? []).map((goal) => [
+      (me.goalDetails ?? []).map((goal): [string, SelectedDayGoalStatus] => [
         goal.goalId,
         goal.isPass ? 'pass' : goal.isDone ? 'done' : 'pending',
       ]),
