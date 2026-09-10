@@ -29,6 +29,8 @@ export interface BottomSheetModalProps {
   maxHeight?: DimensionValue;
   showHandle?: boolean;
   disableClose?: boolean;
+  /** 헤더 타이틀 정렬 — 기본은 가운데 */
+  titleAlign?: 'center' | 'left';
 }
 
 export default function BottomSheetModal({
@@ -40,6 +42,7 @@ export default function BottomSheetModal({
   maxHeight = '75%',
   showHandle = true,
   disableClose = false,
+  titleAlign = 'center',
 }: BottomSheetModalProps) {
   const insets = useSafeAreaInsets();
   const [shouldRender, setShouldRender] = React.useState(visible);
@@ -104,8 +107,13 @@ export default function BottomSheetModal({
           >
             {showHandle ? <View style={styles.handleBar} /> : null}
             <View style={styles.header}>
-              <View style={styles.headerSpacer} />
-              <View style={styles.headerTitleWrap}>
+              {titleAlign === 'center' ? <View style={styles.headerSpacer} /> : null}
+              <View
+                style={[
+                  styles.headerTitleWrap,
+                  titleAlign === 'left' && styles.headerTitleWrapLeft,
+                ]}
+              >
                 {typeof title === 'string' || typeof title === 'number' ? (
                   <Text style={styles.headerTitle}>{title}</Text>
                 ) : (
@@ -137,7 +145,7 @@ const styles = StyleSheet.create({
   },
   overlayBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.40)',
   },
   sheetMotion: {
     position: 'absolute',
@@ -151,34 +159,34 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingBottom: 34,
     minHeight: 260,
     borderWidth: 1,
     borderBottomWidth: 0,
     borderColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#FF6B3D',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
     elevation: 8,
     overflow: 'hidden',
   },
   handleBar: {
-    width: 40,
+    width: 38,
     height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 90, 61, 0.2)',
+    borderRadius: 999,
+    backgroundColor: 'rgba(26, 26, 26, 0.14)',
     alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 10,
+    marginBottom: 10,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 14,
   },
   headerSpacer: {
     width: 28,
@@ -187,6 +195,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerTitleWrapLeft: {
+    alignItems: 'flex-start',
   },
   headerTitle: {
     fontSize: 17,

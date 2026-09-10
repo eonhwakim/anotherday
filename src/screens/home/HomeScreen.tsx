@@ -39,7 +39,7 @@ import useTabDoubleTapScrollTop from '../../hooks/useTabDoubleTapScrollTop';
 import { useCheckinGoals } from './hooks/useCheckinGoals';
 // import { useDailyTodoActions } from './hooks/useDailyTodoActions';
 import { useHomeRefresh } from './hooks/useHomeRefresh';
-import { useHomeTimePeriod } from './hooks/useHomeTimePeriod';
+import { useHomeTimePeriod, type HomeTimePeriod } from './hooks/useHomeTimePeriod';
 import { useMonthlyGoalPrompt } from './hooks/useMonthlyGoalPrompt';
 
 // 5. Components & UI Tokens
@@ -64,6 +64,13 @@ const SHEET_BLUR_INTENSITY = 30;
 const HERO_FADE_END = 90;
 const COMPACT_FADE_START = 70;
 const COMPACT_FADE_END = 130;
+
+// TODO: 임시 개발용 시간대 토글 — 디자인 확인 후 제거
+const DEV_TIME_PERIODS: { label: string; value: HomeTimePeriod }[] = [
+  { label: '낮', value: 'DAY' },
+  { label: '오후', value: 'SUNSET' },
+  { label: '밤', value: 'NIGHT' },
+];
 
 export default function HomeScreen() {
   // 1. Global State & Base Context
@@ -139,7 +146,13 @@ export default function HomeScreen() {
 
   // 4. Custom Feature Hooks (Business Logic)
   // 4.1 Time & Refresh
-  const { isDay, isNight, isSunset, timePeriod, updateTime } = useHomeTimePeriod();
+  const { timePeriod: autoTimePeriod, updateTime } = useHomeTimePeriod();
+  // TODO: 임시 개발용 시간대 토글 — 디자인 확인 후 devTimePeriod 관련 코드 제거
+  const [devTimePeriod, setDevTimePeriod] = React.useState<HomeTimePeriod | null>(null);
+  const timePeriod = devTimePeriod ?? autoTimePeriod;
+  const isDay = timePeriod === 'DAY';
+  const isSunset = timePeriod === 'SUNSET';
+  const isNight = timePeriod === 'NIGHT';
   const refreshHomeQueries = useHomeRefresh({ currentTeamId, todayStr, userId });
   const backgroundTheme = useSettingsStore((s) => s.backgroundTheme);
   const updateTimeRef = useRef(updateTime);
@@ -354,6 +367,29 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
+        {/* TODO: 임시 개발용 시간대 토글 — 디자인 확인 후 제거 */}
+        {__DEV__ ? (
+          <View style={[styles.devToggle, { bottom: insets.bottom + 96 }]}>
+            {DEV_TIME_PERIODS.map(({ label, value }) => {
+              const active = timePeriod === value;
+              return (
+                <Pressable
+                  key={value}
+                  onPress={() => setDevTimePeriod(value)}
+                  style={[styles.devToggleItem, active && styles.devToggleItemActive]}
+                >
+                  <Text style={[styles.devToggleText, active && styles.devToggleTextActive]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            <Pressable onPress={() => setDevTimePeriod(null)} style={styles.devToggleItem}>
+              <Text style={styles.devToggleText}>자동</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <FloatingCameraButton onPress={openCheckinModal} />
       </SafeAreaView>
 
@@ -475,6 +511,33 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
     paddingBottom: 140,
+  },
+  // TODO: 임시 개발용 시간대 토글 스타일 — 디자인 확인 후 제거
+  devToggle: {
+    position: 'absolute',
+    left: 16,
+    flexDirection: 'row',
+    gap: 4,
+    padding: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    zIndex: 2000,
+  },
+  devToggleItem: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  devToggleItemActive: {
+    backgroundColor: colors.white,
+  },
+  devToggleText: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.white80,
+  },
+  devToggleTextActive: {
+    color: colors.text,
   },
   sheetHandleHit: {
     alignSelf: 'center',

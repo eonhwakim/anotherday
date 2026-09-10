@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../../design/tokens';
+import { colors, numericFont, radius, spacing, typography } from '../../design/tokens';
 import dayjs from '../../lib/dayjs';
 import { handleServiceError } from '../../lib/serviceError';
 import {
@@ -18,8 +26,6 @@ import { useTeamStore } from '../../stores/teamStore';
 import type { Checkin, Goal } from '../../types/domain';
 
 import BottomSheetModal from '../ui/BottomSheetModal';
-import BaseCard from '../ui/BaseCard';
-import Chip from '../ui/Chip';
 
 export interface GoalWithFrequency {
   goal: Goal;
@@ -95,7 +101,6 @@ export default function CheckinModal({
   const [isLoading, setIsLoading] = useState(false);
 
   const today = TODAY();
-  const formattedDate = dayjs(today).format('M월 D일 (ddd)');
 
   const refreshAfterMutation = async () => {
     await onCheckinDone?.();
@@ -178,70 +183,111 @@ export default function CheckinModal({
     }
   };
 
+  const totalCount = goalsWithFrequency.length;
+  const doneCount = goalsWithFrequency.filter((item) =>
+    isGoalDoneToday(item.goal.id, checkins),
+  ).length;
+  const progressRatio = totalCount > 0 ? doneCount / totalCount : 0;
+  const allDone = totalCount > 0 && doneCount >= totalCount;
+
   return (
     <BottomSheetModal
       visible={visible}
       onClose={onClose}
-      title={formattedDate}
+      titleAlign="left"
+      title={<Text style={styles.headerTitle}>오늘 인증</Text>}
       disableClose={isLoading}
     >
-      {isLoading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.primaryLight} />
-          <Text style={styles.loadingText}>처리 중...</Text>
+      {totalCount === 0 ? (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="checkmark-done-outline" size={22} color={colors.textFaint} />
+          </View>
+          <Text style={styles.emptyText}>오늘 인증할 목표가 없어요</Text>
         </View>
       ) : (
         <>
-          {goalsWithFrequency.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="checkmark-done-circle-outline" size={28} color={colors.textMuted} />
-              <Text style={styles.emptyText}>오늘 인증할 목표가 없어요</Text>
+          {/* 진행 요약 — 지금 몇 개 남았는지 한 줄로 */}
+          <View style={styles.summary}>
+            <View style={styles.summaryTextRow}>
+              <Text style={styles.summaryLabel}>
+                {allDone ? '오늘 목표를 전부 인증했어요' : `${totalCount - doneCount}개 남았어요`}
+              </Text>
+              <Text style={styles.summaryCount}>
+                {doneCount}/{totalCount}
+              </Text>
             </View>
-          ) : (
-            <ScrollView contentContainerStyle={styles.body} bounces={false}>
-              {goalsWithFrequency.map((item) => (
-                <GoalCheckinCard
-                  key={item.goal.id}
-                  item={item}
-                  checkins={checkins}
-                  onCancelPass={handleCancelPass}
-                  onPassToggle={handlePassToggle}
-                  onSuccess={handleSuccess}
-                />
-              ))}
-            </ScrollView>
-          )}
+            <View style={styles.summaryTrack}>
+              <View
+                style={[
+                  styles.summaryFill,
+                  allDone && styles.summaryFillDone,
+                  { width: `${Math.min(progressRatio * 100, 100)}%` },
+                ]}
+              />
+            </View>
+          </View>
+
+          <ScrollView
+            contentContainerStyle={styles.body}
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+          >
+            {goalsWithFrequency.map((item, index) => (
+              <GoalCheckinRow
+                key={item.goal.id}
+                item={item}
+                checkins={checkins}
+                showDivider={index > 0}
+                onCancelPass={handleCancelPass}
+                onPassToggle={handlePassToggle}
+                onSuccess={handleSuccess}
+              />
+            ))}
+          </ScrollView>
         </>
       )}
+
+      {/* 처리 중에는 목록을 그대로 두고 위에 덮는다 (레이아웃이 튀지 않도록) */}
+      {isLoading ? (
+        <View style={styles.loadingOverlay} pointerEvents="auto">
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>처리 중...</Text>
+        </View>
+      ) : null}
     </BottomSheetModal>
   );
 }
 
-interface GoalCheckinCardProps {
+interface GoalCheckinRowProps {
   item: GoalWithFrequency;
   checkins: Checkin[];
+  /** 위쪽 구분선 표시 (목록 첫 항목은 false) */
+  showDivider: boolean;
   onCancelPass: (checkinId: string) => void;
   onPassToggle: (goalId: string) => void;
   onSuccess: (goalId: string) => void;
 }
 
-function GoalCheckinCard({
+function GoalCheckinRow({
   item,
   checkins,
+  showDivider,
   onCancelPass,
   onPassToggle,
   onSuccess,
-}: GoalCheckinCardProps) {
+}: GoalCheckinRowProps) {
   const { goal, frequency, targetCount, weeklyDoneCount = 0 } = item;
 
   const done = isGoalDoneToday(goal.id, checkins);
   const checkin = checkins.find((c) => c.goal_id === goal.id);
   const isPass = checkin?.status === 'pass';
   const isWeekly = frequency === 'weekly_count';
+  const isSuccess = done && !isPass;
 
   const freqLabel = isWeekly ? `주 ${targetCount ?? 0}회` : '매일';
   const weeklyProgress =
-    isWeekly && targetCount != null ? ` (${weeklyDoneCount}/${targetCount})` : '';
+    isWeekly && targetCount != null ? ` · ${weeklyDoneCount}/${targetCount}` : '';
 
   const weeklyPass =
     isWeekly && targetCount != null
@@ -252,249 +298,283 @@ function GoalCheckinCard({
     ? weeklyPass.totalPasses - Math.max(0, weeklyPass.remainingPasses)
     : 0;
 
-  const statusIcon = done ? (isPass ? 'remove-circle' : 'checkmark-circle') : 'ellipse-outline';
-  const statusColor = done ? (isPass ? colors.warning : colors.success) : colors.textSecondary;
-
   return (
-    <BaseCard
-      glassOnly
-      style={[
-        styles.goalFrame,
-        done && !isPass && styles.goalRowDone,
-        isPass && styles.goalRowPass,
-      ]}
-      contentStyle={styles.goalFrameContent}
-    >
-      <View style={styles.goalInfo}>
-        <Ionicons name={statusIcon} size={22} color={statusColor} />
-        <View style={styles.goalNameRow}>
-          <Text
-            style={[styles.goalName, done && styles.goalNameDone]}
-            numberOfLines={2}
-            ellipsizeMode="tail"
-          >
-            {goal.name}
-          </Text>
-          <Text style={styles.freqLabel}>
-            {freqLabel}
-            {weeklyProgress}
-          </Text>
-        </View>
+    <View style={[styles.row, showDivider && styles.rowDivided]}>
+      {/* 상태 표시 — 아이콘 하나로 완료/패스/대기를 구분 */}
+      <View
+        style={[
+          styles.statusDot,
+          isSuccess && styles.statusDotDone,
+          isPass && styles.statusDotPass,
+        ]}
+      >
+        {isSuccess ? <Ionicons name="checkmark" size={13} color={colors.white} /> : null}
+        {isPass ? <Ionicons name="remove" size={13} color={colors.white} /> : null}
+      </View>
+
+      <View style={styles.rowTextBlock}>
+        <Text
+          style={[styles.goalName, done && styles.goalNameDone]}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
+          {goal.name}
+        </Text>
+        <Text style={styles.metaText}>
+          {freqLabel}
+          {weeklyProgress}
+          {isPass && weeklyPass ? ` · 패스 ${usedPasses}/${weeklyPass.totalPasses}` : ''}
+        </Text>
       </View>
 
       {done || isPass ? (
         <View style={styles.actionRow}>
-          {isPass ? (
-            <View style={styles.passStatusWrap}>
-              <Text style={[styles.statusBadge, styles.badgePass]}>패스</Text>
-              {weeklyPass ? (
-                <Text style={styles.passCountText}>
-                  ({usedPasses}/{weeklyPass.totalPasses})
-                </Text>
-              ) : null}
-            </View>
-          ) : (
-            <Text style={[styles.statusBadge, styles.badgeSuccess]}>성공</Text>
-          )}
+          <View style={[styles.statusBadge, isPass ? styles.badgePass : styles.badgeSuccess]}>
+            <Text style={[styles.statusBadgeText, isPass && styles.statusBadgeTextPass]}>
+              {isPass ? '패스' : '완료'}
+            </Text>
+          </View>
           {isWeekly && isPass && checkin ? (
-            <Chip
-              label="취소"
-              icon={<Ionicons name="refresh" size={15} color={colors.warning} />}
+            <Pressable
               onPress={() => onCancelPass(checkin.id)}
-              style={styles.passBtn}
-              textStyle={[styles.passBtnText, styles.passBtnTextWarning]}
-            />
+              style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="패스 취소"
+            >
+              <Text style={styles.ghostBtnText}>취소</Text>
+            </Pressable>
           ) : null}
         </View>
       ) : (
         <View style={styles.actionRow}>
-          <Chip
-            label="성공"
-            icon={<Ionicons name="camera" size={16} color={colors.primary} />}
-            onPress={() => onSuccess(goal.id)}
-            style={styles.successBtn}
-            textStyle={styles.successBtnText}
-          />
           {isWeekly && weeklyPass ? (
-            <Chip
-              label="패스"
-              icon={
-                <Ionicons
-                  name="close-circle-outline"
-                  size={16}
-                  color={weeklyPass.isPassDisabled ? colors.textMuted : colors.warning}
-                />
-              }
+            <Pressable
               onPress={() => {
                 if (!weeklyPass.isPassDisabled) onPassToggle(goal.id);
               }}
-              style={[styles.passBtn, weeklyPass.isPassDisabled && styles.passBtnDisabled]}
-              textStyle={[
-                styles.passBtnText,
-                weeklyPass.isPassDisabled && styles.passBtnTextDisabled,
+              disabled={weeklyPass.isPassDisabled}
+              style={({ pressed }) => [
+                styles.ghostBtn,
+                pressed && styles.pressed,
+                weeklyPass.isPassDisabled && styles.ghostBtnDisabled,
               ]}
-            />
+              accessibilityRole="button"
+              accessibilityLabel="패스"
+            >
+              <Text
+                style={[
+                  styles.ghostBtnText,
+                  weeklyPass.isPassDisabled && styles.ghostBtnTextDisabled,
+                ]}
+              >
+                패스
+              </Text>
+            </Pressable>
           ) : null}
+          <Pressable
+            onPress={() => onSuccess(goal.id)}
+            style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`${goal.name} 사진으로 인증`}
+          >
+            <Ionicons name="camera" size={13} color={colors.white} />
+            <Text style={styles.primaryBtnText}>인증</Text>
+          </Pressable>
         </View>
       )}
-    </BaseCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  body: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    color: colors.text,
   },
-  emptyState: {
-    minHeight: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingHorizontal: 24,
+  summary: {
+    paddingHorizontal: spacing[5],
+    paddingBottom: spacing[4],
   },
-  loadingWrap: {
-    paddingVertical: 48,
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: 'rgba(26,26,26,0.50)',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: 'rgba(26,26,26,0.50)',
-    textAlign: 'center',
-    paddingVertical: 32,
-  },
-  goalFrame: {
-    marginBottom: 12,
-    marginTop: 0,
-  },
-  goalFrameContent: {
+  summaryTextRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    marginBottom: spacing[2],
   },
-  goalRowDone: {
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    borderColor: 'rgba(255, 232, 199, 0.9)',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 4,
+  summaryLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
-  goalRowPass: {
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    borderColor: 'rgba(255, 232, 199, 0.9)',
-    shadowColor: colors.warning,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 4,
+  summaryCount: {
+    ...typography.body,
+    ...numericFont,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
-  goalInfo: {
+  summaryTrack: {
+    height: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.track,
+    overflow: 'hidden',
+  },
+  summaryFill: {
+    height: '100%',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryWarm,
+  },
+  summaryFillDone: {
+    backgroundColor: colors.successBright,
+  },
+  body: {
+    paddingHorizontal: spacing[5],
+    paddingBottom: spacing[2],
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    flex: 1,
-    minWidth: 0,
+    gap: spacing[3],
+    paddingVertical: 14,
   },
-  goalNameRow: {
-    flexDirection: 'column',
+  rowDivided: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.hairline,
+  },
+  statusDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.25,
+    borderColor: colors.borderMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusDotDone: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  statusDotPass: {
+    backgroundColor: colors.warning,
+    borderColor: colors.warning,
+  },
+  rowTextBlock: {
     flex: 1,
     minWidth: 0,
   },
   goalName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 6,
-  },
-  freqLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+    lineHeight: 20,
+    color: colors.text,
   },
   goalNameDone: {
-    color: 'rgba(26,26,26,0.45)',
+    color: colors.textSecondary,
   },
-  passStatusWrap: {
-    alignItems: 'center',
-  },
-  passCountText: {
+  metaText: {
+    ...typography.caption,
+    ...numericFont,
     fontSize: 11,
-    fontWeight: '500',
-    marginTop: 0,
-    color: colors.warning,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    alignSelf: 'center',
-    borderWidth: 0,
-  },
-  badgeSuccess: {
-    color: colors.primary,
-  },
-  badgePass: {
-    color: colors.warning,
+    color: colors.textMuted,
+    marginTop: 3,
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: spacing[2],
     flexShrink: 0,
   },
-  successBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
+  /** 주 행동 — 사진 인증 */
+  primaryBtn: {
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  successBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primary,
+  primaryBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.white,
   },
-  passBtn: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.7)',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: colors.warning,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  /** 보조 행동 — 패스 / 취소 */
+  ghostBtn: {
+    height: 30,
+    paddingHorizontal: 11,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  passBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.warning,
+  ghostBtnDisabled: {
+    borderColor: 'transparent',
+    backgroundColor: colors.chipNeutral,
   },
-  passBtnTextWarning: {
-    color: colors.warning,
+  ghostBtnText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
-  passBtnTextDisabled: {
+  ghostBtnTextDisabled: {
     color: colors.textMuted,
   },
-  passBtnDisabled: {
-    borderColor: 'rgba(26,26,26,0.1)',
-    backgroundColor: 'rgba(26,26,26,0.05)',
-    shadowOpacity: 0,
-    elevation: 0,
+  pressed: {
+    opacity: 0.72,
+  },
+  statusBadge: {
+    height: 24,
+    paddingHorizontal: 9,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeSuccess: {
+    backgroundColor: 'rgba(34, 197, 94, 0.14)',
+  },
+  badgePass: {
+    backgroundColor: 'rgba(255, 181, 71, 0.20)',
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.success,
+  },
+  statusBadgeTextPass: {
+    color: '#B27300',
+  },
+  emptyState: {
+    minHeight: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+    paddingHorizontal: spacing[6],
+  },
+  emptyIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: colors.chipNeutral,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
 });
