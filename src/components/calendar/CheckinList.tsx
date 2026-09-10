@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 6,
-    backgroundColor: colors.surfaceLight,
+    backgroundColor: colors.chipNeutral,
   },
   checkIcon: {
     width: 48,

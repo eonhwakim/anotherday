@@ -361,14 +361,17 @@ export default function CalendarScreen() {
                   todayTextColor: colors.primary,
                   selectedDayBackgroundColor: colors.primaryStrong,
                   selectedDayTextColor: colors.primary,
-                  arrowColor: colors.primary,
+                  arrowColor: colors.textSecondary,
                   monthTextColor: colors.text,
                   dayTextColor: 'rgba(26, 26, 26, 0.80)',
-                  textDisabledColor: 'rgba(26, 26, 26, 0.20)',
+                  textDisabledColor: colors.textMuted,
+                  textDayFontSize: 14,
                   textDayFontWeight: '500',
-                  textMonthFontWeight: '700',
+                  textMonthFontSize: 15,
+                  textMonthFontWeight: '600',
+                  textDayHeaderFontSize: 11,
                   textDayHeaderFontWeight: '500',
-                  textSectionTitleColor: 'rgba(26, 26, 26, 0.40)',
+                  textSectionTitleColor: colors.textFaint,
                 }}
                 style={styles.calendar}
                 markedDates={calendarMarkedDates}
@@ -410,11 +413,17 @@ export default function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
+  /** 달력은 '조작하는 면' — 불투명 흰 카드로 배경 위에 확실히 띄운다 */
   calendarContainer: {
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: colors.white,
     paddingRight: 28, // 주차 막대가 들어갈 공간을 달력 내부에 확보
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    elevation: 4,
   },
   calendar: {
     backgroundColor: 'transparent',
@@ -508,8 +517,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   todayContainer: {
-    borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.primaryPale,
   },
   selectedDayContainer: {
     backgroundColor: colors.primaryStrong,
@@ -518,10 +527,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+
   dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    marginTop: 3,
   },
 });

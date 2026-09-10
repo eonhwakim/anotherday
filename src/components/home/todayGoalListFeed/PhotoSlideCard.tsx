@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white40,
   },
   photoSlideDashedCard: {
-    borderWidth: 2,
+    // borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: colors.black20,
     borderTopLeftRadius: radius.xxl,

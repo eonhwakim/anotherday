@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { MemberCheckinSummary } from '../../types/domain';
 import { colors } from '../../design/tokens';
-import BaseCard from '../ui/BaseCard';
 import CalendarScoreTable from './CalendarScoreTable';
 import MemberGoalRow, { membersAuthenticatedForGoal, type OpenPhotoHandler } from './MemberGoalRow';
 
@@ -35,12 +34,7 @@ export default function CalendarMemberCheckinsSection({
     <View style={styles.memberSection}>
       <Text style={styles.memberSectionTitle}>{teamName ? `${teamName} 멤버` : '멤버 기록'}</Text>
       {visibleMembers.map((member) => (
-        <BaseCard
-          glassOnly
-          key={member.userId}
-          style={styles.memberCardFrame}
-          contentStyle={styles.memberCardContent}
-        >
+        <View key={member.userId} style={styles.memberCardFrame}>
           <View style={styles.memberHeader}>
             <View style={styles.memberIdentity}>
               <View style={styles.memberAvatar}>
@@ -87,7 +81,7 @@ export default function CalendarMemberCheckinsSection({
               })}
             </View>
           )}
-        </BaseCard>
+        </View>
       ))}
     </View>
   );
@@ -95,31 +89,35 @@ export default function CalendarMemberCheckinsSection({
 
 const styles = StyleSheet.create({
   memberSection: {
-    marginTop: 24,
+    marginTop: 28,
+    paddingTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.hairline,
   },
   memberSectionTitle: {
     marginTop: 12,
-    marginBottom: 12,
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    letterSpacing: 0.3,
-  },
-  memberCardFrame: {
     marginBottom: 10,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    color: colors.textFaint,
   },
-  memberCardContent: {
-    padding: 12,
+  /** 사람마다 하나의 카드로 묶는다 (Habits 루틴 목록 카드와 같은 규격) */
+  memberCardFrame: {
+    marginBottom: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   memberHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginBottom: 6,
   },
   memberIdentity: {
     flexDirection: 'row',
@@ -128,25 +126,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   memberAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 107, 61, 0.08)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.chipNeutral,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.18)',
   },
   memberAvatarImg: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   memberName: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontWeight: '600',
+    letterSpacing: -0.1,
+    color: colors.text,
     flex: 1,
   },
   scoreContainer: {
@@ -156,8 +153,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   emptyGoalText: {
-    color: 'rgba(15, 15, 15, 0.43)',
-    fontSize: 13,
+    color: colors.textMuted,
+    fontSize: 12,
     paddingLeft: 4,
     paddingVertical: 8,
   },

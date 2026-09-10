@@ -22,11 +22,7 @@ export default function CalendarPhotoModal({
 
         <View style={styles.photoContainer}>
           {photoModal ? (
-            <Image
-              source={{ uri: photoModal.url }}
-              style={styles.photoFull}
-              resizeMode="contain"
-            />
+            <Image source={{ uri: photoModal.url }} style={styles.photoFull} resizeMode="contain" />
           ) : null}
           <TouchableOpacity style={styles.photoCloseBtn} onPress={onClose}>
             <Ionicons name="close" size={24} color="#fff" />

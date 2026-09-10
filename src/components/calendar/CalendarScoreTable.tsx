@@ -1,13 +1,6 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  type StyleProp,
-  type ViewStyle,
-  type TextStyle,
-} from 'react-native';
-import { colors } from '../../design/tokens';
+import { View, Text, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { colors, numericFont } from '../../design/recipes';
 
 interface CalendarScoreTableProps {
   doneCount: number;
@@ -17,6 +10,11 @@ interface CalendarScoreTableProps {
   compact?: boolean;
 }
 
+/**
+ * 하루 성취를 요약하는 점 범례.
+ * Habits의 Today Summary·루틴 목록과 같은 색 언어를 쓴다.
+ * (완료 초록 / 패스 노랑 / 미달 코랄)
+ */
 export default function CalendarScoreTable({
   doneCount,
   passCount,
@@ -25,124 +23,55 @@ export default function CalendarScoreTable({
   compact = false,
 }: CalendarScoreTableProps) {
   const missedCount = Math.max(0, totalGoals - (doneCount + passCount));
-  const scoreItems = [
-    missedCount > 0
-      ? {
-          key: 'missed',
-          label: '미달',
-          value: missedCount,
-          labelStyle: styles.scoreLabelMissed,
-          valueStyle: styles.scoreValueMissed,
-        }
-      : null,
-    passCount > 0
-      ? {
-          key: 'pass',
-          label: '패스',
-          value: passCount,
-          labelStyle: styles.scoreLabelPass,
-          valueStyle: styles.scoreValuePass,
-        }
-      : null,
-    {
-      key: 'done',
-      label: '완료',
-      value: doneCount,
-      labelStyle: styles.scoreLabelDone,
-      valueStyle: styles.scoreValueDone,
-    },
-    {
-      key: 'total',
-      label: '총 루틴',
-      value: totalGoals,
-      labelStyle: styles.scoreLabelTotal,
-      valueStyle: styles.scoreValueTotal,
-    },
-  ].filter(Boolean) as {
-    key: string;
-    label: string;
-    value: number;
-    labelStyle: StyleProp<TextStyle>;
-    valueStyle: StyleProp<TextStyle>;
-  }[];
+
+  const items = [
+    { key: 'done', color: colors.softGreen, value: doneCount },
+    passCount > 0 ? { key: 'pass', color: colors.softYellow, value: passCount } : null,
+    missedCount > 0 ? { key: 'missed', color: colors.softCoral, value: missedCount } : null,
+  ].filter(Boolean) as { key: string; color: string; value: number }[];
 
   return (
-    <View style={[styles.wrapper, compact && styles.wrapperCompact, style]}>
-      <View style={styles.grid}>
-        {scoreItems.map((item, index) => (
-          <View
-            key={item.key}
-            style={[styles.cell, compact && styles.cellCompact, index > 0 && styles.cellDivider]}
-          >
-            <Text style={[styles.labelText, item.labelStyle]}>{item.label}</Text>
-            <Text style={[styles.valueText, compact && styles.valueTextCompact, item.valueStyle]}>
-              {item.value}
-            </Text>
-          </View>
-        ))}
-      </View>
+    <View style={[styles.row, compact && styles.rowCompact, style]}>
+      {items.map((item) => (
+        <View key={item.key} style={styles.item}>
+          <View style={[styles.dot, { backgroundColor: item.color }]} />
+          <Text style={styles.value}>{item.value}</Text>
+        </View>
+      ))}
+      <Text style={styles.total}>/ {totalGoals}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    paddingVertical: 1,
-  },
-  wrapperCompact: {
-    paddingVertical: 2,
-  },
-  grid: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    columnGap: 10,
   },
-  cell: {
-    minWidth: 32,
+  rowCompact: {
+    columnGap: 8,
+  },
+  item: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
   },
-  cellCompact: {
-    minWidth: 32,
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  cellDivider: {
-    borderLeftWidth: 1,
-    borderLeftColor: colors.border,
+  value: {
+    ...numericFont,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
   },
-  labelText: {
-    fontSize: 9,
+  total: {
+    ...numericFont,
+    fontSize: 11,
     fontWeight: '500',
-    marginBottom: 3,
-  },
-  valueText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  valueTextCompact: {
-    fontWeight: '800',
-  },
-  scoreLabelMissed: {
-    color: colors.error,
-  },
-  scoreLabelPass: {
-    color: colors.warning,
-  },
-  scoreLabelDone: {
-    color: colors.success,
-  },
-  scoreLabelTotal: {
-    color: colors.textSecondary,
-  },
-  scoreValueMissed: {
-    color: colors.error,
-  },
-  scoreValuePass: {
-    color: colors.warning,
-  },
-  scoreValueDone: {
-    color: colors.success,
-  },
-  scoreValueTotal: {
-    color: colors.textSecondary,
+    color: colors.textMuted,
   },
 });

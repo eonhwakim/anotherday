@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Chip from '../ui/Chip';
 import dayjs from '../../lib/dayjs';
 import type { CheckinWithGoal, MemberCheckinSummary, ReactionWithUser } from '../../types/domain';
-import { colors, spacing, typography } from '../../design/tokens';
+import { colors, spacing } from '../../design/tokens';
 
 export type OpenPhotoHandler = (params: { url: string; checkinId: string }) => void;
 
@@ -51,12 +51,13 @@ function resolveStatus(
   return { kind: 'none', label: '' };
 }
 
+/** 배지 톤 — Today Summary 범례와 같은 색 언어 (완료 초록 / 패스 노랑 / 미달 코랄) */
 const BADGE_STYLE_BY_KIND: Record<StatusKind, object> = {
-  done: { backgroundColor: colors.statusSuccessBg, borderColor: colors.statusSuccessBorder },
-  pass: { backgroundColor: colors.statusPassBg, borderColor: colors.statusPassBorder },
-  missed: { backgroundColor: colors.statusErrorBg, borderColor: colors.statusErrorBorder },
-  future: { backgroundColor: colors.statusFutureBg, borderColor: colors.statusFutureBorder },
-  inProgress: { borderWidth: 0 },
+  done: { backgroundColor: 'rgba(197, 219, 169, 0.38)' },
+  pass: { backgroundColor: 'rgba(255, 231, 171, 0.52)' },
+  missed: { backgroundColor: 'rgba(245, 156, 154, 0.24)' },
+  future: { backgroundColor: colors.chipNeutral },
+  inProgress: {},
   none: {},
 };
 
@@ -162,46 +163,50 @@ export default function MemberGoalRow({
 }: MemberGoalRowProps) {
   const { kind, label } = resolveStatus(checkin, selectedDate, forceFuture);
   const badgeStyle = BADGE_STYLE_BY_KIND[kind];
-  const isPass = kind === 'pass';
   const reactions = checkin?.reactions ?? [];
 
   return (
-    <View style={[styles.goalRow, showBottomBorder && styles.goalRowBorder]}>
-      <GoalLeadArt checkin={checkin} authenticators={authenticators} onOpenPhoto={onOpenPhoto} />
+    <View>
+      <View style={styles.goalRow}>
+        <GoalLeadArt checkin={checkin} authenticators={authenticators} onOpenPhoto={onOpenPhoto} />
 
-      <View style={styles.goalMain}>
-        <View style={styles.goalTitleRow}>
-          <View style={styles.goalInfo}>
-            <Text style={styles.goalName} numberOfLines={2}>
-              {goal.name}
-            </Text>
-            <Text style={styles.goalFreq}>
-              {goal.frequency === 'daily' ? '매일' : `주 ${goal.targetCount}회`}
-            </Text>
+        <View style={styles.goalMain}>
+          <View style={styles.goalTitleRow}>
+            <View style={styles.goalInfo}>
+              <Text style={styles.goalName} numberOfLines={2}>
+                {goal.name}
+              </Text>
+              <Text style={styles.goalFreq}>
+                {goal.frequency === 'daily' ? '매일' : `주 ${goal.targetCount}회`}
+                {checkin ? (
+                  <Text style={styles.goalFreqTime}>
+                    {' · '}
+                    {dayjs(checkin.created_at).format('HH:mm')}
+                  </Text>
+                ) : null}
+              </Text>
+            </View>
+            {label ? (
+              <Chip
+                label={label}
+                style={[styles.statusBadge, badgeStyle]}
+                textStyle={styles.statusText}
+              />
+            ) : null}
           </View>
-          {label ? (
-            <Chip
-              label={label}
-              style={[styles.statusBadge, badgeStyle]}
-              textStyle={styles.statusText}
-            />
+
+          {checkin?.memo ? (
+            <Text style={styles.checkinMemo} numberOfLines={2}>
+              {checkin.memo}
+            </Text>
           ) : null}
+
+          {showReactions && !checkin?.photo_url ? <ReactionStack reactions={reactions} /> : null}
         </View>
-
-        {checkin ? (
-          <Text style={styles.checkinMeta}>
-            {dayjs(checkin.created_at).format('HH:mm')} · {isPass ? '패스' : '완료'}
-          </Text>
-        ) : null}
-
-        {checkin?.memo ? (
-          <Text style={styles.checkinMemo} numberOfLines={2}>
-            {checkin.memo}
-          </Text>
-        ) : null}
-
-        {showReactions && !checkin?.photo_url ? <ReactionStack reactions={reactions} /> : null}
       </View>
+
+      {/* 같은 사람 안의 루틴 구분은 멤버 구분선보다 옅고, 사진 폭만큼 들여쓴다 */}
+      {showBottomBorder ? <View style={styles.insetDivider} /> : null}
     </View>
   );
 }
@@ -213,9 +218,10 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 12,
   },
-  goalRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  insetDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 56,
+    backgroundColor: 'rgba(26, 26, 26, 0.05)',
   },
   goalLeadArt: {
     width: 46,
@@ -278,38 +284,39 @@ const styles = StyleSheet.create({
     paddingRight: 6,
   },
   goalName: {
-    paddingLeft: 10,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+    lineHeight: 19,
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 3,
   },
+  /** 빈도 + 체크인 시각을 한 줄에 (상태 단어는 배지에만) */
   goalFreq: {
-    ...typography.caption,
+    fontSize: 11,
+    lineHeight: 15,
     color: colors.textSecondary,
-    marginLeft: 10,
+  },
+  goalFreqTime: {
+    color: colors.textMuted,
   },
   statusBadge: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: 5,
-    borderWidth: 1,
+    height: 22,
+    paddingHorizontal: spacing[2] + 1,
+    paddingVertical: 0,
+    borderWidth: 0,
     flexShrink: 0,
   },
   statusText: {
-    ...typography.bodyStrong,
-    fontSize: 12,
-    color: '#fff',
-  },
-  checkinMeta: {
     fontSize: 11,
-    color: 'rgba(26,26,26,0.40)',
-    marginTop: 4,
-    marginLeft: 10,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   checkinMemo: {
     fontSize: 11,
-    color: 'rgba(26,26,26,0.35)',
-    marginTop: 4,
+    lineHeight: 15,
+    color: colors.textMuted,
+    marginTop: 5,
   },
   reactionRow: {
     flexDirection: 'row',

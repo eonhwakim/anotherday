@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import BaseCard from '../ui/BaseCard';
 import type { CalendarDayMarking, DailyTodo, MemberCheckinSummary } from '../../types/domain';
 import { colors } from '../../design/tokens';
 import CalendarScoreTable from './CalendarScoreTable';
@@ -38,7 +37,7 @@ export default function CalendarDateSummaryCard({
   const goalNames = selectedMarking?.goalNames ?? [];
 
   return (
-    <BaseCard glassOnly style={styles.dateSummaryFrame}>
+    <View style={styles.dateSummaryFrame}>
       <View style={styles.dateSummaryHeader}>
         <Text style={styles.dateSummaryTitle}>{formattedDate}</Text>
 
@@ -129,24 +128,33 @@ export default function CalendarDateSummaryCard({
           </View>
         </View>
       ) : null}
-    </BaseCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  /** 내 기록도 멤버 카드와 같은 규격으로 묶는다 (달력만 불투명 흰 카드로 떠 있어 구분됨) */
   dateSummaryFrame: {
     marginTop: 24,
-    marginBottom: 8,
+    marginBottom: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   dateSummaryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 6,
   },
   dateSummaryTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.1,
     color: colors.text,
   },
   scoreContainer: {
@@ -157,57 +165,56 @@ const styles = StyleSheet.create({
   },
   noDataText: {
     fontSize: 13,
-    color: 'rgba(26,26,26,0.30)',
-    fontWeight: '500',
+    color: colors.textMuted,
+    fontWeight: '400',
   },
   futureLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255, 107, 61, 0.65)',
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   goalNameChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 8,
+    columnGap: 8,
+    rowGap: 8,
+    marginTop: 10,
   },
   goalNameChip: {
-    backgroundColor: 'rgba(255, 107, 61, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.14)',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    height: 26,
+    justifyContent: 'center',
+    backgroundColor: colors.chipNeutral,
+    borderRadius: 999,
+    paddingHorizontal: 10,
   },
   goalNameChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(26,26,26,0.50)',
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+    color: colors.textSecondary,
   },
   excludedStatsBox: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
+    marginTop: 8,
+    marginBottom: 4,
   },
   excludedStatsText: {
-    fontSize: 13,
-    color: '#1E40AF',
-    fontWeight: '600',
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.textFaint,
+    fontWeight: '400',
   },
   todoSection: {
     marginTop: 14,
     paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 107, 61, 0.08)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.hairline,
   },
   todoTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: 'rgba(26,26,26,0.58)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    color: colors.textFaint,
     marginBottom: 10,
   },
   todoList: {
@@ -217,29 +224,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 61, 0.08)',
+    paddingVertical: 4,
   },
   todoCheck: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginTop: 5,
-    backgroundColor: 'rgba(26,26,26,0.18)',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 6,
+    backgroundColor: colors.borderMuted,
   },
   todoCheckDone: {
-    backgroundColor: colors.success,
+    backgroundColor: colors.softGreen,
   },
   todoTextWrap: {
     flex: 1,
   },
   todoText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.text,
   },
   todoTextDone: {
@@ -255,13 +257,14 @@ const styles = StyleSheet.create({
   myGoalsSection: {
     marginTop: 14,
     paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 107, 61, 0.08)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.hairline,
   },
   myGoalsTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: 'rgba(26,26,26,0.58)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    color: colors.textFaint,
     marginBottom: 10,
   },
 });
